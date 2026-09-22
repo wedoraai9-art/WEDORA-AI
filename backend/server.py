@@ -24,6 +24,60 @@ import ipaddress
 import asyncio
 
 from openai import AsyncOpenAI
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.6-luna")
+
+
+class UserMessage:
+    def __init__(self, text: str):
+        self.text = text
+
+
+class TextDelta:
+    def __init__(self, content: str):
+        self.content = content
+
+
+class StreamDone:
+    pass
+
+
+class LlmChat:
+    def __init__(self, api_key=None, session_id=None, system_message=None):
+        self.client = AsyncOpenAI(api_key=api_key or OPENAI_API_KEY)
+        self.session_id = session_id
+        self.system_message = system_message
+        self.model = OPENAI_MODEL
+
+    def with_model(self, provider, model):
+        return self
+
+    async def send_message(self, message):
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": self.system_message or ""},
+                {"role": "user", "content": message.text},
+            ],
+        )
+        return response.choices[0].message.content or ""
+
+    async def stream_message(self, message):
+        stream = await self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": self.system_message or ""},
+                {"role": "user", "content": message.text},
+            ],
+            stream=True,
+        )
+
+        async for chunk in stream:
+            content = getattr(chunk.choices[0].delta, "content", None)
+            if content:
+                yield TextDelta(content)
+
+        yield StreamDone()
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
