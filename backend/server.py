@@ -652,6 +652,11 @@ Return JSON only.
     
         except Exception:
             logging.exception("Pexels image search failed")
+            
+    gemini_image = await generate_gemini_wedding_image(parsed.get("image_prompt", ""))
+    if gemini_image:
+        hero_image = gemini_image 
+
     
     parsed["hero_image"] = hero_image
     parsed["reference_images"] = reference_images
