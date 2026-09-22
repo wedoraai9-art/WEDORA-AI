@@ -223,7 +223,6 @@ export default function WeddingPlanner() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {functions.map(({ name, date, icon: Icon }) => (
              <div
-               <div
                 key={name}
                 onClick={() => setSelectedFunction(name)}
                 role="button"
