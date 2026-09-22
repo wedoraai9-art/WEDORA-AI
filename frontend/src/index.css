@@ -230,16 +230,39 @@ body {
 .chat-scroll::-webkit-scrollbar-thumb { background: rgba(201,184,255,0.5); }
 
 /* Prose overrides for AI messages */
-.ai-prose h1, .ai-prose h2, .ai-prose h3 { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; color: #2D2638; margin: 0.75rem 0 0.35rem; }
-.ai-prose h1 { font-size: 1.15rem; }
-.ai-prose h2 { font-size: 1.05rem; }
-.ai-prose h3 { font-size: 0.98rem; }
-.ai-prose p  { margin: 0.4rem 0; line-height: 1.55; }
-.ai-prose ul { margin: 0.35rem 0 0.35rem 1.1rem; list-style: disc; }
-.ai-prose ol { margin: 0.35rem 0 0.35rem 1.1rem; list-style: decimal; }
-.ai-prose li { margin: 0.15rem 0; }
+.ai-prose h1, .ai-prose h2, .ai-prose h3 { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; color: #2D2638; margin: 0.9rem 0 0.35rem; letter-spacing: -0.005em; }
+.ai-prose h1 { font-size: 1.2rem; }
+.ai-prose h2 {
+  font-size: 1.02rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #4a4257;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid rgba(201,184,255,0.35);
+  margin-top: 1.1rem;
+}
+.ai-prose h2:first-child { margin-top: 0.1rem; }
+.ai-prose h3 { font-size: 0.98rem; color: #2D2638; }
+.ai-prose p  { margin: 0.4rem 0; line-height: 1.6; color: #3b3547; }
+.ai-prose .ai-ul { margin: 0.35rem 0 0.35rem 0.2rem; list-style: none; padding: 0; }
+.ai-prose .ai-ul > li { position: relative; padding-left: 1.1rem; margin: 0.2rem 0; line-height: 1.55; }
+.ai-prose .ai-ul > li::before { content: ''; position: absolute; left: 0.15rem; top: 0.65em; width: 6px; height: 6px; border-radius: 9999px; background: linear-gradient(120deg, #C9B8FF, #F7B7D8); }
+.ai-prose .ai-ol { margin: 0.35rem 0 0.35rem 0.2rem; counter-reset: item; list-style: none; padding: 0; }
+.ai-prose .ai-ol > li { counter-increment: item; position: relative; padding-left: 1.6rem; margin: 0.25rem 0; line-height: 1.55; }
+.ai-prose .ai-ol > li::before {
+  content: counter(item);
+  position: absolute; left: 0; top: 0.15em;
+  font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 0.72rem;
+  min-width: 1.15rem; height: 1.15rem; padding: 0 0.35rem;
+  border-radius: 9999px; color: #2D2638;
+  background: linear-gradient(120deg, rgba(201,184,255,0.55), rgba(247,183,216,0.55));
+  border: 1px solid rgba(255,255,255,0.85);
+  display: inline-flex; align-items: center; justify-content: center;
+}
 .ai-prose strong { color: #2D2638; font-weight: 600; }
+.ai-prose em { color: #4a4257; }
 .ai-prose code { background: rgba(201,184,255,0.18); padding: 0.05rem 0.35rem; border-radius: 4px; font-size: 0.85em; }
+.ai-prose a { color: #7c5cf2; }
 
 /* Silky background section */
 .silky-bg {
