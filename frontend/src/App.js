@@ -56,6 +56,7 @@ function App() {
           <Navigation />
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/wedding-planning" element={<WeddingPlanner />} />
             <Route path="/for-vendors" element={<VendorLanding />} />
             <Route path="/vendor/auth" element={<VendorAuth />} />
             <Route path="/vendor/dashboard" element={<VendorDashboard />} />
