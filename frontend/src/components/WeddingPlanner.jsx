@@ -214,10 +214,8 @@ export default function WeddingPlanner() {
               </h2>
             </div>
 
-            <button className="hidden items-center gap-2 rounded-full bg-[#2D2638] px-4 py-2 text-sm text-white md:flex">
-              <Plus className="h-4 w-4" />
-              Add Function
-            </button>
+            
+             
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
