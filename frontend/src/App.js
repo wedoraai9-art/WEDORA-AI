@@ -66,6 +66,10 @@ function App() {
             <Route path="/wedding-planning/timeline" element={<WeddingTimeline />} />
             <Route path="/wedding-planning/guests" element={<WeddingGuests />} />
             <Route path="/wedding-planning/budget" element={<WeddingBudget />} />
+             <Route
+                path="/wedding-planning/venue"
+                element={<WeddingVenuePlanning />}
+              />
             <Route path="/for-vendors" element={<VendorLanding />} />
             <Route path="/vendor/auth" element={<VendorAuth />} />
             <Route path="/vendor/dashboard" element={<VendorDashboard />} />
