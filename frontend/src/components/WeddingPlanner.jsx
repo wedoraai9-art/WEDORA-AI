@@ -264,10 +264,14 @@ export default function WeddingPlanner() {
               <button
                   key={title}
                   onClick={() => {
-                    if (title === "Wedding Checklist") {
-                      window.location.href = "/wedding-planning/checklist";
-                    }
-                  }}
+                  if (title === "Wedding Checklist") {
+                    window.location.href = "/wedding-planning/checklist";
+                  }
+                
+                  if (title === "Wedding Timeline") {
+                    window.location.href = "/wedding-planning/timeline";
+                  }
+                }}
                   className="group rounded-3xl border border-white bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
                 >
                 <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#F7D7E8] via-[#EDE4FF] to-[#DDF1F8]">
