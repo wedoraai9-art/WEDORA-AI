@@ -21,6 +21,8 @@ export default function WeddingPlanner() {
   const [weddingDate, setWeddingDate] = useState('');
   const [coupleName, setCoupleName] = useState('');
   const [city, setCity] = useState('');
+  const [selectedFunction, setSelectedFunction] = useState(null);
+  const [functionDate, setFunctionDate] = useState('');
 
   const [functions, setFunctions] = useState([
   { name: 'Engagement', date: 'Add date', icon: Heart },
@@ -221,19 +223,11 @@ export default function WeddingPlanner() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {functions.map(({ name, date, icon: Icon }) => (
              <div
-  key={name}
-  onClick={() => {
-    const selectedDate = window.prompt(`Enter date for ${name}:`);
-    if (!selectedDate) return;
-
-    setFunctions((current) =>
-      current.map((item) =>
-        item.name === name ? { ...item, date: selectedDate } : item
-      )
-    );
-  }}
-  role="button"
-  tabIndex={0}
+               <div
+                key={name}
+                onClick={() => setSelectedFunction(name)}
+                role="button"
+                tabIndex={0}
                 className="rounded-3xl border border-white bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
               >
                 <div className="mb-5 flex items-center justify-between">
@@ -297,6 +291,85 @@ export default function WeddingPlanner() {
         </div>
 
       </div>
+      {selectedFunction && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2D2638]/30 px-4 backdrop-blur-sm">
+    <div className="w-full max-w-md rounded-[32px] border border-white/70 bg-white/95 p-7 shadow-2xl">
+      
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-[#B3A9B9]">
+            Your Celebration
+          </p>
+
+          <h2 className="font-heading text-2xl font-semibold text-[#2D2638]">
+            {selectedFunction}
+          </h2>
+
+          <p className="mt-2 text-sm text-[#8A8090]">
+            Choose the date for this wedding function.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedFunction(null);
+            setFunctionDate('');
+          }}
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F7D7E8] text-[#2D2638] transition hover:scale-105"
+        >
+          ×
+        </button>
+      </div>
+
+      <div className="mb-6 rounded-2xl bg-gradient-to-br from-[#F7D7E8] via-[#EDE4FF] to-[#DDF1F8] p-5">
+        <label className="mb-2 block text-sm font-medium text-[#2D2638]">
+          Function Date
+        </label>
+
+        <input
+          type="date"
+          value={functionDate}
+          onChange={(e) => setFunctionDate(e.target.value)}
+          className="w-full rounded-2xl border border-white bg-white px-4 py-3 text-[#2D2638] outline-none transition focus:ring-2 focus:ring-[#D7B8E8]"
+        />
+      </div>
+
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedFunction(null);
+            setFunctionDate('');
+          }}
+          className="flex-1 rounded-2xl border border-[#E8E0E8] bg-white px-5 py-3 font-medium text-[#6B6171] transition hover:bg-[#FAF7FA]"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          disabled={!functionDate}
+          onClick={() => {
+            setFunctions((current) =>
+              current.map((item) =>
+                item.name === selectedFunction
+                  ? { ...item, date: functionDate }
+                  : item
+              )
+            );
+
+            setSelectedFunction(null);
+            setFunctionDate('');
+          }}
+          className="flex-1 rounded-2xl bg-[#2D2638] px-5 py-3 font-medium text-white transition hover:bg-[#40354D] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Save Date
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </section>
   );
 }
