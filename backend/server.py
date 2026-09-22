@@ -1169,10 +1169,14 @@ async def send_lead_notification(vendor: dict, lead: dict):
     try:
         subject = f"New wedding inquiry — {lead['name']} · {lead.get('city') or 'Wedding'} ({vendor.get('category', '')})"
         html = build_lead_email_html(vendor, lead)
-        await send_email(to=vendor["email"], subject=subject, html=html)
-        await db.leads.update_one({"id": lead["id"]}, {"$set": {"email_notified": True}})
+        email_id = await send_email(to=vendor["email"], subject=subject, html=html)
+        await db.leads.update_one(
+            {"id": lead["id"]},
+            {"$set": {"email_notified": bool(email_id), "email_id": email_id, "email_status": "sent" if email_id else "failed"}},
+        )
     except Exception as e:
         logger.error(f"Lead notification email failed for vendor {vendor.get('id')}: {e}")
+        await db.leads.update_one({"id": lead["id"]}, {"$set": {"email_notified": False, "email_status": "error"}})
 
 
 # ================= STARTUP =================

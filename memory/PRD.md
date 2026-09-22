@@ -49,6 +49,12 @@ Create a premium, modern AI chatbot website called "WEDORA AI" — a wedding-cen
 - Couples can revisit past plans: localStorage session registry (`wedora_chat_sessions`, 30 max), "History" chip always visible in chat toolbar, slide-over drawer lists conversations (first-message title + timestamp), click to reload full thread from `GET /api/chat/history/{sid}` and continue in the same session, per-item delete, persists across reloads.
 - Verified end-to-end (iteration_4: backend + frontend 100%); mobile drawer 86% width, no overflow.
 
+## Implemented (2026-09-22) — Lead Email Alerts (Emergent-managed Resend)
+- Couple submits Request Quote → vendor instantly receives a branded HTML email (WEDORA pearlescent styling, full lead details, dashboard CTA) via `send_lead_notification`, fired as a non-blocking task so lead creation stays <2s.
+- Guardrail gate `_assert_safe_email` on every send; recipients come from server-side vendor records only (no caller-supplied markup).
+- Lead docs track `email_notified` / `email_id` / `email_status` for delivery audit.
+- Verified: delivered@resend.dev receives the email (id returned), iteration_5 backend+frontend 100%.
+
 ## Backlog (P0 → P2)
 - **P0** Real Razorpay Subscriptions (PRO ₹999 / PREMIUM ₹2,999) — user skipped for now; DEMO switcher is the hook-in point.
 - **P1** Vendor inquiry emails (Resend) when a lead is created.

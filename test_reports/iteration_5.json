@@ -1,0 +1,41 @@
+{
+  "summary": "Tested new Resend-managed lead email notification. Backend: registered a fresh vendor with a unique delivered+<suffix>@resend.dev address, POST /api/leads returned {ok:true,lead_id} in <2s (fire-and-forget confirmed), email_notified flag set on the lead within ~1s, backend log shows 'Email sent to delivered+...@resend.dev: id=...'. Also verified that lead creation for petal (fake inbox) still returns fast and email_notified is set. Cleanup: unpublished the TEST vendor via admin PATCH; confirmed removed from GET /api/marketplace/vendors. Regression: marketplace still returns >=3 published demo vendors including petal-pearl-studio; POST /api/chat OK. Frontend: on /vendor/petal-pearl-studio the Request Quote modal opens, all quote-* fields fill, quote-submit shows 'Your request has been sent!' toast, modal closes, and lead is created (petal dashboard also has this data available via /api/vendor/leads).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/leads (send_lead_notification)", "issue": "email_notified is set to True regardless of whether send_email actually succeeded. send_email swallows errors and returns None, but send_lead_notification still marks email_notified=True. Observed in logs: petal@demo.wedora.ai returns 422 from integrations.emergentagent.com but the lead is still marked email_notified=True. Consider setting the flag only when send_email returns a non-None id, or storing email_id/email_status separately."},
+      {"endpoint": "PATCH /api/admin/vendors/{id}", "issue": "Response uses vendor_public() which omits is_published, is_verified fields — admin dashboards cannot verify the toggled state from the response body without an extra GET. Consider a dedicated admin_vendor serializer."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Request Quote modal on /vendor/{slug}", "issues": ["WEDDING DATE input uses the browser-default date picker (<input type=date> shows 'mm/dd/yyyy') instead of a shadcn Calendar/Popover component. Recommend swapping to shadcn Calendar for brand consistency with the rest of the pearlescent UI."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_email_leads.py",
+    "/app/test_reports/pytest/email_leads.xml"
+  ],
+  "action_items": [
+    "Optional: only mark lead.email_notified=True when send_email returns a real message id (guard against silent 422/timeout failures).",
+    "Optional: include is_published/is_verified in the PATCH /api/admin/vendors response.",
+    "Optional UI polish: replace the native date input in the Request Quote modal with shadcn Calendar."
+  ],
+  "critical_code_review_comments": [
+    "send_email swallows all exceptions and returns None; send_lead_notification then unconditionally sets email_notified=True. This makes email deliverability un-auditable from the DB.",
+    "build_lead_email_html always dereferences lead['phone'] and lead['name'] with no defensive fallback; safe today because LeadIn requires them, but coupling is tight.",
+    "server.py is 1284 lines — the EMAIL section (guardrail, HTML builder, sender, notifier) is a good candidate to extract into backend/email_service.py."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_email_leads.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@wedora.ai / WedoraAdmin@2026; petal@demo.wedora.ai / VendorDemo@2026",
+  "seed_data_creation": "Each run: registers a TEST vendor 'TEST Email Studio <hex>' with email delivered+<hex>@resend.dev, then unpublishes it via admin PATCH. Creates two test leads (one for the TEST vendor, one for petal). Petal's dashboard will accumulate TEST leads over runs — consider periodic cleanup.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Email flow validated end-to-end using delivered@resend.dev alias trick (delivered+<suffix>@resend.dev — Resend routes plus-addressed variants to their sandbox and each yields a unique inbound id in backend logs). Test file: /app/backend/tests/test_email_leads.py. Note pytest.ini pins -n 2 --dist loadscope; use -n 0 for serial. Request-quote modal testids on vendor profile: profile-request-quote (open button), quote-name/quote-email/quote-phone/quote-city/quote-guests/quote-budget/quote-message/quote-submit, request-quote-modal (container).",
+  "rca of the issue": "N/A — feature works. Minor RCA on email_notified inaccuracy: send_email's try/except returns None on HTTP failure; send_lead_notification does not check the return value before updating email_notified. Mitigation: gate the update_one on `if email_id: ...`."
+}
