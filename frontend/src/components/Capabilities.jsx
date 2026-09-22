@@ -28,7 +28,13 @@ export const Capabilities = () => (
         <div
           key={title}
           data-testid={CAPS.card(title)}
-          onClick={() => document.getElementById('designer')?.scrollIntoView({ behavior: 'smooth' })}
+          onClick={() => {
+  if (title === 'Wedding Planning') {
+    window.location.href = '/wedding-planning';
+  } else if (title === 'AI Wedding Design') {
+    document.getElementById('designer')?.scrollIntoView({ behavior: 'smooth' });
+  }
+}}
          className={`pearl-card p-6 flex flex-col items-start ${
          title === 'AI Wedding Design' ? 'cursor-pointer' : ''
          }`}
