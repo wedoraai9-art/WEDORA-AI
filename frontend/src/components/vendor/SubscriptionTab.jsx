@@ -38,7 +38,7 @@ export const SubscriptionTab = ({ vendor, planDetails, onSaved }) => {
               <ul className="mt-4 space-y-1.5 flex-1">
                 {p.features.slice(0, 5).map((f) => <li key={f} className="text-xs text-[#6B617A]">· {f}</li>)}
               </ul>
-              <button data-testid={`sub-choose-${p.id}`} onClick={() => choose(p.id)} disabled={busy || active}
+              <button data-testid={`plan-choose-${p.id}`} onClick={() => choose(p.id)} disabled={busy || active}
                 className={`mt-5 w-full ${active ? 'chip !py-2 opacity-50 cursor-default' : 'glow-btn !py-2.5 !text-sm'}`}>
                 {active ? 'Active' : `Switch to ${p.name.charAt(0) + p.name.slice(1).toLowerCase()}`}
               </button>

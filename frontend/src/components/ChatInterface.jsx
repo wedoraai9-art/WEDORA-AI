@@ -107,13 +107,21 @@ export const ChatInterface = ({ initialPromptRef }) => {
 
   const shareChat = async () => {
     if (!sessionId) { toast.info('Send a message first to create a shareable plan.'); return; }
+    let shareId;
     try {
-      const { share_id } = await apiCreateShare(sessionId);
-      const url = `${window.location.origin}/share/${share_id}`;
+      const res = await apiCreateShare(sessionId);
+      shareId = res.share_id;
+    } catch {
+      toast.error('Could not create the share link. Try again.');
+      return;
+    }
+    const url = `${window.location.origin}/share/${shareId}`;
+    try {
       await navigator.clipboard.writeText(url);
       toast.success('Share link copied to clipboard — send it to family!', { description: url });
     } catch {
-      toast.error('Could not create the share link. Try again.');
+      toast.success('Your shareable plan link is ready — copy it below', { description: url, duration: 15000 });
+      window.prompt('Copy your wedding plan link:', url);
     }
   };
 
