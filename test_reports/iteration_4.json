@@ -1,0 +1,31 @@
+{
+  "summary": "Tested new chat history sidebar feature end-to-end. Backend GET /api/chat/history/{session_id} returns persisted messages. Frontend: History chip visible pre-chat, creating 2 chats populates localStorage (wedora_chat_sessions) with title=first user message + timestamp. Drawer lists both, clicking older item closes drawer and hydrates messages from backend, appending 'thanks' extends the same session (session count stays at 2). Delete removes item; page reload preserves localStorage and re-opening from backend works. Mobile 390x844: drawer width 335px (~86%), no horizontal overflow.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "History drawer item title", "issues": ["upsertSession overwrites title with the latest user message on every send in an existing session. After resuming 'hello wedora' and sending 'thanks', the drawer entry retitles to 'thanks' — losing the original conversation label. Preferred UX: keep first user message as the persistent title (only set when title is empty)."]},
+      {"screen": "History drawer item delete button", "issues": ["Delete icon uses opacity-0 group-hover:opacity-100 — invisible on touch/mobile until hover. Consider always-visible on mobile or a subtle 30% opacity by default."]}
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_4.json"],
+  "action_items": [
+    "(Optional UX) In ChatInterface.upsertSession, only set title on first insert (preserve original first-message title on subsequent upserts).",
+    "(Optional) Make history-delete-* button visible on touch devices — opacity-0 hides it on mobile."
+  ],
+  "critical_code_review_comments": [
+    "ChatInterface.jsx grew to 370 lines with several concerns (chat send, share, history) — consider extracting history drawer + hooks into a separate module for maintainability.",
+    "loadSessions is passed as lazy initializer to useState (good), but sessions are re-loaded imperatively on each drawer open and after upsert — a single source of truth (custom useSessions hook) would prevent drift.",
+    "openSession scrolls to #hero via document.querySelector — acceptable, but a ref would be more idiomatic in React.",
+    "No storage-quota / JSON.parse fallback beyond try/catch — fine given 30-item cap."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "None required (anonymous chat).",
+  "seed_data_creation": "Created two test chat sessions via UI ('hello wedora' and 'budget for 100 guests'); one was deleted during the test. Remaining test data lives in Mongo chat_messages collection.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Chat history sidebar works as specified. Only UX polish items remain (title replacement, delete button visibility on mobile). All required data-testids exist: chat-history-btn, chat-history-drawer, history-item-{sid}, history-delete-{sid}, chat-new-btn, history-close-btn. Note: the hero messages testid is 'hero-chat-messages' (not 'hero-chat-messages-list').",
+  "rca of the issue": "N/A — feature works. UX note: title overwrite occurs because upsertSession always writes the current user message as title regardless of whether the session already has one."
+}

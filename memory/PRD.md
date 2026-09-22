@@ -45,6 +45,10 @@ Create a premium, modern AI chatbot website called "WEDORA AI" — a wedding-cen
 - Plan restrictions enforced server-side (photo limits verified: 6th upload on FREE rejected).
 - Testing: iteration_2 backend 14/14, frontend 11/12; iteration_3 retest 2/2 (share toast fix, plan-choose testids).
 
+## Implemented (2026-09-22) — Chat History Sidebar
+- Couples can revisit past plans: localStorage session registry (`wedora_chat_sessions`, 30 max), "History" chip always visible in chat toolbar, slide-over drawer lists conversations (first-message title + timestamp), click to reload full thread from `GET /api/chat/history/{sid}` and continue in the same session, per-item delete, persists across reloads.
+- Verified end-to-end (iteration_4: backend + frontend 100%); mobile drawer 86% width, no overflow.
+
 ## Backlog (P0 → P2)
 - **P0** Real Razorpay Subscriptions (PRO ₹999 / PREMIUM ₹2,999) — user skipped for now; DEMO switcher is the hook-in point.
 - **P1** Vendor inquiry emails (Resend) when a lead is created.

@@ -22,8 +22,10 @@ const loadSessions = () => {
 
 const upsertSession = (sessionId, title) => {
   if (!sessionId) return;
-  const sessions = loadSessions().filter((s) => s.session_id !== sessionId);
-  sessions.unshift({ session_id: sessionId, title, updated_at: Date.now() });
+  const existing = loadSessions();
+  const prev = existing.find((s) => s.session_id === sessionId);
+  const sessions = existing.filter((s) => s.session_id !== sessionId);
+  sessions.unshift({ session_id: sessionId, title: prev?.title || title, updated_at: Date.now() });
   localStorage.setItem(HISTORY_KEY, JSON.stringify(sessions.slice(0, 30)));
 };
 
@@ -265,7 +267,7 @@ export const ChatInterface = ({ initialPromptRef }) => {
                     <button
                       data-testid={`history-delete-${s.session_id}`}
                       onClick={(e) => { e.stopPropagation(); deleteSession(s.session_id); }}
-                      className="w-7 h-7 rounded-full bg-white/70 border border-white/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition shrink-0"
+                      className="w-7 h-7 rounded-full bg-white/70 border border-white/80 flex items-center justify-center opacity-40 group-hover:opacity-100 transition shrink-0"
                       title="Remove from history"
                     >
                       <Trash2 className="w-3.5 h-3.5 text-red-400" />
