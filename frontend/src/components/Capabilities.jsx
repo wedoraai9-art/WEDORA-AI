@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CAPS } from '@/constants/testIds';
 import { Gem, Wallet, Flower2, Building2, Handshake, Utensils, Crown, Users } from 'lucide-react';
 
@@ -13,7 +14,10 @@ const items = [
   { icon: Users,     title: 'Guest Management',  desc: 'RSVP, accommodation and transportation planning.',                    tint: 'from-[#F7B7D8]/40 to-[#C9B8FF]/40' },
 ];
 
-export const Capabilities = () => (
+export const Capabilities = () => {
+  const navigate = useNavigate();
+
+  return (
   <section id="capabilities" data-testid={CAPS.section} className="relative py-24 px-4">
     <div className="max-w-6xl mx-auto text-center mb-12">
       <p className="font-heading uppercase tracking-[0.3em] text-xs text-[#988FA6] mb-4">Capabilities</p>
@@ -30,8 +34,7 @@ export const Capabilities = () => (
           data-testid={CAPS.card(title)}
           onClick={() => {
   if (title === 'Wedding Planning') {
-    window.history.pushState({}, '', '/wedding-planning');
-    window.dispatchEvent(new PopStateEvent('popstate'));
+   navigate('/wedding-planning');
   } else if (title === 'AI Wedding Design') {
     document.getElementById('designer')?.scrollIntoView({ behavior: 'smooth' });
   }
