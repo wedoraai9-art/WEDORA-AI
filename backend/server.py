@@ -218,7 +218,7 @@ class BudgetOut(BaseModel):
 # ---------- Chat (SSE streaming) ----------
 @api_router.post("/chat/stream")
 async def chat_stream(payload: ChatMessageIn):
-    if not EMERGENT_LLM_KEY:
+    if not OPENAI_API_KEY:
         raise HTTPException(status_code=500, detail="LLM key not configured")
 
     session_id = payload.session_id or str(uuid.uuid4())
@@ -233,7 +233,7 @@ async def chat_stream(payload: ChatMessageIn):
     ).sort("timestamp", 1).to_list(200)
 
     chat = LlmChat(
-        api_key=EMERGENT_LLM_KEY,
+        api_key=OPENAI_API_KEY,
         session_id=session_id,
         system_message=WEDORA_SYSTEM_PROMPT,
     ).with_model("anthropic", "claude-sonnet-5")
@@ -283,7 +283,7 @@ async def chat_stream(payload: ChatMessageIn):
 @api_router.post("/chat", response_model=dict)
 async def chat_send(payload: ChatMessageIn):
     """Non-streaming fallback — returns full reply as JSON."""
-    if not EMERGENT_LLM_KEY:
+    if not OPENAI_API_KEY:
         raise HTTPException(status_code=500, detail="LLM key not configured")
 
     session_id = payload.session_id or str(uuid.uuid4())
@@ -303,7 +303,7 @@ async def chat_send(payload: ChatMessageIn):
         context_prefix = "Prior conversation:\n" + "\n".join(lines) + "\n\nCurrent message:\n"
 
     chat = LlmChat(
-        api_key=EMERGENT_LLM_KEY,
+        api_key=OPENAI_API_KEY,
         session_id=session_id,
         system_message=WEDORA_SYSTEM_PROMPT,
     ).with_model("anthropic", "claude-sonnet-5")
@@ -416,7 +416,7 @@ class DesignerIn(BaseModel):
 
 @api_router.post("/designer/generate")
 async def designer_generate(payload: DesignerIn):
-    if not EMERGENT_LLM_KEY:
+    if not OPENAI_API_KEY:
         raise HTTPException(status_code=500, detail="LLM key not configured")
 
     session_id = f"designer-{uuid.uuid4()}"
@@ -439,7 +439,7 @@ Return a JSON object with these keys (no markdown, no code fences, pure JSON):
 Use dreamy, elegant, sensory language. Only pure JSON — nothing else."""
 
     chat = LlmChat(
-        api_key=EMERGENT_LLM_KEY,
+        api_key=OPENAI_API_KEY,
         session_id=session_id,
         system_message="You are a luxury wedding designer AI that outputs pure JSON only.",
     ).with_model("anthropic", "claude-sonnet-5")
@@ -730,7 +730,7 @@ def init_storage(force: bool = False):
     global storage_key
     if storage_key and not force:
         return storage_key
-    resp = http_requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_LLM_KEY}, timeout=30)
+    resp = http_requests.post(f"{STORAGE_URL}/init", json={"emergent_key": OPENAI_API_KEY}, timeout=30)
     resp.raise_for_status()
     storage_key = resp.json()["storage_key"]
     return storage_key
@@ -874,7 +874,7 @@ Price range: {payload.price_range}
 Extra notes: {payload.notes}
 
 Return plain text only — 2–3 short paragraphs."""
-    chat = LlmChat(api_key=EMERGENT_LLM_KEY, session_id=f"ai-profile-{uuid.uuid4()}",
+    chat = LlmChat(api_key=OPENAI_API_KEY, session_id=f"ai-profile-{uuid.uuid4()}",
                    system_message="You write elegant vendor profile copy for wedding businesses.").with_model("anthropic", "claude-sonnet-5")
     text = await chat.send_message(UserMessage(text=prompt))
     return {"description": text if isinstance(text, str) else str(text)}
