@@ -283,7 +283,10 @@ export default function WeddingPlanner() {
                     if (title === "Photography") {
                         window.location.href = "/wedding-planning/photography";
                       }
-                }}
+                    if (title === "Catering") {
+                        window.location.href = "/wedding-planning/catering";
+                      }
+                                      }}
                   className="group rounded-3xl border border-white bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
                 >
                 <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#F7D7E8] via-[#EDE4FF] to-[#DDF1F8]">
