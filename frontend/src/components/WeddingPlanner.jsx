@@ -22,7 +22,7 @@ export default function WeddingPlanner() {
   const [coupleName, setCoupleName] = useState('');
   const [city, setCity] = useState('');
 
-  const [functions] = useState([
+  const [functions, setFunctions] = useState([
   { name: 'Engagement', date: 'Add date', icon: Heart },
   { name: 'Haldi', date: 'Add date', icon: Heart },
   { name: 'Mehndi', date: 'Add date', icon: Heart },
