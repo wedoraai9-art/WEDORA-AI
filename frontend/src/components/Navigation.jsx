@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NAV } from '@/constants/testIds';
 import { Menu, X } from 'lucide-react';
 
-const LOGO_URL = 'https://customer-assets-4nw71qhi.emergentagent.net/job_iridescent-weddings/artifacts/r1g2t1cw_WEDORA.webp';
+const LOGO_URL = '/WEDORA.jpg';
 
 const links = [
   { id: NAV.home, label: 'Home', href: '#hero' },
