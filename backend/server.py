@@ -23,8 +23,7 @@ from urllib.parse import urlparse
 import ipaddress
 import asyncio
 
-from emergentintegrations.llm.chat import LlmChat, UserMessage, TextDelta, StreamDone
-
+from openai import AsyncOpenAI
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
