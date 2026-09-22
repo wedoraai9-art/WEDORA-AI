@@ -289,6 +289,9 @@ export default function WeddingPlanner() {
                     if (title === "Bride & Groom") {
                         window.location.href = "/wedding-planning/couple";
                       }
+                    if (title === "Transportation") {
+                          window.location.href = "/wedding-planning/transportation";
+                        }
                                       }}
                   className="group rounded-3xl border border-white bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
                 >
