@@ -28,7 +28,10 @@ export const Capabilities = () => (
         <div
           key={title}
           data-testid={CAPS.card(title)}
-          className="pearl-card p-6 flex flex-col items-start"
+          onClick={() => document.getElementById('designer')?.scrollIntoView({ behavior: 'smooth' })}
+         className={`pearl-card p-6 flex flex-col items-start ${
+         title === 'AI Wedding Design' ? 'cursor-pointer' : ''
+         }`}
         >
           <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${tint} flex items-center justify-center mb-4 border border-white/70 shadow-sm`}>
             <Icon className="w-6 h-6 text-[#2D2638]" strokeWidth={1.6} />
