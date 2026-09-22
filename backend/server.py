@@ -616,47 +616,47 @@ Return JSON only.
             "_note": "Fallback design used because the AI response could not be parsed."
         }
 
-           # Generate visual references with Pexels
-        hero_image = None
-        reference_images = []
+       # Generate visual references with Pexels
+    hero_image = None
+    reference_images = []
+
+    if PEXELS_API_KEY:
+        try:
+            search_query = f"{parsed.get('theme', '')} Indian wedding mandap luxury"
     
-        if PEXELS_API_KEY:
-            try:
-                search_query = f"{parsed.get('theme', '')} Indian wedding mandap luxury"
-        
-                async with httpx.AsyncClient(timeout=20.0) as client:
-                    response = await client.get(
-                        "https://api.pexels.com/v1/search",
-                        headers={
-                            "Authorization": PEXELS_API_KEY
-                        },
-                        params={
-                            "query": search_query,
-                            "per_page": 6,
-                            "orientation": "landscape",
-                        },
-                    )
-        
-                    response.raise_for_status()
-                    data = response.json()
-        
-                    for photo in data.get("photos", []):
-                        src = photo.get("src", {})
-                        image_url = src.get("large2x") or src.get("large")
-        
-                        if image_url:
-                            reference_images.append(image_url)
-        
-                    if reference_images:
-                        hero_image = reference_images[0]
-        
-            except Exception:
-                logging.exception("Pexels image search failed")
-        
-        parsed["hero_image"] = hero_image
-        parsed["reference_images"] = reference_images
-        parsed["session_id"] = session_id
-        return parsed
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                response = await client.get(
+                    "https://api.pexels.com/v1/search",
+                    headers={
+                        "Authorization": PEXELS_API_KEY
+                    },
+                    params={
+                        "query": search_query,
+                        "per_page": 6,
+                        "orientation": "landscape",
+                    },
+                )
+    
+                response.raise_for_status()
+                data = response.json()
+    
+                for photo in data.get("photos", []):
+                    src = photo.get("src", {})
+                    image_url = src.get("large2x") or src.get("large")
+    
+                    if image_url:
+                        reference_images.append(image_url)
+    
+                if reference_images:
+                    hero_image = reference_images[0]
+    
+        except Exception:
+            logging.exception("Pexels image search failed")
+    
+    parsed["hero_image"] = hero_image
+    parsed["reference_images"] = reference_images
+    parsed["session_id"] = session_id
+    return parsed
 
     
 
