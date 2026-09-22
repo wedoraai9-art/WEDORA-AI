@@ -262,9 +262,14 @@ export default function WeddingPlanner() {
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {planningCards.map(({ title, desc, icon: Icon }) => (
               <button
-                key={title}
-                className="group rounded-3xl border border-white bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
-              >
+                  key={title}
+                  onClick={() => {
+                    if (title === "Wedding Checklist") {
+                      window.location.href = "/wedding-planning/checklist";
+                    }
+                  }}
+                  className="group rounded-3xl border border-white bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+                >
                 <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#F7D7E8] via-[#EDE4FF] to-[#DDF1F8]">
                   <Icon className="h-6 w-6 text-[#2D2638]" />
                 </div>
