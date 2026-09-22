@@ -28,6 +28,7 @@ import WeddingBudget from '@/components/WeddingBudget';
 import WeddingVenuePlanning from '@/components/WeddingVenuePlanning';
 import WeddingPhotography from '@/components/WeddingPhotography';
 import WeddingCatering from '@/components/WeddingCatering';
+import WeddingCouple from '@/components/WeddingCouple';
 
 const Home = () => {
   const chatPromptRef = useRef(null);
