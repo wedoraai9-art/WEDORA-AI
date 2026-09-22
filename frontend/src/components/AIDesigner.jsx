@@ -105,6 +105,27 @@ export const AIDesigner = () => {
             </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            {result?.hero_image && (
+  <div className="mb-8 overflow-hidden rounded-3xl border border-[#eadff5] bg-white shadow-xl">
+    <div className="relative">
+      <img
+        src={result.hero_image}
+        alt={result.theme || 'WEDORA AI Wedding Design'}
+        className="w-full aspect-video object-cover"
+      />
+
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent p-6">
+        <p className="text-xs uppercase tracking-[0.25em] text-white/80">
+          WEDORA AI • AI GENERATED DESIGN
+        </p>
+
+        <h2 className="mt-2 text-2xl md:text-4xl font-semibold text-white">
+          {result.theme || 'Your Wedding Vision'}
+        </h2>
+      </div>
+    </div>
+  </div>
+)}
           {CATS.map((c) => {
             const val = result[c.key];
             return (
