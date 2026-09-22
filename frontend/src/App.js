@@ -71,6 +71,10 @@ function App() {
                 path="/wedding-planning/venue"
                 element={<WeddingVenuePlanning />}
               />
+                  <Route
+                      path="/wedding-planning/photography"
+                      element={<WeddingPhotography />}
+                    />
             <Route path="/for-vendors" element={<VendorLanding />} />
             <Route path="/vendor/auth" element={<VendorAuth />} />
             <Route path="/vendor/dashboard" element={<VendorDashboard />} />
