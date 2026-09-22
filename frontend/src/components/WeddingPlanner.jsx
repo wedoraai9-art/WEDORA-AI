@@ -22,6 +22,63 @@ export default function WeddingPlanner() {
   const [coupleName, setCoupleName] = useState('');
   const [city, setCity] = useState('');
 
+  const [functions] = useState([
+  { name: 'Engagement', date: 'Add date', icon: Heart },
+  { name: 'Haldi', date: 'Add date', icon: Heart },
+  { name: 'Mehndi', date: 'Add date', icon: Heart },
+  { name: 'Sangeet', date: 'Add date', icon: Heart },
+  { name: 'Wedding', date: 'Add date', icon: Heart },
+  { name: 'Reception', date: 'Add date', icon: Heart },
+]);
+
+  const planningCards = [
+  {
+    title: 'Wedding Checklist',
+    desc: 'Track everything that needs to be planned before the big day.',
+    icon: CheckCircle2,
+  },
+  {
+    title: 'Wedding Timeline',
+    desc: 'Create a clear timeline for every function and preparation.',
+    icon: Clock3,
+  },
+  {
+    title: 'Guest Management',
+    desc: 'Manage guests, RSVP, accommodation and transportation.',
+    icon: Users,
+  },
+  {
+    title: 'Budget Planning',
+    desc: 'Organise your wedding expenses and keep spending under control.',
+    icon: WalletCards,
+  },
+  {
+    title: 'Venue Planning',
+    desc: 'Plan venue requirements, layouts and important venue details.',
+    icon: MapPin,
+  },
+  {
+    title: 'Photography',
+    desc: 'Plan photography moments, shoots and important family portraits.',
+    icon: Camera,
+  },
+  {
+    title: 'Catering',
+    desc: 'Plan menus, cuisines, counters and special dietary requirements.',
+    icon: Utensils,
+  },
+  {
+    title: 'Bride & Groom',
+    desc: 'Organise outfits, jewellery, makeup and styling requirements.',
+    icon: Shirt,
+  },
+  {
+    title: 'Transportation',
+    desc: 'Plan guest transfers, cars, pickups and wedding transportation.',
+    icon: Car,
+  },
+];
+  
   const countdown = useMemo(() => {
     if (!weddingDate) return null;
 
