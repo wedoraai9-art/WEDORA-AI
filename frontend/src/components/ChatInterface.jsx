@@ -68,19 +68,20 @@ export const ChatInterface = ({ initialPromptRef }) => {
       sessionId,
       onDelta: (chunk) => {
         setMessages((m) => {
-          const copy = [...m];
-          const last = copy[copy.length - 1];
-          if (last && last.role === 'assistant') last.content += chunk;
-          return copy;
+          if (!m.length) return m;
+          const last = m[m.length - 1];
+          if (last.role !== 'assistant') return m;
+          const updatedLast = { ...last, content: last.content + chunk };
+          return [...m.slice(0, -1), updatedLast];
         });
       },
       onDone: (sid) => { setSessionId(sid); setSending(false); },
       onError: (err) => {
         setMessages((m) => {
-          const copy = [...m];
-          const last = copy[copy.length - 1];
-          if (last && last.role === 'assistant') last.content = `_WEDORA is quietly resting. (${err})_`;
-          return copy;
+          if (!m.length) return m;
+          const last = m[m.length - 1];
+          if (last.role !== 'assistant') return m;
+          return [...m.slice(0, -1), { ...last, content: `_WEDORA is quietly resting. (${err})_` }];
         });
         setSending(false);
       },
