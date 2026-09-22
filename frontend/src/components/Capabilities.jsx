@@ -51,7 +51,8 @@ export const Capabilities = () => {
         </div>
       ))}
     </div>
-  </section>
+ </section>
 );
+}
 
 export default Capabilities;
