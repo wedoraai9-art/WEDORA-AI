@@ -20,6 +20,7 @@ import VendorDashboard from '@/components/vendor/VendorDashboard';
 import AdminDashboard from '@/components/vendor/AdminDashboard';
 import Marketplace, { VendorPublicProfile } from '@/components/marketplace/Marketplace';
 import SharePage from '@/components/SharePage';
+import WeddingPlanner from '@/components/WeddingPlanner';
 
 const Home = () => {
   const chatPromptRef = useRef(null);
