@@ -272,3 +272,8 @@ body {
     radial-gradient(ellipse 60% 50% at 50% 80%, rgba(169,232,255,0.3), transparent 60%),
     linear-gradient(180deg, #FDFBF7 0%, #FAF8F6 100%);
 }
+
+@keyframes slideIn {
+  from { transform: translateX(40px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}

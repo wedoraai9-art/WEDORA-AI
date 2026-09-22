@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { HERO } from '@/constants/testIds';
-import { sendChatStream } from '@/lib/aiService';
-import { ArrowUp, Sparkles, RefreshCw, Plus, RotateCw, Share2 } from 'lucide-react';
+import { sendChatStream, apiChatHistory } from '@/lib/aiService';
+import { ArrowUp, Sparkles, RefreshCw, Plus, RotateCw, Share2, History, Trash2, X } from 'lucide-react';
 import PremiumMarkdown from './PremiumMarkdown';
 import { apiCreateShare } from '@/lib/auth';
 import { toast } from 'sonner';
@@ -14,11 +14,40 @@ const SUGGESTIONS = [
   'Find Vendors',
 ];
 
+const HISTORY_KEY = 'wedora_chat_sessions';
+
+const loadSessions = () => {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; } catch { return []; }
+};
+
+const upsertSession = (sessionId, title) => {
+  if (!sessionId) return;
+  const sessions = loadSessions().filter((s) => s.session_id !== sessionId);
+  sessions.unshift({ session_id: sessionId, title, updated_at: Date.now() });
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(sessions.slice(0, 30)));
+};
+
+const removeSession = (sessionId) => {
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(loadSessions().filter((s) => s.session_id !== sessionId)));
+};
+
+const fmtWhen = (ts) => {
+  const d = new Date(ts);
+  const today = new Date();
+  const sameDay = d.toDateString() === today.toDateString();
+  return sameDay
+    ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    : d.toLocaleDateString([], { day: 'numeric', month: 'short' });
+};
+
 export const ChatInterface = ({ initialPromptRef }) => {
   const [messages, setMessages] = useState([]); // {role, content, error?}
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [sessionId, setSessionId] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [sessions, setSessions] = useState(loadSessions);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
   const lastUserMsgRef = useRef('');
@@ -64,7 +93,12 @@ export const ChatInterface = ({ initialPromptRef }) => {
           return [...m.slice(0, -1), { ...last, content: last.content + chunk }];
         });
       },
-      onDone: (sid) => { setSessionId(sid); setSending(false); },
+      onDone: (sid) => {
+        setSessionId(sid);
+        setSending(false);
+        upsertSession(sid, text.slice(0, 60));
+        setSessions(loadSessions());
+      },
       onError: () => {
         setMessages((m) => {
           if (!m.length) return m;
@@ -105,6 +139,29 @@ export const ChatInterface = ({ initialPromptRef }) => {
     setTimeout(() => inputRef.current?.focus(), 30);
   };
 
+  const openSession = async (sid) => {
+    if (sending || loadingHistory) return;
+    setLoadingHistory(true);
+    try {
+      const { messages: msgs } = await apiChatHistory(sid);
+      setMessages((msgs || []).map((m) => ({ role: m.role, content: m.content })));
+      setSessionId(sid);
+      lastUserMsgRef.current = [...(msgs || [])].reverse().find((m) => m.role === 'user')?.content || '';
+      setShowHistory(false);
+      const el = document.querySelector('#hero');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch {
+      toast.error('Could not load that conversation.');
+    }
+    setLoadingHistory(false);
+  };
+
+  const deleteSession = (sid) => {
+    removeSession(sid);
+    setSessions(loadSessions());
+    if (sid === sessionId) newChat();
+  };
+
   const shareChat = async () => {
     if (!sessionId) { toast.info('Send a message first to create a shareable plan.'); return; }
     let shareId;
@@ -136,29 +193,87 @@ export const ChatInterface = ({ initialPromptRef }) => {
 
   return (
     <div className="w-full max-w-3xl mx-auto">
-      {/* Chat toolbar */}
-      {hasChat && (
-        <div className="flex items-center justify-between mb-2 px-1">
-          <div className="text-[11px] uppercase tracking-widest text-[#988FA6]">Conversation</div>
-          <div className="flex items-center gap-2">
-            <button
-              data-testid="chat-share-btn"
-              onClick={shareChat}
-              disabled={sending || !sessionId}
-              className="chip !text-xs inline-flex items-center gap-1 disabled:opacity-50"
-              title="Create a shareable link for this plan"
-            >
-              <Share2 className="w-3.5 h-3.5" /> Share plan
-            </button>
-            <button
-              data-testid="chat-new-btn"
-              onClick={newChat}
-              disabled={sending}
-              className="chip !text-xs inline-flex items-center gap-1 disabled:opacity-50"
-              title="Start a new conversation"
-            >
-              <Plus className="w-3.5 h-3.5" /> New chat
-            </button>
+      {/* Chat toolbar — History always visible; Share/New only during a chat */}
+      <div className="flex items-center justify-between mb-2 px-1">
+        <div className="text-[11px] uppercase tracking-widest text-[#988FA6]">{hasChat ? 'Conversation' : ''}</div>
+        <div className="flex items-center gap-2">
+          <button
+            data-testid="chat-history-btn"
+            onClick={() => { setSessions(loadSessions()); setShowHistory(true); }}
+            className="chip !text-xs inline-flex items-center gap-1"
+            title="Past conversations"
+          >
+            <History className="w-3.5 h-3.5" /> History
+          </button>
+          {hasChat && (
+            <>
+              <button
+                data-testid="chat-share-btn"
+                onClick={shareChat}
+                disabled={sending || !sessionId}
+                className="chip !text-xs inline-flex items-center gap-1 disabled:opacity-50"
+                title="Create a shareable link for this plan"
+              >
+                <Share2 className="w-3.5 h-3.5" /> Share plan
+              </button>
+              <button
+                data-testid="chat-new-btn"
+                onClick={newChat}
+                disabled={sending}
+                className="chip !text-xs inline-flex items-center gap-1 disabled:opacity-50"
+                title="Start a new conversation"
+              >
+                <Plus className="w-3.5 h-3.5" /> New chat
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* History drawer (slide-over) */}
+      {showHistory && (
+        <div className="fixed inset-0 z-[70]" data-testid="chat-history-drawer">
+          <div className="absolute inset-0 bg-[#2D2638]/25 backdrop-blur-sm" onClick={() => setShowHistory(false)} />
+          <div className="absolute right-0 top-0 h-full w-[86%] max-w-sm liquid-glass-strong !rounded-l-[28px] p-5 overflow-y-auto chat-scroll shadow-2xl animate-[slideIn_.3s_ease]">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-display text-2xl text-[#2D2638]">Your <span className="iridescent-text italic">Plans.</span></h3>
+              <button data-testid="history-close-btn" onClick={() => setShowHistory(false)} className="w-9 h-9 rounded-full bg-white/70 border border-white/80 flex items-center justify-center">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {sessions.length === 0 ? (
+              <p className="text-sm text-[#6B617A] rounded-2xl border border-dashed border-[#C9B8FF]/60 bg-white/50 p-6 text-center">
+                No past conversations yet. Ask WEDORA something lovely and it will appear here.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {sessions.map((s) => (
+                  <div
+                    key={s.session_id}
+                    data-testid={`history-item-${s.session_id}`}
+                    className={`group w-full text-left rounded-2xl border px-4 py-3 transition cursor-pointer flex items-center gap-2 ${
+                      s.session_id === sessionId
+                        ? 'bg-gradient-to-r from-[#C9B8FF]/30 to-[#F7B7D8]/30 border-pink-200/80'
+                        : 'bg-white/60 border-white/70 hover:border-pink-200/70'
+                    }`}
+                    onClick={() => openSession(s.session_id)}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-[#2D2638] truncate">{s.title || 'Wedding conversation'}</p>
+                      <p className="text-[11px] text-[#988FA6] mt-0.5">{fmtWhen(s.updated_at)}</p>
+                    </div>
+                    <button
+                      data-testid={`history-delete-${s.session_id}`}
+                      onClick={(e) => { e.stopPropagation(); deleteSession(s.session_id); }}
+                      className="w-7 h-7 rounded-full bg-white/70 border border-white/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition shrink-0"
+                      title="Remove from history"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

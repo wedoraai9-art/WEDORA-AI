@@ -71,3 +71,8 @@ export const listVendors = async (params = {}) => {
   const { data } = await axios.get(`${API}/vendors`, { params });
   return data;
 };
+
+export const apiChatHistory = async (sessionId) => {
+  const { data } = await axios.get(`${API}/chat/history/${sessionId}`);
+  return data;
+};
