@@ -29,13 +29,29 @@ Create a premium, modern AI chatbot website called "WEDORA AI" — a wedding-cen
 - Design system: Cormorant Garamond display + Plus Jakarta Sans headings + DM Sans body; iridescent gradient text; liquid glass utilities.
 - Testing agent verified: backend 8/8, frontend 7/7 flows pass.
 
+## Implemented (2026-09-22) — Chat Engine Upgrade
+- Massive premium system prompt (intent classification, wedding-specialist mode, no-hallucination, structured markdown contract).
+- PremiumMarkdown renderer (headings, gradient bullets, numbered pills, responsive tables, callout cards, palette swatches).
+- Chat controls: textarea + Enter/Shift+Enter, New chat, Retry on error, Share plan.
+
+## Implemented (2026-09-22) — Vendor Marketplace, Share Links, Moodboard Export
+- JWT auth (bcrypt) with roles: couple / vendor / admin. Seeded admin + 3 demo vendors. `/app/memory/test_credentials.md`.
+- Vendor registration (full business form), public profiles at `/vendor/{slug}` with PREMIUM VENDOR badge.
+- Vendor dashboard 7 tabs: Overview (stats + completion), Profile (edit + logo upload + AI profile generator, premium-gated), Portfolio (upload w/ plan photo limits 5/30/∞ via Emergent Object Storage), Leads (NEW LEAD badge, contact/whatsapp/mark contacted/closed), Analytics (plan-gated), Subscription (DEMO MODE plan switcher, payments intentionally skipped per user), Settings.
+- Marketplace at `/marketplace` with search + category filter; Request Quote modal → leads DB.
+- Admin console `/admin/dashboard`: vendor list, plan switch, featured/published toggles, all leads.
+- Save Wedding Link: `POST /api/chat/share` → `/share/{id}` read-only page; Share button in chat with clipboard + prompt fallback.
+- Moodboard Export: AI Designer → hidden 1080×1920 portrait canvas → PNG download via html-to-image.
+- Plan restrictions enforced server-side (photo limits verified: 6th upload on FREE rejected).
+- Testing: iteration_2 backend 14/14, frontend 11/12; iteration_3 retest 2/2 (share toast fix, plan-choose testids).
+
 ## Backlog (P0 → P2)
-- **P1** Save/share a wedding plan (link + PDF) — needs email or public share.
-- **P1** Instagram-ready moodboard export for AI Designer output.
-- **P2** Real vendor onboarding/CRM (accounts + Google Auth).
-- **P2** Currency toggle (₹ / $ / £) with regional venue data.
-- **P2** WhatsApp share for chat responses.
+- **P0** Real Razorpay Subscriptions (PRO ₹999 / PREMIUM ₹2,999) — user skipped for now; DEMO switcher is the hook-in point.
+- **P1** Vendor inquiry emails (Resend) when a lead is created.
+- **P1** Split server.py into routers (auth, vendor, marketplace, admin, chat) — now 1100+ lines.
+- **P2** Vendor analytics depth (daily charts), lead email notifications, couple accounts + saved vendors.
+- **P2** Currency toggle; WhatsApp voice replies in Hindi/Hinglish.
 
 ## Next Tasks
-- If user asks: add persistent chat sidebar (recent sessions).
-- If user asks: expand vendor DB and add booking inquiry email via Resend.
+- Razorpay keys from user → wire real subscriptions + webhooks.
+- Resend integration for lead notifications.
