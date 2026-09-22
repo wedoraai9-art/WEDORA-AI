@@ -220,8 +220,20 @@ export default function WeddingPlanner() {
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {functions.map(({ name, date, icon: Icon }) => (
-              <div
-                key={name}
+             <div
+  key={name}
+  onClick={() => {
+    const selectedDate = window.prompt(`Enter date for ${name}:`);
+    if (!selectedDate) return;
+
+    setFunctions((current) =>
+      current.map((item) =>
+        item.name === name ? { ...item, date: selectedDate } : item
+      )
+    );
+  }}
+  role="button"
+  tabIndex={0}
                 className="rounded-3xl border border-white bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
               >
                 <div className="mb-5 flex items-center justify-between">
