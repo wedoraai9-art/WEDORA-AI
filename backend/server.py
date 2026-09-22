@@ -656,8 +656,9 @@ if PEXELS_API_KEY:
 parsed["hero_image"] = hero_image
 parsed["reference_images"] = reference_images
 parsed["session_id"] = session_id
+return parsed
 
-    return parsed
+    
 
 
 # ================= AUTH =================
