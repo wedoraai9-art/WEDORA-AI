@@ -30,7 +30,8 @@ export const Capabilities = () => (
           data-testid={CAPS.card(title)}
           onClick={() => {
   if (title === 'Wedding Planning') {
-    window.location.href = '/wedding-planning';
+    window.history.pushState({}, '', '/wedding-planning');
+    window.dispatchEvent(new PopStateEvent('popstate'));
   } else if (title === 'AI Wedding Design') {
     document.getElementById('designer')?.scrollIntoView({ behavior: 'smooth' });
   }
