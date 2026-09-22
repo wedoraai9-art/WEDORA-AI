@@ -21,6 +21,7 @@ import AdminDashboard from '@/components/vendor/AdminDashboard';
 import Marketplace, { VendorPublicProfile } from '@/components/marketplace/Marketplace';
 import SharePage from '@/components/SharePage';
 import WeddingPlanner from '@/components/WeddingPlanner';
+import WeddingChecklist from '@/components/WeddingChecklist';
 
 const Home = () => {
   const chatPromptRef = useRef(null);
@@ -57,6 +58,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/wedding-planning" element={<WeddingPlanner />} />
+            <Route path="/wedding-planning/checklist" element={<WeddingChecklist />} />
             <Route path="/for-vendors" element={<VendorLanding />} />
             <Route path="/vendor/auth" element={<VendorAuth />} />
             <Route path="/vendor/dashboard" element={<VendorDashboard />} />
