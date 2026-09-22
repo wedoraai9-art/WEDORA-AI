@@ -60,6 +60,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/wedding-planning" element={<WeddingPlanner />} />
             <Route path="/wedding-planning/checklist" element={<WeddingChecklist />} />
+            <Route path="/wedding-planning/timeline" element={<WeddingTimeline />} />
             <Route path="/for-vendors" element={<VendorLanding />} />
             <Route path="/vendor/auth" element={<VendorAuth />} />
             <Route path="/vendor/dashboard" element={<VendorDashboard />} />
