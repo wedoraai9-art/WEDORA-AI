@@ -26,6 +26,7 @@ import WeddingTimeline from '@/components/WeddingTimeline';
 import WeddingGuests from '@/components/WeddingGuests';
 import WeddingBudget from '@/components/WeddingBudget';
 import WeddingVenuePlanning from '@/components/WeddingVenuePlanning';
+import WeddingPhotography from '@/components/WeddingPhotography';
 
 const Home = () => {
   const chatPromptRef = useRef(null);
