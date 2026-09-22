@@ -6,14 +6,14 @@ import { toPng } from 'html-to-image';
 import { toast } from 'sonner';
 
 const CATS = [
-  { key: 'theme',       label: 'Theme',          img: 'https://images.unsplash.com/photo-1782038522861-22e8c23c96e5?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MjJ8MHwxfHNlYXJjaHwzfHxsdXh1cnklMjBwYXN0ZWwlMjB3ZWRkaW5nJTIwZmxvcmFsJTIwZGVjb3J8ZW58MHx8fHwxNzkwMDU4MDI3fDA&ixlib=rb-4.1.0&q=85' },
-  { key: 'palette',     label: 'Colour Palette', img: null },
-  { key: 'mandap',      label: 'Mandap',         img: 'https://images.pexels.com/photos/37828118/pexels-photo-37828118.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940' },
-  { key: 'stage',       label: 'Stage',          img: 'https://images.unsplash.com/photo-1751257547111-9641cb540f4d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDJ8MHwxfHNlYXJjaHwyfHxsdXh1cnklMjBwYXN0ZWwlMjB3ZWRkaW5nJTIwZmxvcmFsJTIwZGVjb3J8ZW58MHx8fHwxNzkwMDU4MDI3fDA&ixlib=rb-4.1.0&q=85' },
-  { key: 'entrance',    label: 'Entrance',       img: 'https://images.pexels.com/photos/33485957/pexels-photo-33485957.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940' },
-  { key: 'table_decor', label: 'Table Décor',    img: 'https://images.unsplash.com/photo-1757283588394-ebafdbfffcc9?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNzl8MHwxfHNlYXJjaHw0fHxlbGVnYW50JTIwd2VkZGluZyUyMHZlbnVlJTIwbHV4dXJ5JTIwcGFzdGVsfGVufDB8fHx8MTc5MDA1ODAyN3ww&ixlib=rb-4.1.0&q=85' },
-  { key: 'lighting',    label: 'Lighting',       img: 'https://images.unsplash.com/photo-1646038572815-43fe759e459b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MjJ8MHwxfHNlYXJjaHwxfHxpcmlkZXNjZW50JTIwcGFzdGVsJTIwZmx1aWQlMjBncmFkaWVudCUyMGJhY2tncm91bmR8ZW58MHx8fHwxNzkwMDU4MDI3fDA&ixlib=rb-4.1.0&q=85' },
-  { key: 'florals',     label: 'Florals',        img: 'https://images.unsplash.com/photo-1644426358808-d5db8b4735a0?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MjJ8MHwxfHNlYXJjaHwzfHxpcmlkZXNjZW50JTIwcGFzdGVsJTIwZmx1aWQlMjBncmFkaWVudCUyMGJhY2tncm91bmR8ZW58MHx8fHwxNzkwMDU4MDI3fDA&ixlib=rb-4.1.0&q=85' },
+  { key: 'theme', label: 'Theme' },
+  { key: 'palette', label: 'Colour Palette' },
+  { key: 'mandap', label: 'Mandap' },
+  { key: 'stage', label: 'Stage' },
+  { key: 'entrance', label: 'Entrance' },
+  { key: 'table_decor', label: 'Table Décor' },
+  { key: 'lighting', label: 'Lighting' },
+  { key: 'florals', label: 'Florals' },
 ];
 
 export const AIDesigner = () => {
