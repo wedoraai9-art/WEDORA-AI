@@ -177,8 +177,8 @@ export const ChatInterface = ({ initialPromptRef }) => {
       )}
 
       {/* Apple liquid glass input (textarea) */}
-      <div className="liquid-glass-strong rounded-[28px] pl-5 pr-2 py-2 flex items-end gap-3 gradient-border">
-        <Sparkles className="w-5 h-5 text-[#C9B8FF] shrink-0 mt-3" />
+      <div className="liquid-glass-strong rounded-[28px] pl-5 pr-2 py-2 flex items-center gap-3 gradient-border">
+        <Sparkles className="w-5 h-5 text-[#C9B8FF] shrink-0" />
         <textarea
           ref={inputRef}
           data-testid={HERO.chatInput}
@@ -193,7 +193,7 @@ export const ChatInterface = ({ initialPromptRef }) => {
           data-testid={HERO.sendBtn}
           disabled={sending || !input.trim()}
           onClick={() => send()}
-          className="glow-btn h-11 w-11 !p-0 flex items-center justify-center disabled:opacity-50 self-end mb-1"
+          className="glow-btn h-11 w-11 !p-0 flex items-center justify-center disabled:opacity-50 self-center"
           aria-label="Send"
           title="Send (Enter)"
         >
