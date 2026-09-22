@@ -274,6 +274,9 @@ export default function WeddingPlanner() {
                     if (title === "Guest Management") {
                         window.location.href = "/wedding-planning/guests";
                       }
+                    if (title === "Budget Planning") {
+                      window.location.href = "/wedding-planning/budget";
+                    }
                 }}
                   className="group rounded-3xl border border-white bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
                 >
