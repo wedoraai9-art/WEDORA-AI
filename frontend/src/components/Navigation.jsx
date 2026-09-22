@@ -10,13 +10,15 @@ const links = [
   { id: NAV.aiDesigner, label: 'AI Designer', href: '#designer' },
   { id: NAV.budget, label: 'Budget', href: '#budget' },
   { id: NAV.venues, label: 'Venues', href: '#venues' },
-  { id: NAV.vendors, label: 'Vendors', href: '#vendors' },
-  { id: NAV.about, label: 'About', href: '#about' },
+  { id: NAV.vendors, label: 'Marketplace', href: '/marketplace' },
+  { id: NAV.about, label: 'For Vendors', href: '/for-vendors' },
 ];
 
 const scrollTo = (href) => {
+  if (href.startsWith('/')) { window.location.href = href; return; }
   const el = document.querySelector(href);
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  else window.location.href = '/' + href;
 };
 
 export const Navigation = () => {

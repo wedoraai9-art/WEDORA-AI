@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { HERO } from '@/constants/testIds';
 import { sendChatStream } from '@/lib/aiService';
-import { ArrowUp, Sparkles, RefreshCw, Plus, RotateCw } from 'lucide-react';
+import { ArrowUp, Sparkles, RefreshCw, Plus, RotateCw, Share2 } from 'lucide-react';
 import PremiumMarkdown from './PremiumMarkdown';
+import { apiCreateShare } from '@/lib/auth';
+import { toast } from 'sonner';
 
 const SUGGESTIONS = [
   'Plan My Wedding',
@@ -103,6 +105,18 @@ export const ChatInterface = ({ initialPromptRef }) => {
     setTimeout(() => inputRef.current?.focus(), 30);
   };
 
+  const shareChat = async () => {
+    if (!sessionId) { toast.info('Send a message first to create a shareable plan.'); return; }
+    try {
+      const { share_id } = await apiCreateShare(sessionId);
+      const url = `${window.location.origin}/share/${share_id}`;
+      await navigator.clipboard.writeText(url);
+      toast.success('Share link copied to clipboard — send it to family!', { description: url });
+    } catch {
+      toast.error('Could not create the share link. Try again.');
+    }
+  };
+
   const onKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -119,6 +133,15 @@ export const ChatInterface = ({ initialPromptRef }) => {
         <div className="flex items-center justify-between mb-2 px-1">
           <div className="text-[11px] uppercase tracking-widest text-[#988FA6]">Conversation</div>
           <div className="flex items-center gap-2">
+            <button
+              data-testid="chat-share-btn"
+              onClick={shareChat}
+              disabled={sending || !sessionId}
+              className="chip !text-xs inline-flex items-center gap-1 disabled:opacity-50"
+              title="Create a shareable link for this plan"
+            >
+              <Share2 className="w-3.5 h-3.5" /> Share plan
+            </button>
             <button
               data-testid="chat-new-btn"
               onClick={newChat}

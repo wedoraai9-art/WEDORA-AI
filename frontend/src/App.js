@@ -3,6 +3,7 @@ import '@/App.css';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'sonner';
 
+import { AuthProvider } from '@/context/AuthContext';
 import Navigation from '@/components/Navigation';
 import Hero from '@/components/Hero';
 import Capabilities from '@/components/Capabilities';
@@ -13,13 +14,17 @@ import VenueDiscovery from '@/components/VenueDiscovery';
 import PromptExamples from '@/components/PromptExamples';
 import FinalCTA from '@/components/FinalCTA';
 import Footer from '@/components/Footer';
+import VendorLanding from '@/components/vendor/VendorLanding';
+import VendorAuth from '@/components/vendor/VendorAuth';
+import VendorDashboard from '@/components/vendor/VendorDashboard';
+import AdminDashboard from '@/components/vendor/AdminDashboard';
+import Marketplace, { VendorPublicProfile } from '@/components/marketplace/Marketplace';
+import SharePage from '@/components/SharePage';
 
 const Home = () => {
-  // ref used by children (PromptExamples, FinalCTA) to populate hero chat input
   const chatPromptRef = useRef(null);
 
   const handlePrompt = (text) => {
-    // Scroll to hero and populate
     const el = document.querySelector('#hero');
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     setTimeout(() => {
@@ -29,7 +34,6 @@ const Home = () => {
 
   return (
     <div className="App min-h-screen">
-      <Navigation />
       <Hero chatRef={chatPromptRef} />
       <Capabilities />
       <HowItWorks />
@@ -39,7 +43,6 @@ const Home = () => {
       <PromptExamples onPrompt={handlePrompt} />
       <FinalCTA onStart={() => handlePrompt('Help me plan my dream wedding.')} />
       <Footer />
-      <Toaster position="top-center" />
     </div>
   );
 };
@@ -47,9 +50,22 @@ const Home = () => {
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-      </Routes>
+      <AuthProvider>
+        <div className="App min-h-screen">
+          <Navigation />
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/for-vendors" element={<VendorLanding />} />
+            <Route path="/vendor/auth" element={<VendorAuth />} />
+            <Route path="/vendor/dashboard" element={<VendorDashboard />} />
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/marketplace" element={<Marketplace />} />
+            <Route path="/vendor/:slug" element={<VendorPublicProfile />} />
+            <Route path="/share/:shareId" element={<SharePage />} />
+          </Routes>
+        </div>
+        <Toaster position="top-center" />
+      </AuthProvider>
     </BrowserRouter>
   );
 }
