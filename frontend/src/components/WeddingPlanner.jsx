@@ -15,15 +15,21 @@ import {
   ChevronRight,
 } from 'lucide-react';
 
-const [functions, setFunctions] = useState([
-  { name: 'Engagement', date: 'Add date', icon: Heart },
-  { name: 'Haldi', date: 'Add date', icon: Heart },
-  { name: 'Mehndi', date: 'Add date', icon: Heart },
-  { name: 'Sangeet', date: 'Add date', icon: Heart },
-  { name: 'Wedding', date: 'Add date', icon: Heart },
-  { name: 'Reception', date: 'Add date', icon: Heart },
-]);
+export default function WeddingPlanner() {
+  const [weddingDate, setWeddingDate] = useState('');
+  const [coupleName, setCoupleName] = useState('');
+  const [city, setCity] = useState('');
 
+  const [functions, setFunctions] = useState([
+    { name: 'Engagement', date: 'Add date', icon: Heart },
+    { name: 'Haldi', date: 'Add date', icon: Heart },
+    { name: 'Mehndi', date: 'Add date', icon: Heart },
+    { name: 'Sangeet', date: 'Add date', icon: Heart },
+    { name: 'Wedding', date: 'Add date', icon: Heart },
+    { name: 'Reception', date: 'Add date', icon: Heart },
+  ]);
+
+  const countdown = useMemo(() => {
 const planningCards = [
   {
     title: 'Wedding Checklist',
