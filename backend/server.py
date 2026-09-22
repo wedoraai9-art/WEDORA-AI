@@ -410,66 +410,223 @@ async def get_vendors(role: Optional[str] = None, city: Optional[str] = None):
 
 
 # ---------- AI Wedding Designer ----------
+
 class DesignerIn(BaseModel):
     dream_description: str
 
 
+async def generate_gemini_wedding_image(image_prompt: str):
+    """
+    Generate a photorealistic wedding design image with Gemini.
+    Returns a data URL that the frontend can display directly.
+    """
+    if not GEMINI_API_KEY:
+        return None
+
+    try:
+        async with httpx.AsyncClient(timeout=180.0) as client:
+            response = await client.post(
+                "https://generativelanguage.googleapis.com/v1beta/interactions",
+                headers={
+                    "x-goog-api-key": GEMINI_API_KEY,
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "gemini-3.1-flash-image",
+                    "input": image_prompt,
+                    "response_format": {
+                        "type": "image",
+                        "mime_type": "image/jpeg",
+                        "aspect_ratio": "16:9",
+                        "image_size": "1K",
+                    },
+                },
+            )
+
+            response.raise_for_status()
+            data = response.json()
+
+            # Find the generated image inside the model output
+            for step in data.get("steps", []):
+                if step.get("type") != "model_output":
+                    continue
+
+                for content in step.get("content", []):
+                    if content.get("type") == "image":
+                        image_data = content.get("data")
+                        mime_type = content.get(
+                            "mime_type",
+                            "image/jpeg"
+                        )
+
+                        if image_data:
+                            return f"data:{mime_type};base64,{image_data}"
+
+            logging.warning("Gemini returned no image")
+            return None
+
+    except Exception as e:
+        logging.exception("Gemini image generation failed")
+        return None
+
+
 @api_router.post("/designer/generate")
 async def designer_generate(payload: DesignerIn):
+
     if not OPENAI_API_KEY:
-        raise HTTPException(status_code=500, detail="LLM key not configured")
+        raise HTTPException(
+            status_code=500,
+            detail="OpenAI API key not configured"
+        )
 
     session_id = f"designer-{uuid.uuid4()}"
-    prompt = f"""A user described their dream wedding:
 
-"{payload.dream_description}"
+    prompt = f"""
+You are WEDORA AI, a world-class luxury wedding design intelligence.
 
-Return a JSON object with these keys (no markdown, no code fences, pure JSON):
+The client described their dream wedding:
+
+{payload.dream_description}
+
+Create a highly specific professional wedding design concept.
+
+Think like:
+- a luxury wedding designer
+- an event architect
+- a floral designer
+- a lighting designer
+- a wedding stylist
+- a production designer
+
+The result must feel ORIGINAL and CUSTOM CREATED for this client.
+
+Do not give generic Pinterest-style descriptions.
+
+Return ONLY valid JSON with exactly these keys:
+
 {{
-  "theme": "one-line theme name",
+  "theme": "creative unique theme name",
   "palette": ["#hex", "#hex", "#hex", "#hex", "#hex"],
-  "mandap": "1–2 sentence sensory description",
-  "stage": "1–2 sentence description",
-  "entrance": "1–2 sentence description",
-  "table_decor": "1–2 sentences",
-  "lighting": "1–2 sentences",
-  "florals": "1–2 sentences"
+  "mandap": "detailed mandap design",
+  "stage": "detailed stage design",
+  "entrance": "detailed entrance design",
+  "table_decor": "detailed table and dining design",
+  "lighting": "detailed lighting design",
+  "florals": "detailed floral design",
+  "design_summary": "short premium description of the complete design",
+  "image_prompt": "extremely detailed photorealistic image-generation prompt for the main wedding venue"
 }}
 
-Use dreamy, elegant, sensory language. Only pure JSON — nothing else."""
+IMPORTANT FOR image_prompt:
+
+Create a realistic luxury Indian wedding environment.
+
+Include:
+- architecture and venue setting
+- mandap structure
+- stage
+- floral installation
+- entrance
+- guest seating
+- tables
+- lighting
+- fabrics
+- materials
+- flowers
+- color palette
+- realistic proportions
+- depth
+- camera angle
+- cinematic lighting
+- realistic shadows
+- premium event-production quality
+
+The image should look like a REAL photograph of a professionally executed wedding,
+not an illustration, cartoon, 3D render, or generic stock image.
+
+Do not mention AI in image_prompt.
+
+Return JSON only.
+"""
 
     chat = LlmChat(
         api_key=OPENAI_API_KEY,
         session_id=session_id,
-        system_message="You are a luxury wedding designer AI that outputs pure JSON only.",
-    ).with_model("anthropic", "claude-sonnet-5")
+        system_message=(
+            "You are WEDORA AI, an elite luxury wedding design "
+            "intelligence. Return valid JSON only."
+        ),
+    ).with_model("openai", OPENAI_MODEL)
 
     try:
-        raw = await chat.send_message(UserMessage(text=prompt))
-        text = raw if isinstance(raw, str) else str(raw)
-    except Exception as e:
-        logging.exception("designer failed")
-        raise HTTPException(status_code=500, detail=str(e))
+        raw = await chat.send_message(
+            UserMessage(text=prompt)
+        )
 
+        text = raw if isinstance(raw, str) else str(raw)
+
+    except Exception as e:
+        logging.exception("Designer AI failed")
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+    # Extract JSON safely
     text_stripped = text.strip()
-    # Strip code fences if any
-    m = re.search(r"\{[\s\S]*\}", text_stripped)
+
+    m = re.search(
+        r"\{[\s\S]*\}",
+        text_stripped
+    )
+
     if m:
         text_stripped = m.group(0)
+
     try:
         parsed = jsonlib.loads(text_stripped)
+
     except Exception:
+        logging.exception("Designer JSON parsing failed")
+
         parsed = {
-            "theme": "Pastel Luxury Garden",
-            "palette": ["#F7B7D8", "#C9B8FF", "#A9E8F4", "#FFF8EF", "#F5A9B8"],
-            "mandap": "A floating floral pavilion of ivory roses and blush peonies veiled in soft candlelight.",
-            "stage": "A gentle arc of pearl drapes crowned with lavender wisteria and cascading orchids.",
-            "entrance": "A mirror-lit corridor of tulle arches with dusted rose petals underfoot.",
-            "table_decor": "Iridescent glassware, low ivory florals, hand-lettered menus on blush linen.",
-            "lighting": "Warm fairy strands, hurricane candles, and moon-glow uplights.",
-            "florals": "Ranunculus, garden roses, hydrangeas and imported peonies in dreamy pastels.",
-            "_note": "Fallback design — parser could not read the AI response."
+            "theme": "Custom Luxury Wedding",
+            "palette": [
+                "#F7B7D8",
+                "#C9B8FF",
+                "#A9E8F4",
+                "#FFF8EF",
+                "#F5A9B8"
+            ],
+            "mandap": "A custom floral mandap designed around the client's requested aesthetic.",
+            "stage": "A sophisticated layered stage with premium fabrics and architectural floral details.",
+            "entrance": "A dramatic entrance installation combining flowers, lighting and elegant structural elements.",
+            "table_decor": "Refined table styling with coordinated florals, linens, candles and premium tableware.",
+            "lighting": "Warm architectural lighting with layered ambient, decorative and focused illumination.",
+            "florals": "A curated floral composition using flowers and tones that complement the complete wedding palette.",
+            "design_summary": "A bespoke luxury wedding environment created around the client's vision.",
+            "image_prompt": (
+                "Photorealistic luxury Indian wedding venue, elegant floral mandap, "
+                "premium stage, sophisticated entrance, layered warm lighting, "
+                "luxury floral styling, realistic event production, cinematic "
+                "wide-angle photography, high-end wedding editorial photography."
+            ),
+            "_note": "Fallback design used because the AI response could not be parsed."
         }
+
+    # Generate the actual visual with Gemini
+    image_prompt = parsed.get("image_prompt")
+
+    hero_image = None
+
+    if image_prompt:
+        hero_image = await generate_gemini_wedding_image(
+            image_prompt
+        )
+
+    parsed["hero_image"] = hero_image
+    parsed["session_id"] = session_id
+
     return parsed
 
 
