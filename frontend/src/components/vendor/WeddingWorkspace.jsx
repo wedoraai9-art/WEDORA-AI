@@ -85,7 +85,7 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
 
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-white/70 hover:text-white transition mb-6"
+          className="flex items-center gap-2  text-[#8B8194] hover:text-white transition mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Weddings
@@ -101,7 +101,7 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
 
               <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs text-white/70 mb-4">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs  text-[#8B8194] mb-4">
                   <Heart className="w-3.5 h-3.5" />
                   Wedding Workspace
                 </div>
