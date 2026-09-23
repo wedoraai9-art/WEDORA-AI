@@ -33,7 +33,8 @@ export const Capabilities = () => {
    navigate('/wedding-planning');
   } else if (title === 'AI Wedding Design') {
     document.getElementById('designer')?.scrollIntoView({ behavior: 'smooth' });
-  }
+  }} else if (title === 'Venue Discovery') {
+  navigate('/venue-discovery');
 }}
          className={`pearl-card p-6 flex flex-col items-start ${
          title === 'AI Wedding Design' ? 'cursor-pointer' : ''
