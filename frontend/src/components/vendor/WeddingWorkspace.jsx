@@ -164,14 +164,14 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
 
               <div className="rounded-2xl bg-white/80 border border-white/10 p-4">
                 <p className="text-xs text-[#8B8194]">Venue</p>
-                <p className="text-sm font-medium text-white mt-1 truncate">
+                <p className="text-sm font-medium text-[#3F3748] mt-1 truncate">
                   {wedding.venue || 'Not set'}
                 </p>
               </div>
 
               <div className="rounded-2xl bg-white/80 border border-white/10 p-4">
                 <p className="text-xs text-[#8B8194]">Status</p>
-                <p className="text-sm font-medium text-white mt-1 capitalize">
+                <p className="text-sm font-medium text-[#3F3748] mt-1 capitalize">
                   {(wedding.status || 'upcoming').replace('_', ' ')}
                 </p>
               </div>
