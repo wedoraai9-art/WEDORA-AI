@@ -148,28 +148,28 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
             {/* Quick Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-8">
 
-              <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-4">
+              <div className="rounded-2xl bg-white/80 border border-white/10 p-4">
                 <p className="text-xs text-white/40">Guests</p>
                 <p className="text-xl font-semibold text-white mt-1">
                   {wedding.guest_count || '—'}
                 </p>
               </div>
 
-              <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-4">
+              <div className="rounded-2xl bg-white/80 border border-white/10 p-4">
                 <p className="text-xs text-white/40">Budget</p>
                 <p className="text-xl font-semibold text-white mt-1">
                   {formatCurrency(wedding.budget)}
                 </p>
               </div>
 
-              <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-4">
+              <div className="rounded-2xl bg-white/80 border border-white/10 p-4">
                 <p className="text-xs text-white/40">Venue</p>
                 <p className="text-sm font-medium text-white mt-1 truncate">
                   {wedding.venue || 'Not set'}
                 </p>
               </div>
 
-              <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-4">
+              <div className="rounded-2xl bg-white/80 border border-white/10 p-4">
                 <p className="text-xs text-white/40">Status</p>
                 <p className="text-sm font-medium text-white mt-1 capitalize">
                   {(wedding.status || 'upcoming').replace('_', ' ')}
