@@ -131,12 +131,12 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
                 </div>
 
                 <div className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3">
-                  <div className="flex items-center gap-2 text-white/50 text-xs">
+                 <div className="flex items-center gap-2 text-[#8B8194] text-xs">
                     <MapPin className="w-4 h-4" />
                     Location
                   </div>
 
-                  <p className="text-white mt-1 font-medium">
+                 <p className="text-[#3F3748] mt-1 font-medium">
                     {wedding.city || 'Location not set'}
                   </p>
                 </div>
