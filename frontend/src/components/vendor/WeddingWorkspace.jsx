@@ -205,7 +205,7 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
               >
 
                 className="w-11 h-11 rounded-xl bg-[#f4eafa] flex items-center justify-center mb-4 group-hover:scale-105 transition-transform"
-                  <Icon className="w-5 h-5 text-[#8B6AA8]"
+                  <Icon className="w-5 h-5 text-[#8B6AA8]" />
                 </div>
 
                 <h3 className="text-[#2D2638] font-medium">
