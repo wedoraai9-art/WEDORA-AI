@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 
 const WeddingWorkspace = ({ wedding, onBack }) => {
+  const [activeModule, setActiveModule] = useState(null);
   if (!wedding) {
     return (
       <div className="min-h-screen flex items-center justify-center text-[#2D2638]">
