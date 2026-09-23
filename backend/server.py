@@ -766,15 +766,64 @@ async def auth_me(authorization: str = Header(None)):
 
 # ================= VENDOR MARKETPLACE =================
 PLANS = {
-    "free":    {"label": "Free",    "price": 0,    "photo_limit": 5,    "featured": False, "ai_profile": False, "priority_leads": False, "badge": None},
-    "pro":     {"label": "Pro",     "price": 999,  "photo_limit": 30,   "featured": True,  "ai_profile": False, "priority_leads": False, "badge": None},
-    "premium": {"label": "Premium", "price": 2999, "photo_limit": 9999, "featured": True,  "ai_profile": True,  "priority_leads": True,  "badge": "PREMIUM VENDOR"},
+    "free": {
+        "label": "WEDORA FREE",
+        "price_monthly": 0,
+        "price_yearly": 0,
+        "wedding_limit": 3,
+        "export_enabled": False,
+        "lead_access": False,
+        "priority_leads": False,
+        "photo_limit": 5,
+        "featured": False,
+        "ai_profile": False,
+        "badge": None,
+    },
+    "pro": {
+        "label": "WEDORA PRO",
+        "price_monthly": 399,
+        "price_yearly": 4399,
+        "wedding_limit": None,  # Unlimited
+        "export_enabled": True,
+        "lead_access": True,
+        "priority_leads": True,
+        "photo_limit": 9999,
+        "featured": True,
+        "ai_profile": True,
+        "badge": "PRO VENDOR",
+    },
 }
+
+
 VALID_CATEGORIES = [
-    "Wedding Decor", "Wedding Planner", "Photographer", "Videographer", "Caterer",
-    "Florist", "Makeup Artist", "Mehendi Artist", "DJ", "Music/Band", "Choreographer",
-    "Venue", "Hotel", "Resort", "Farmhouse", "Invitation Designer", "Furniture/Rental",
-    "Bridal Wear", "Groom Wear", "Jewellery", "Transportation", "Other",
+    "Wedding Planner",
+    "Wedding Decorator",
+    "Photographer",
+    "Videographer",
+    "Caterer",
+    "Makeup Artist",
+    "Mehendi Artist",
+    "DJ",
+    "Entertainment",
+    "Florist",
+    "Venue",
+    "Tent House",
+    "Furniture",
+    "Lighting",
+    "Sound",
+    "Invitation/Printing",
+    "Fashion Designer",
+    "Jewellery",
+    "Transportation",
+    "Cake/Dessert",
+    "Priest/Pandit",
+    "Choreographer",
+    "Artist/Performer",
+    "Event Production",
+    "Props Vendor",
+    "Fabric Vendor",
+    "Flower Supplier",
+    "Other",
 ]
 
 
