@@ -278,116 +278,169 @@ body {
   to   { transform: translateX(0); opacity: 1; }
 }
 /* =========================================================
-   WEDORA VENUE DISCOVERY — GLOBAL STYLE OVERRIDE
+   WEDORA VENUE DISCOVERY — UNIFIED WEDORA THEME
    ========================================================= */
 
 .wedora-venue-page {
-  background: #FAF8FF !important;
+  min-height: 100vh !important;
   color: #2D2638 !important;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+
+  background:
+    radial-gradient(
+      ellipse 55% 45% at 15% 15%,
+      rgba(201,184,255,0.18),
+      transparent 65%
+    ),
+    radial-gradient(
+      ellipse 55% 45% at 85% 18%,
+      rgba(247,183,216,0.18),
+      transparent 65%
+    ),
+    radial-gradient(
+      ellipse 55% 45% at 50% 85%,
+      rgba(169,232,255,0.14),
+      transparent 65%
+    ),
+    #FFFCF8 !important;
 }
 
-/* Main text */
-.wedora-venue-page h1,
+/* Main WEDORA headings */
+
+.wedora-venue-page h1 {
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-weight: 400 !important;
+  color: #2D2638 !important;
+  letter-spacing: -0.02em !important;
+}
+
 .wedora-venue-page h2,
 .wedora-venue-page h3,
-.wedora-venue-page h4,
-.wedora-venue-page p,
-.wedora-venue-page span,
+.wedora-venue-page h4 {
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-weight: 500 !important;
+  color: #2D2638 !important;
+}
+
+/* Supporting text */
+
+.wedora-venue-page p {
+  color: #6B617A !important;
+}
+
 .wedora-venue-page label {
-  color: #2D2638 !important;
+  color: #6B617A !important;
 }
 
-/* Replace brown/gold text */
-.wedora-venue-page [class*="text-[#a"],
-.wedora-venue-page [class*="text-[#b"],
-.wedora-venue-page [class*="text-[#9"] {
-  color: #2D2638 !important;
+/* WEDORA pastel heading highlight */
+
+.wedora-venue-page h1 span,
+.wedora-venue-page h1 em,
+.wedora-venue-page h1 i {
+  background: linear-gradient(
+    90deg,
+    #F5A9B8 0%,
+    #C9B8FF 50%,
+    #A9E8FF 100%
+  ) !important;
+
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
 }
 
-/* Soft WEDORA pastel backgrounds */
-.wedora-venue-page [class*="bg-[#f3"],
-.wedora-venue-page [class*="bg-[#f2"],
-.wedora-venue-page [class*="bg-[#efe"] {
-  background: #F7F3FF !important;
-}
+/* Keep body controls in Jakarta Sans */
 
-/* Icons */
-.wedora-venue-page svg {
-  color: #8B72D8 !important;
-}
-
-/* Search and filter area */
 .wedora-venue-page input,
-.wedora-venue-page select {
-  color: #2D2638 !important;
-  background: #FFFFFF !important;
-  border-color: #E3DCF5 !important;
-}
-
-.wedora-venue-page input::placeholder {
-  color: #9A91A8 !important;
-}
-
-/* Buttons */
+.wedora-venue-page select,
+.wedora-venue-page textarea,
 .wedora-venue-page button {
-  border-color: #E3DCF5;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
 }
 
-/* Main action buttons */
+/* Search */
+
+.wedora-venue-page input,
+.wedora-venue-page select,
+.wedora-venue-page textarea {
+  background: rgba(255,255,255,0.82) !important;
+  color: #2D2638 !important;
+  border-color: rgba(201,184,255,0.35) !important;
+}
+
+.wedora-venue-page input::placeholder,
+.wedora-venue-page textarea::placeholder {
+  color: #A49AAF !important;
+}
+
+/* Primary dark buttons */
+
 .wedora-venue-page button[class*="bg-[#302c29"] {
   background: #2D2638 !important;
   color: #FFFFFF !important;
 }
 
-/* Pastel accent buttons */
+/* WEDORA pastel buttons */
+
 .wedora-venue-page button[class*="bg-[#b"],
 .wedora-venue-page button[class*="bg-[#a"] {
   background: linear-gradient(
     135deg,
+    #F7B7D8,
     #C9B8FF,
-    #F7B7D8
+    #A9E8FF
   ) !important;
+
   color: #2D2638 !important;
 }
 
-/* Venue type cards */
+/* Cards */
+
 .wedora-venue-page [class*="rounded-xl"],
 .wedora-venue-page [class*="rounded-2xl"] {
-  border-color: #E8E0F2 !important;
+  border-color: rgba(201,184,255,0.28) !important;
 }
 
-/* Soft pastel hover */
-.wedora-venue-page button:hover {
-  border-color: #C9B8FF !important;
+/* Soft glass surfaces */
+
+.wedora-venue-page [class*="bg-white"] {
+  background: rgba(255,255,255,0.72) !important;
 }
 
-/* Brown/gold borders → WEDORA lavender */
-.wedora-venue-page [class*="border-[#"],
-.wedora-venue-page [class*="border-b"] {
-  border-color: #E8E0F2 !important;
+/* Icons */
+
+.wedora-venue-page svg {
+  color: #8B72D8;
 }
 
-/* WEDORA pink accent */
-.wedora-venue-page [class*="text-[#b99768"],
-.wedora-venue-page [class*="text-[#a88761"],
-.wedora-venue-page [class*="text-[#514a44"] {
-  color: #8B72D8 !important;
-}
+/* Icon circles */
 
-/* Update / report area */
-.wedora-venue-page textarea {
-  color: #2D2638 !important;
-  background: #FFFFFF !important;
-  border-color: #E3DCF5 !important;
+.wedora-venue-page [class*="rounded-full"] {
+  border-color: rgba(201,184,255,0.25);
 }
 
 /* Links */
+
 .wedora-venue-page a {
   color: #7C63C7 !important;
 }
 
+/* Soft borders */
+
+.wedora-venue-page [class*="border-[#"],
+.wedora-venue-page [class*="border-b"] {
+  border-color: rgba(201,184,255,0.28) !important;
+}
+
+/* Hover */
+
+.wedora-venue-page button:hover {
+  border-color: #C9B8FF !important;
+}
+
 /* Selection */
+
 .wedora-venue-page ::selection {
   background: #C9B8FF;
   color: #2D2638;
