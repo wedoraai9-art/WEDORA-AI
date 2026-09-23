@@ -957,6 +957,249 @@ async def vendor_update(payload: VendorUpdateIn, authorization: str = Header(Non
         await db.vendors.update_one({"id": v["id"]}, {"$set": updates})
     fresh = await db.vendors.find_one({"id": v["id"]}, {"_id": 0})
     return {"vendor": vendor_public(fresh)}
+# ================= VENDOR WEDDING WORKSPACES =================
+
+WEDDING_STATUSES = {
+    "upcoming",
+    "in_progress",
+    "completed",
+    "attention",
+}
+
+
+class WeddingCreateIn(BaseModel):
+    wedding_name: str
+    bride_name: str
+    groom_name: str
+    wedding_date: Optional[str] = ""
+    city: Optional[str] = ""
+    venue: Optional[str] = ""
+    guest_count: Optional[int] = None
+    budget: Optional[float] = None
+    functions: Optional[List[str]] = None
+    notes: Optional[str] = ""
+    status: Optional[str] = "upcoming"
+
+
+class WeddingUpdateIn(BaseModel):
+    wedding_name: Optional[str] = None
+    bride_name: Optional[str] = None
+    groom_name: Optional[str] = None
+    wedding_date: Optional[str] = None
+    city: Optional[str] = None
+    venue: Optional[str] = None
+    guest_count: Optional[int] = None
+    budget: Optional[float] = None
+    functions: Optional[List[str]] = None
+    notes: Optional[str] = None
+    status: Optional[str] = None
+
+
+async def get_vendor_wedding_access(authorization: str):
+    user = await get_current_user(authorization)
+
+    if user.get("role") != "vendor":
+        raise HTTPException(
+            status_code=403,
+            detail="Vendor access required"
+        )
+
+    vendor = await db.vendors.find_one(
+        {"user_id": user["id"]},
+        {"_id": 0}
+    )
+
+    if not vendor:
+        raise HTTPException(
+            status_code=404,
+            detail="Vendor profile not found"
+        )
+
+    plan_key = vendor.get("plan", "free")
+    plan = PLANS.get(plan_key)
+
+    if not plan:
+        raise HTTPException(
+            status_code=500,
+            detail="Vendor plan configuration not found"
+        )
+
+    return user, vendor, plan
+
+
+@api_router.post("/vendor/weddings")
+async def create_vendor_wedding(
+    payload: WeddingCreateIn,
+    authorization: str = Header(None)
+):
+    user, vendor, plan = await get_vendor_wedding_access(authorization)
+
+    status = payload.status or "upcoming"
+
+    if status not in WEDDING_STATUSES:
+        raise HTTPException(
+            status_code=422,
+            detail="Invalid wedding status"
+        )
+
+    wedding_limit = plan.get("wedding_limit")
+
+    if wedding_limit is not None:
+        current_count = await db.weddings.count_documents({
+            "vendor_id": vendor["id"]
+        })
+
+        if current_count >= wedding_limit:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "WEDDING_LIMIT_REACHED",
+                    "message": (
+                        "You've reached your FREE limit. "
+                        f"You've created {current_count} of "
+                        f"{wedding_limit} weddings on WEDORA FREE. "
+                        "Your existing weddings are still available "
+                        "and fully manageable. Upgrade to WEDORA PRO "
+                        "to create unlimited weddings and export your data."
+                    ),
+                    "current_count": current_count,
+                    "limit": wedding_limit,
+                    "plan": plan.get("label"),
+                }
+            )
+
+    wedding_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+
+    wedding = {
+        "id": wedding_id,
+        "vendor_id": vendor["id"],
+        "wedding_name": payload.wedding_name.strip(),
+        "bride_name": payload.bride_name.strip(),
+        "groom_name": payload.groom_name.strip(),
+        "wedding_date": payload.wedding_date or "",
+        "city": payload.city or "",
+        "venue": payload.venue or "",
+        "guest_count": payload.guest_count,
+        "budget": payload.budget,
+        "functions": payload.functions or [],
+        "notes": payload.notes or "",
+        "status": status,
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    await db.weddings.insert_one(wedding)
+
+    return {
+        "ok": True,
+        "wedding": wedding,
+        "plan": vendor.get("plan", "free"),
+    }
+
+
+@api_router.get("/vendor/weddings")
+async def vendor_weddings(
+    authorization: str = Header(None)
+):
+    user, vendor, plan = await get_vendor_wedding_access(authorization)
+
+    weddings = await db.weddings.find(
+        {"vendor_id": vendor["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(500)
+
+    limit = plan.get("wedding_limit")
+    count = len(weddings)
+
+    return {
+        "count": count,
+        "weddings": weddings,
+        "plan": vendor.get("plan", "free"),
+        "wedding_limit": limit,
+        "remaining": None if limit is None else max(limit - count, 0),
+    }
+
+
+@api_router.get("/vendor/weddings/{wedding_id}")
+async def vendor_wedding_detail(
+    wedding_id: str,
+    authorization: str = Header(None)
+):
+    user, vendor, plan = await get_vendor_wedding_access(authorization)
+
+    wedding = await db.weddings.find_one(
+        {
+            "id": wedding_id,
+            "vendor_id": vendor["id"],
+        },
+        {"_id": 0}
+    )
+
+    if not wedding:
+        raise HTTPException(
+            status_code=404,
+            detail="Wedding not found"
+        )
+
+    return {
+        "wedding": wedding,
+        "plan": vendor.get("plan", "free"),
+    }
+
+
+@api_router.put("/vendor/weddings/{wedding_id}")
+async def update_vendor_wedding(
+    wedding_id: str,
+    payload: WeddingUpdateIn,
+    authorization: str = Header(None)
+):
+    user, vendor, plan = await get_vendor_wedding_access(authorization)
+
+    updates = payload.dict(exclude_unset=True)
+
+    if "status" in updates:
+        if updates["status"] not in WEDDING_STATUSES:
+            raise HTTPException(
+                status_code=422,
+                detail="Invalid wedding status"
+            )
+
+    for field in ("wedding_name", "bride_name", "groom_name"):
+        if field in updates and updates[field] is not None:
+            updates[field] = updates[field].strip()
+
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    result = await db.weddings.update_one(
+        {
+            "id": wedding_id,
+            "vendor_id": vendor["id"],
+        },
+        {
+            "$set": updates
+        }
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(
+            status_code=404,
+            detail="Wedding not found"
+        )
+
+    wedding = await db.weddings.find_one(
+        {
+            "id": wedding_id,
+            "vendor_id": vendor["id"],
+        },
+        {"_id": 0}
+    )
+
+    return {
+        "ok": True,
+        "wedding": wedding,
+    }
+
 
 
 # ---- Object Storage ----
