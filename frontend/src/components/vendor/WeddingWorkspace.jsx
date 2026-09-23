@@ -15,7 +15,7 @@ import {
 const WeddingWorkspace = ({ wedding, onBack }) => {
   if (!wedding) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-white">
+      <div className="min-h-screen flex items-center justify-center text-[#2D2638]">
         Wedding not found.
       </div>
     );
