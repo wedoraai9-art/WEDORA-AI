@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CAPS } from '@/constants/testIds';
-import { Gem, Wallet, Flower2, Building2, Handshake, Utensils, Crown, Users } from 'lucide-react';
+import { Gem,  Flower2, Building2, Handshake,  } from 'lucide-react';
 
 const items = [
   { icon: Gem,       title: 'Wedding Planning',  desc: 'Complete planning, timelines and checklists tailored to your date.', tint: 'from-[#C9B8FF]/40 to-[#F7B7D8]/40' },
