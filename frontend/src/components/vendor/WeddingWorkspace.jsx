@@ -238,7 +238,7 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
       </button>
     </div>
     <p className="mt-2 text-sm text-[#6B6175]">
-      This wedding module is ready to be built.
+      Wedding overview and important details.
     </p>
   </div>
 )}
