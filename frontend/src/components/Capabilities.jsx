@@ -5,14 +5,10 @@ import { Gem, Wallet, Flower2, Building2, Handshake, Utensils, Crown, Users } fr
 
 const items = [
   { icon: Gem,       title: 'Wedding Planning',  desc: 'Complete planning, timelines and checklists tailored to your date.', tint: 'from-[#C9B8FF]/40 to-[#F7B7D8]/40' },
-  { icon: Wallet,    title: 'Budget Planning',   desc: 'Build & manage your budget with intelligent breakdowns.',            tint: 'from-[#A9E8FF]/40 to-[#C9B8FF]/40' },
   { icon: Flower2,   title: 'AI Wedding Design', desc: 'Generate themes, palettes, décor concepts and styling ideas.',       tint: 'from-[#F7B7D8]/40 to-[#F5A9B8]/40' },
   { icon: Building2, title: 'Venue Discovery',   desc: 'Discover venues by city, guest count and budget.',                   tint: 'from-[#FFF8EF]/60 to-[#F7B7D8]/40' },
   { icon: Handshake, title: 'Vendor Discovery',  desc: 'Photographers, caterers, decorators, MUAs and more.',                 tint: 'from-[#A9E8F4]/40 to-[#F7B7D8]/40' },
-  { icon: Utensils,  title: 'Catering',          desc: 'Plan menus, cuisines and dietary requirements.',                      tint: 'from-[#F5A9B8]/40 to-[#FFF8EF]/60' },
-  { icon: Crown,     title: 'Bride & Groom',     desc: 'Outfits, jewellery, makeup and styling ideas.',                       tint: 'from-[#C9B8FF]/40 to-[#A9E8FF]/40' },
-  { icon: Users,     title: 'Guest Management',  desc: 'RSVP, accommodation and transportation planning.',                    tint: 'from-[#F7B7D8]/40 to-[#C9B8FF]/40' },
-];
+ 
 
 export const Capabilities = () => {
   const navigate = useNavigate();
