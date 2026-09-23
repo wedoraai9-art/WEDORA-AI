@@ -204,7 +204,7 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
                 className="group text-left rounded-2xl border border-[#eadff2] bg-white/80 hover:bg-white hover:border-[#d9c7e6] shadow-[0_10px_30px_rgba(190,160,210,0.08)] transition-all duration-200 p-5"
               >
 
-                <div className="w-11 h-11 rounded-xl  bg-[#f6efff] flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                className="w-11 h-11 rounded-xl bg-[#f4eafa] flex items-center justify-center mb-4 group-hover:scale-105 transition-transform"
                   <Icon className="w-5 h-5 text-white/80" />
                 </div>
 
