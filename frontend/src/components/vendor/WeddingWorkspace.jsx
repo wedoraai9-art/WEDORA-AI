@@ -120,7 +120,7 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
               <div className="flex flex-wrap gap-3">
 
                 <div className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3">
-                  <div className="flex items-center gap-2 text-white/50 text-xs">
+                  <div className="flex items-center gap-2 text-[#8B8194] text-xs">
                     <CalendarDays className="w-4 h-4" />
                     Wedding Date
                   </div>
