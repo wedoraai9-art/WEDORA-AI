@@ -395,11 +395,7 @@ const WeddingsTab = ({ vendor }) => {
                   >
                     Open Wedding
                   </button>
-                  // Wedding detail workspace will be added next.
-                }}
-              >
-                Open Wedding
-              </button>
+               
             </div>
           ))}
         </div>
