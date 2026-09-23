@@ -1090,6 +1090,7 @@ async def create_vendor_wedding(
     }
 
     await db.weddings.insert_one(wedding)
+    wedding.pop("_id", None)
 
     return {
         "ok": True,
