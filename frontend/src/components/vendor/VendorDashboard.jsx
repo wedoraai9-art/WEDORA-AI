@@ -38,6 +38,7 @@ const VendorDashboard = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState('overview');
+  const [selectedWedding, setSelectedWedding] = useState(null);
   const [vendor, setVendor] = useState(null);
   const [planDetails, setPlanDetails] = useState(null);
   const [stats, setStats] = useState(null);
