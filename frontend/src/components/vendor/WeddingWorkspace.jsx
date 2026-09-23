@@ -106,7 +106,7 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
                   Wedding Workspace
                 </div>
 
-                <h1 className="text-3xl md:text-4xl font-semibold text-white">
+               <h1 className="text-3xl md:text-4xl font-semibold text-[#2D2638]">
                   {wedding.wedding_name || 'Untitled Wedding'}
                 </h1>
 
