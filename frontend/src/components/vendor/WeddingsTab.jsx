@@ -390,8 +390,11 @@ const WeddingsTab = ({ vendor }) => {
               </div>
 
               <button
-                className="chip !text-sm mt-5"
-                onClick={() => onOpenWedding(wedding)}
+                    className="chip !text-sm mt-5"
+                    onClick={() => onOpenWedding(wedding)}
+                  >
+                    Open Wedding
+                  </button>
                   // Wedding detail workspace will be added next.
                 }}
               >
