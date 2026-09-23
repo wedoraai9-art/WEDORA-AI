@@ -276,8 +276,7 @@ const WedoraVenueDiscovery = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#fbfaf7] text-[#302c29]">
-
+    <div className="wedora-venue-page min-h-screen bg-[#faf8ff] text-[#2D2638]">
       {/* HEADER */}
       <header className="sticky top-0 z-40 border-b border-[#e8e1d9] bg-[#fbfaf7]/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
