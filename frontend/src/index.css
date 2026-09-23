@@ -277,3 +277,118 @@ body {
   from { transform: translateX(40px); opacity: 0; }
   to   { transform: translateX(0); opacity: 1; }
 }
+/* =========================================================
+   WEDORA VENUE DISCOVERY — GLOBAL STYLE OVERRIDE
+   ========================================================= */
+
+.wedora-venue-page {
+  background: #FAF8FF !important;
+  color: #2D2638 !important;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Main text */
+.wedora-venue-page h1,
+.wedora-venue-page h2,
+.wedora-venue-page h3,
+.wedora-venue-page h4,
+.wedora-venue-page p,
+.wedora-venue-page span,
+.wedora-venue-page label {
+  color: #2D2638 !important;
+}
+
+/* Replace brown/gold text */
+.wedora-venue-page [class*="text-[#a"],
+.wedora-venue-page [class*="text-[#b"],
+.wedora-venue-page [class*="text-[#9"] {
+  color: #2D2638 !important;
+}
+
+/* Soft WEDORA pastel backgrounds */
+.wedora-venue-page [class*="bg-[#f3"],
+.wedora-venue-page [class*="bg-[#f2"],
+.wedora-venue-page [class*="bg-[#efe"] {
+  background: #F7F3FF !important;
+}
+
+/* Icons */
+.wedora-venue-page svg {
+  color: #8B72D8 !important;
+}
+
+/* Search and filter area */
+.wedora-venue-page input,
+.wedora-venue-page select {
+  color: #2D2638 !important;
+  background: #FFFFFF !important;
+  border-color: #E3DCF5 !important;
+}
+
+.wedora-venue-page input::placeholder {
+  color: #9A91A8 !important;
+}
+
+/* Buttons */
+.wedora-venue-page button {
+  border-color: #E3DCF5;
+}
+
+/* Main action buttons */
+.wedora-venue-page button[class*="bg-[#302c29"] {
+  background: #2D2638 !important;
+  color: #FFFFFF !important;
+}
+
+/* Pastel accent buttons */
+.wedora-venue-page button[class*="bg-[#b"],
+.wedora-venue-page button[class*="bg-[#a"] {
+  background: linear-gradient(
+    135deg,
+    #C9B8FF,
+    #F7B7D8
+  ) !important;
+  color: #2D2638 !important;
+}
+
+/* Venue type cards */
+.wedora-venue-page [class*="rounded-xl"],
+.wedora-venue-page [class*="rounded-2xl"] {
+  border-color: #E8E0F2 !important;
+}
+
+/* Soft pastel hover */
+.wedora-venue-page button:hover {
+  border-color: #C9B8FF !important;
+}
+
+/* Brown/gold borders → WEDORA lavender */
+.wedora-venue-page [class*="border-[#"],
+.wedora-venue-page [class*="border-b"] {
+  border-color: #E8E0F2 !important;
+}
+
+/* WEDORA pink accent */
+.wedora-venue-page [class*="text-[#b99768"],
+.wedora-venue-page [class*="text-[#a88761"],
+.wedora-venue-page [class*="text-[#514a44"] {
+  color: #8B72D8 !important;
+}
+
+/* Update / report area */
+.wedora-venue-page textarea {
+  color: #2D2638 !important;
+  background: #FFFFFF !important;
+  border-color: #E3DCF5 !important;
+}
+
+/* Links */
+.wedora-venue-page a {
+  color: #7C63C7 !important;
+}
+
+/* Selection */
+.wedora-venue-page ::selection {
+  background: #C9B8FF;
+  color: #2D2638;
+}
