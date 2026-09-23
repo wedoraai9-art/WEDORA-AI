@@ -31,6 +31,7 @@ import WeddingCatering from '@/components/WeddingCatering';
 import WeddingCouple from '@/components/WeddingCouple';
 import WeddingTransportation from '@/components/WeddingTransportation';
 import WedoraVenueDiscovery from '@/components/WedoraVenueDiscovery';
+import WedoraVendorDiscovery from '@/components/WedoraVendorDiscovery';
 
 const Home = () => {
   const chatPromptRef = useRef(null);
