@@ -79,7 +79,7 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
   ];
 
   return (
-    <div className="min-h-screen px-4 py-6 md:px-8">
+   <div className="min-h-screen bg-[#fcf9ff] px-4 py-6 md:px-8 text-[#2D2638]">
       {/* Header */}
       <div className="max-w-7xl mx-auto">
 
