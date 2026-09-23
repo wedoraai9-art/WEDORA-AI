@@ -199,9 +199,10 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
             const Icon = module.icon;
 
             return (
-              <button
+             <button
                 key={module.title}
                 type="button"
+                onClick={() => setActiveModule(module.title)}
                 className="group text-left rounded-2xl border border-[#eadff2] bg-white/80 hover:bg-white hover:border-[#d9c7e6] shadow-[0_10px_30px_rgba(190,160,210,0.08)] transition-all duration-200 p-5"
               >
 
