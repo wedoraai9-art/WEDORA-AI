@@ -82,11 +82,10 @@ const VendorDashboard = () => {
   );
 }
 
+
+ 
 return (
   <div className="min-h-screen silky-bg pt-28 pb-16 px-4" data-testid="vendor-dashboard">
-
-  return (
-    <div className="min-h-screen silky-bg pt-28 pb-16 px-4" data-testid="vendor-dashboard">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
