@@ -63,22 +63,20 @@ const WeddingsTab = ({ vendor }) => {
         status: 'upcoming',
       });
 
-      setShowForm(false);
-     if (response.data?.wedding) {
-        setWeddings((prev) => [response.data.wedding, ...prev]);
-      } else {
-        await loadWeddings();
-      }
+     setShowForm(false);
+     await loadWeddings();
     } catch (err) {
       const detail = err.response?.data?.detail;
 
-      if (detail?.code === 'WEDDING_LIMIT_REACHED') {
-        setError(detail.message);
+     if (detail?.code === 'WEDDING_LIMIT_REACHED') {
+        setError(
+          detail.message ||
+          `You've reached your FREE plan limit of ${detail.limit || 3} weddings.`
+        );
       } else {
         setError(
-          typeof detail === 'string'
-            ? detail
-            : 'Could not create wedding.'
+          detail?.message ||
+          (typeof detail === 'string' ? detail : 'Could not create wedding.')
         );
       }
     } finally {
