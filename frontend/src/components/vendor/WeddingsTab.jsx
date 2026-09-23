@@ -44,11 +44,11 @@ const WeddingsTab = ({ vendor }) => {
     setError('');
 
     try {
-      await authAxios.post('/vendor/weddings', {
-        ...form,
-        guest_count: form.guest_count ? Number(form.guest_count) : null,
-        budget: form.budget ? Number(form.budget) : null,
-      });
+    const response = await authAxios.post('/vendor/weddings', {
+  ...form,
+  guest_count: form.guest_count ? Number(form.guest_count) : null,
+  budget: form.budget ? Number(form.budget) : null,
+});
 
       setForm({
         wedding_name: '',
@@ -64,7 +64,11 @@ const WeddingsTab = ({ vendor }) => {
       });
 
       setShowForm(false);
-      await loadWeddings();
+     if (response.data?.wedding) {
+        setWeddings((prev) => [response.data.wedding, ...prev]);
+      } else {
+        await loadWeddings();
+      }
     } catch (err) {
       const detail = err.response?.data?.detail;
 
