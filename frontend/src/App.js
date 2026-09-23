@@ -96,6 +96,10 @@ function App() {
                                     path="/venue-discovery"
                                     element={<WedoraVenueDiscovery />}
                                   />
+                                  <Route
+                                  path="/vendor-discovery"
+                                  element={<WedoraVendorDiscovery />}
+                                />
                                   
             <Route path="/for-vendors" element={<VendorLanding />} />
             <Route path="/vendor/auth" element={<VendorAuth />} />
