@@ -6,10 +6,34 @@ import { Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 const CATEGORIES = [
-  'Wedding Decor', 'Wedding Planner', 'Photographer', 'Videographer', 'Caterer',
-  'Florist', 'Makeup Artist', 'Mehendi Artist', 'DJ', 'Music/Band', 'Choreographer',
-  'Venue', 'Hotel', 'Resort', 'Farmhouse', 'Invitation Designer', 'Furniture/Rental',
-  'Bridal Wear', 'Groom Wear', 'Jewellery', 'Transportation', 'Other',
+  'Wedding Planner',
+  'Wedding Decorator',
+  'Photographer',
+  'Videographer',
+  'Caterer',
+  'Makeup Artist',
+  'Mehendi Artist',
+  'DJ',
+  'Entertainment',
+  'Florist',
+  'Venue',
+  'Tent House',
+  'Furniture',
+  'Lighting',
+  'Sound',
+  'Invitation/Printing',
+  'Fashion Designer',
+  'Jewellery',
+  'Transportation',
+  'Cake/Dessert',
+  'Priest/Pandit',
+  'Choreographer',
+  'Artist/Performer',
+  'Event Production',
+  'Props Vendor',
+  'Fabric Vendor',
+  'Flower Supplier',
+  'Other',
 ];
 
 const inputCls = "mt-1 w-full rounded-2xl px-4 py-2.5 bg-white/70 border border-white/80 outline-none focus:border-pink-300 text-[#2D2638] text-sm";
