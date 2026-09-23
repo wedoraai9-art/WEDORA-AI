@@ -155,14 +155,14 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
                 </p>
               </div>
 
-              <div className="rounded-2xl bg-white/80 border border-white/10 p-4">
+              <div className="rounded-2xl bg-white/80 border border-[#eadff2] p-4">
                 <p className="text-xs text-[#8B8194]">Budget</p>
                 <p className="text-xl font-semibold text-[#3F3748]
                   {formatCurrency(wedding.budget)}
                 </p>
               </div>
 
-              <div className="rounded-2xl bg-white/80 border border-white/10 p-4">
+              <div className="rounded-2xl bg-white/80 border border-[#eadff2] p-4">
                 <p className="text-xs text-[#8B8194]">Venue</p>
                 <p className="text-sm font-medium text-[#3F3748] mt-1 truncate">
                   {wedding.venue || 'Not set'}
