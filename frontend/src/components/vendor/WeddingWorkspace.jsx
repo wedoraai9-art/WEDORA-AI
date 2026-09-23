@@ -272,6 +272,14 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
     </p>
   </div>
 </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
+    <p className="text-xs text-[#8B8194]">Guest Count</p>
+    <p className="text-sm font-medium text-[#3F3748] mt-1">
+      {wedding.guest_count || "Not added"}
+    </p>
+  </div>
+</div>
   </div>
 )}
       </div>
