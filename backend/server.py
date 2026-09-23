@@ -899,7 +899,7 @@ async def vendor_register(payload: VendorRegisterIn):
         "instagram": payload.instagram or "", "website": payload.website or "",
         "description": payload.description or "",
         "logo": "", "portfolio": [], "services": [],
-        "plan": "free", "plan_status": "demo",
+        "plan": "free","plan_status": "active",
         "is_featured": False, "is_published": True,
         "stats": {"profile_views": 0, "whatsapp_clicks": 0, "contact_requests": 0, "portfolio_views": 0},
         "created_at": datetime.now(timezone.utc).isoformat(),
