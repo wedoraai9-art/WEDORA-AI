@@ -101,7 +101,7 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
 
               <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs  text-[#8B8194] mb-4">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full  bg-[#f6efff] text-xs  text-[#8B8194] mb-4">
                   <Heart className="w-3.5 h-3.5" />
                   Wedding Workspace
                 </div>
@@ -204,7 +204,7 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
                 className="group text-left rounded-2xl border border-white/10 bg-white/[0.035] hover:bg-white/[0.07] hover:border-white/20 transition-all duration-200 p-5"
               >
 
-                <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                <div className="w-11 h-11 rounded-xl  bg-[#f6efff] flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
                   <Icon className="w-5 h-5 text-white/80" />
                 </div>
 
