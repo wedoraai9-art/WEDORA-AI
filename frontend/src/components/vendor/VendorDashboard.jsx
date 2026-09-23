@@ -11,6 +11,7 @@ import ProfileTab from './ProfileTab';
 import PortfolioTab from './PortfolioTab';
 import LeadsTab from './LeadsTab';
 import SubscriptionTab from './SubscriptionTab';
+import WeddingsTab from './WeddingsTab';
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: LayoutGrid },
