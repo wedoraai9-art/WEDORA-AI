@@ -237,9 +237,25 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
         Back
       </button>
     </div>
-    <p className="mt-2 text-sm text-[#6B6175]">
-      Wedding overview and important details.
+   <p className="mt-2 text-sm text-[#6B6175]">
+  Wedding overview and important details.
+</p>
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
+    <p className="text-xs text-[#8B8194]">Bride</p>
+    <p className="text-sm font-medium text-[#3F3748] mt-1">
+      {wedding.bride_name || "Not added"}
     </p>
+  </div>
+
+  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
+    <p className="text-xs text-[#8B8194]">Groom</p>
+    <p className="text-sm font-medium text-[#3F3748] mt-1">
+      {wedding.groom_name || "Not added"}
+    </p>
+  </div>
+</div>
   </div>
 )}
       </div>
