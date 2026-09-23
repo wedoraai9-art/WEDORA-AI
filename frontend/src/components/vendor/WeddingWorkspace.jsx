@@ -110,7 +110,7 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
                   {wedding.wedding_name || 'Untitled Wedding'}
                 </h1>
 
-                <p className="text-white/60 mt-2">
+               <p className="text-[#6B6175] mt-2">
                   {wedding.bride_name || 'Bride'}{' '}
                   <span className="text-pink-300">&</span>{' '}
                   {wedding.groom_name || 'Groom'}
