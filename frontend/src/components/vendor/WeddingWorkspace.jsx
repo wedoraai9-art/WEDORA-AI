@@ -183,7 +183,7 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
 
         {/* Workspace Modules */}
         <div className="mb-4">
-          <h2 className="text-xl font-semibold text-white">
+          <h2 className="text-xl font-semibold text-[#2D2638]">
             Wedding Management
           </h2>
 
