@@ -208,7 +208,7 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
                   <Icon className="w-5 h-5 text-[#8B6AA8]"
                 </div>
 
-                <h3 className="text-white font-medium">
+                <h3 className="text-[#2D2638] font-medium">
                   {module.title}
                 </h3>
 
