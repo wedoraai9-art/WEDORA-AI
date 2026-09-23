@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { apiVendorStats, apiVendorMe, clearToken, fmtApiError } from '@/lib/auth';
 import { toast } from 'sonner';
 import {
-  LayoutGrid, User, Images, Inbox, BarChart3, CreditCard, Settings as SettingsIcon,
+  LayoutGrid, User, Images, Inbox, CalendarDays, BarChart3, CreditCard, Settings as SettingsIcon,
   Eye, MessageCircle, Users, MousePointerClick, LogOut, ExternalLink, Crown,
 } from 'lucide-react';
 import ProfileTab from './ProfileTab';
@@ -15,6 +15,7 @@ import WeddingsTab from './WeddingsTab';
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: LayoutGrid },
+  { id: 'weddings', label: 'Weddings', icon: CalendarDays },
   { id: 'profile', label: 'My Profile', icon: User },
   { id: 'portfolio', label: 'Portfolio', icon: Images },
   { id: 'leads', label: 'Leads', icon: Inbox },
@@ -125,7 +126,7 @@ const VendorDashboard = () => {
             </div>
           </div>
         )}
-
+        {tab === 'weddings' && vendor && <WeddingsTab vendor={vendor} />}
         {tab === 'profile' && vendor && <ProfileTab vendor={vendor} planDetails={planDetails} onSaved={load} />}
         {tab === 'portfolio' && vendor && <PortfolioTab vendor={vendor} planDetails={planDetails} onSaved={load} />}
         {tab === 'leads' && vendor && <LeadsTab vendor={vendor} />}
