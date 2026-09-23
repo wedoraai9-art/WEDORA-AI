@@ -201,7 +201,7 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
               <button
                 key={module.title}
                 type="button"
-                className="group text-left rounded-2xl border border-white/10 bg-white/[0.035] hover:bg-white/[0.07] hover:border-white/20 transition-all duration-200 p-5"
+                className="group text-left rounded-2xl border border-[#eadff2] bg-white/80 hover:bg-white hover:border-[#d9c7e6] shadow-[0_10px_30px_rgba(190,160,210,0.08)] transition-all duration-200 p-5"
               >
 
                 <div className="w-11 h-11 rounded-xl  bg-[#f6efff] flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
