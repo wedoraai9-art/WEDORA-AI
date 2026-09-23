@@ -125,7 +125,7 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
                     Wedding Date
                   </div>
 
-                  <p className="text-white mt-1 font-medium">
+                  <p className="text-[#3F3748] mt-1 font-medium">
                     {formatDate(wedding.wedding_date)}
                   </p>
                 </div>
