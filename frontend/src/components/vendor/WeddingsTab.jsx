@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { CalendarDays, MapPin, Plus, Users, Wallet, Heart } from 'lucide-react';
 import { authAxios } from '@/lib/auth';
 
-const WeddingsTab = ({ vendor }) => {
+const WeddingsTab = ({ vendor, onOpenWedding }) => {
   const [weddings, setWeddings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
