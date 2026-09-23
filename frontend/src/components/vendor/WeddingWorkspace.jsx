@@ -212,7 +212,7 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
                   {module.title}
                 </h3>
 
-                <p className="text-white/45 text-sm mt-1 leading-relaxed">
+                <p className="text-[#6B6175] text-sm mt-1 leading-relaxed">
                   {module.description}
                 </p>
 
