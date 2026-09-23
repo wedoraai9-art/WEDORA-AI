@@ -28,8 +28,8 @@ export const Capabilities = () => {
         <div
           key={title}
           data-testid={CAPS.card(title)}
-          onClick={() => {
-                   if (title === 'Wedding Planning') {
+         onClick={() => {
+          if (title === 'Wedding Planning') {
             navigate('/wedding-planning');
           } else if (title === 'AI Wedding Design') {
             document.getElementById('designer')?.scrollIntoView({ behavior: 'smooth' });
@@ -37,7 +37,8 @@ export const Capabilities = () => {
             navigate('/venue-discovery');
           } else if (title === 'Vendor Discovery') {
             navigate('/vendor-discovery');
-          }}
+          }
+        }}
          className={`pearl-card p-6 flex flex-col items-start ${
          title === 'AI Wedding Design' ? 'cursor-pointer' : ''
          }`}
