@@ -223,7 +223,25 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
           })}
 
         </div>
-
+{activeModule && (
+  <div className="mt-6 rounded-2xl border border-[#eadff2] bg-white/80 p-6 shadow-[0_10px_30px_rgba(190,160,210,0.08)]">
+    <div className="flex items-center justify-between">
+      <h3 className="text-lg font-semibold text-[#2D2638]">
+        {activeModule}
+      </h3>
+      <button
+        type="button"
+        onClick={() => setActiveModule(null)}
+        className="text-sm text-[#8B6AA8] hover:text-[#6B4F82]"
+      >
+        Back
+      </button>
+    </div>
+    <p className="mt-2 text-sm text-[#6B6175]">
+      This wedding module is ready to be built.
+    </p>
+  </div>
+)}
       </div>
     </div>
   );
