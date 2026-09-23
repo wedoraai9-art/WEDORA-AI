@@ -187,7 +187,7 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
             Wedding Management
           </h2>
 
-          <p className="text-white/50 text-sm mt-1">
+          <p className="text-[#6B6175] text-sm mt-1">
             Everything you need to manage this wedding in one place.
           </p>
         </div>
