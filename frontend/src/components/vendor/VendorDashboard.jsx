@@ -73,6 +73,17 @@ const VendorDashboard = () => {
   if (busy && !vendor) return (
     <div className="min-h-screen silky-bg pt-40 text-center"><div className="thinking-orb mx-auto" /></div>
   );
+  if (selectedWedding) {
+  return (
+    <WeddingWorkspace
+      wedding={selectedWedding}
+      onBack={() => setSelectedWedding(null)}
+    />
+  );
+}
+
+return (
+  <div className="min-h-screen silky-bg pt-28 pb-16 px-4" data-testid="vendor-dashboard">
 
   return (
     <div className="min-h-screen silky-bg pt-28 pb-16 px-4" data-testid="vendor-dashboard">
