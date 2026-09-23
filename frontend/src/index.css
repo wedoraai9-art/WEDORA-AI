@@ -392,3 +392,99 @@ body {
   background: #C9B8FF;
   color: #2D2638;
 }
+/* =========================================================
+   WEDORA VENDOR DISCOVERY — MATCH WEDORA DESIGN
+   ========================================================= */
+
+.wedora-vendor-page {
+  background: #FAF8FF !important;
+  color: #2D2638 !important;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.wedora-vendor-page h1,
+.wedora-vendor-page h2,
+.wedora-vendor-page h3,
+.wedora-vendor-page h4,
+.wedora-vendor-page p,
+.wedora-vendor-page span,
+.wedora-vendor-page label {
+  color: #2D2638 !important;
+}
+
+/* Brown / gold accents → WEDORA lavender */
+.wedora-vendor-page [class*="text-[#a"],
+.wedora-vendor-page [class*="text-[#b"],
+.wedora-vendor-page [class*="text-[#9"] {
+  color: #8B72D8 !important;
+}
+
+/* Soft WEDORA backgrounds */
+.wedora-vendor-page [class*="bg-[#fbfaf7"],
+.wedora-vendor-page [class*="bg-[#f3"],
+.wedora-vendor-page [class*="bg-[#f2"],
+.wedora-vendor-page [class*="bg-[#efe"] {
+  background: #F7F3FF !important;
+}
+
+/* WEDORA icon color */
+.wedora-vendor-page svg {
+  color: #8B72D8 !important;
+}
+
+/* Search fields */
+.wedora-vendor-page input,
+.wedora-vendor-page select {
+  background: #FFFFFF !important;
+  color: #2D2638 !important;
+  border-color: #E3DCF5 !important;
+}
+
+.wedora-vendor-page input::placeholder {
+  color: #9A91A8 !important;
+}
+
+/* Cards */
+.wedora-vendor-page [class*="rounded-xl"],
+.wedora-vendor-page [class*="rounded-2xl"] {
+  border-color: #E8E0F2 !important;
+}
+
+/* Dark WEDORA buttons */
+.wedora-vendor-page button[class*="bg-[#302c29"] {
+  background: #2D2638 !important;
+  color: #FFFFFF !important;
+}
+
+/* Pastel WEDORA buttons */
+.wedora-vendor-page button[class*="bg-[#b"],
+.wedora-vendor-page button[class*="bg-[#a"] {
+  background: linear-gradient(
+    135deg,
+    #C9B8FF,
+    #F7B7D8
+  ) !important;
+  color: #2D2638 !important;
+}
+
+/* Borders */
+.wedora-vendor-page [class*="border-[#"],
+.wedora-vendor-page [class*="border-b"] {
+  border-color: #E8E0F2 !important;
+}
+
+/* Links */
+.wedora-vendor-page a {
+  color: #7C63C7 !important;
+}
+
+/* Hover */
+.wedora-vendor-page button:hover {
+  border-color: #C9B8FF !important;
+}
+
+/* Selection */
+.wedora-vendor-page ::selection {
+  background: #C9B8FF;
+  color: #2D2638;
+}
