@@ -276,7 +276,7 @@ const WedoraVendorDiscovery = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#fbfaf7] text-[#302c29]">
+   <div className="wedora-vendor-page min-h-screen bg-[#FAF8FF] text-[#2D2638]">
 
       {/* HEADER */}
       <header className="sticky top-0 z-40 border-b border-[#e8e1d9] bg-[#fbfaf7]/95 backdrop-blur">
