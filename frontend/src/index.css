@@ -393,97 +393,169 @@ body {
   color: #2D2638;
 }
 /* =========================================================
-   WEDORA VENDOR DISCOVERY — MATCH WEDORA DESIGN
+   WEDORA VENDOR DISCOVERY — UNIFIED WEDORA THEME
    ========================================================= */
 
 .wedora-vendor-page {
-  background: #FAF8FF !important;
+  min-height: 100vh !important;
   color: #2D2638 !important;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+
+  background:
+    radial-gradient(
+      ellipse 55% 45% at 15% 15%,
+      rgba(201,184,255,0.18),
+      transparent 65%
+    ),
+    radial-gradient(
+      ellipse 55% 45% at 85% 18%,
+      rgba(247,183,216,0.18),
+      transparent 65%
+    ),
+    radial-gradient(
+      ellipse 55% 45% at 50% 85%,
+      rgba(169,232,255,0.14),
+      transparent 65%
+    ),
+    #FFFCF8 !important;
 }
 
-.wedora-vendor-page h1,
+/* WEDORA heading typography */
+
+.wedora-vendor-page h1 {
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-weight: 400 !important;
+  color: #2D2638 !important;
+  letter-spacing: -0.02em !important;
+}
+
 .wedora-vendor-page h2,
 .wedora-vendor-page h3,
-.wedora-vendor-page h4,
-.wedora-vendor-page p,
-.wedora-vendor-page span,
-.wedora-vendor-page label {
+.wedora-vendor-page h4 {
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-weight: 500 !important;
   color: #2D2638 !important;
 }
 
-/* Brown / gold accents → WEDORA lavender */
-.wedora-vendor-page [class*="text-[#a"],
-.wedora-vendor-page [class*="text-[#b"],
-.wedora-vendor-page [class*="text-[#9"] {
-  color: #8B72D8 !important;
+.wedora-vendor-page p,
+.wedora-vendor-page label,
+.wedora-vendor-page input,
+.wedora-vendor-page select,
+.wedora-vendor-page button {
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
 }
 
-/* Soft WEDORA backgrounds */
-.wedora-vendor-page [class*="bg-[#fbfaf7"],
-.wedora-vendor-page [class*="bg-[#f3"],
-.wedora-vendor-page [class*="bg-[#f2"],
-.wedora-vendor-page [class*="bg-[#efe"] {
-  background: #F7F3FF !important;
+/* Highlighted / italic heading text */
+
+.wedora-vendor-page h1 span,
+.wedora-vendor-page h1 em,
+.wedora-vendor-page h1 i {
+  background: linear-gradient(
+    90deg,
+    #F5A9B8 0%,
+    #C9B8FF 50%,
+    #A9E8FF 100%
+  ) !important;
+
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
 }
 
-/* WEDORA icon color */
-.wedora-vendor-page svg {
-  color: #8B72D8 !important;
+/* Main text */
+
+.wedora-vendor-page p {
+  color: #6B617A !important;
 }
 
-/* Search fields */
+/* Small labels */
+
+.wedora-vendor-page .tracking-wide,
+.wedora-vendor-page .tracking-widest {
+  color: #9B8FA8 !important;
+}
+
+/* Search box */
+
 .wedora-vendor-page input,
 .wedora-vendor-page select {
-  background: #FFFFFF !important;
+  background: rgba(255,255,255,0.82) !important;
   color: #2D2638 !important;
-  border-color: #E3DCF5 !important;
+  border-color: rgba(201,184,255,0.35) !important;
 }
 
 .wedora-vendor-page input::placeholder {
-  color: #9A91A8 !important;
+  color: #A49AAF !important;
 }
 
-/* Cards */
-.wedora-vendor-page [class*="rounded-xl"],
-.wedora-vendor-page [class*="rounded-2xl"] {
-  border-color: #E8E0F2 !important;
-}
+/* Search / primary buttons */
 
-/* Dark WEDORA buttons */
 .wedora-vendor-page button[class*="bg-[#302c29"] {
   background: #2D2638 !important;
   color: #FFFFFF !important;
 }
 
-/* Pastel WEDORA buttons */
+/* WEDORA pastel buttons */
+
 .wedora-vendor-page button[class*="bg-[#b"],
 .wedora-vendor-page button[class*="bg-[#a"] {
   background: linear-gradient(
     135deg,
+    #F7B7D8,
     #C9B8FF,
-    #F7B7D8
+    #A9E8FF
   ) !important;
+
   color: #2D2638 !important;
 }
 
-/* Borders */
-.wedora-vendor-page [class*="border-[#"],
-.wedora-vendor-page [class*="border-b"] {
-  border-color: #E8E0F2 !important;
+/* Cards */
+
+.wedora-vendor-page [class*="rounded-xl"],
+.wedora-vendor-page [class*="rounded-2xl"] {
+  border-color: rgba(201,184,255,0.28) !important;
+}
+
+/* Soft glass effect */
+
+.wedora-vendor-page [class*="bg-white"] {
+  background: rgba(255,255,255,0.72) !important;
+}
+
+/* Icons */
+
+.wedora-vendor-page svg {
+  color: #8B72D8;
+}
+
+/* Keep icon circles soft and pastel */
+
+.wedora-vendor-page [class*="rounded-full"] {
+  border-color: rgba(201,184,255,0.25);
 }
 
 /* Links */
+
 .wedora-vendor-page a {
   color: #7C63C7 !important;
 }
 
+/* Soft borders */
+
+.wedora-vendor-page [class*="border-[#"],
+.wedora-vendor-page [class*="border-b"] {
+  border-color: rgba(201,184,255,0.28) !important;
+}
+
 /* Hover */
+
 .wedora-vendor-page button:hover {
   border-color: #C9B8FF !important;
 }
 
 /* Selection */
+
 .wedora-vendor-page ::selection {
   background: #C9B8FF;
   color: #2D2638;
