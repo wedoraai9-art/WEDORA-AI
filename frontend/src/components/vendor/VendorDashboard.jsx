@@ -128,7 +128,12 @@ const VendorDashboard = () => {
             </div>
           </div>
         )}
-        {tab === 'weddings' && vendor && <WeddingsTab vendor={vendor} />}
+       {tab === 'weddings' && vendor && (
+          <WeddingsTab
+            vendor={vendor}
+            onOpenWedding={(wedding) => setSelectedWedding(wedding)}
+          />
+        )}
         {tab === 'profile' && vendor && <ProfileTab vendor={vendor} planDetails={planDetails} onSaved={load} />}
         {tab === 'portfolio' && vendor && <PortfolioTab vendor={vendor} planDetails={planDetails} onSaved={load} />}
         {tab === 'leads' && vendor && <LeadsTab vendor={vendor} />}
