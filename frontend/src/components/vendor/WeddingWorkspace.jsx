@@ -381,10 +381,9 @@ const [tasks, setTasks] = useState([]);
   </p>
 </div>
 </div>
-  </div>
-)}
-  
-  );
-};
+</div>
+    )}
+    </div>
+    );
 
 export default WeddingWorkspace;
