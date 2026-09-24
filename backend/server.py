@@ -81,11 +81,11 @@ class LlmChat:
                 yield TextDelta(content)
 
       class LlmChat:
-    def __init__(self, api_key=None, session_id=None, system_message=None):
-        self.client = genai.Client(api_key=api_key or GEMINI_API_KEY)
-        self.session_id = session_id
-        self.system_message = system_message
-        self.model = "gemini-3.1-flash-lite"
+            def __init__(self, api_key=None, session_id=None, system_message=None):
+                self.client = genai.Client(api_key=api_key or GEMINI_API_KEY)
+                self.session_id = session_id
+                self.system_message = system_message
+                self.model = "gemini-3.1-flash-lite"
 
     def with_model(self, provider, model):
         return self
