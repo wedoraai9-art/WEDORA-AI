@@ -41,70 +41,39 @@ class TextDelta:
 
 class StreamDone:
     pass
-
 class LlmChat:
     def __init__(self, api_key=None, session_id=None, system_message=None):
-        self.provider = "openai"
-        self.api_key = api_key or OPENAI_API_KEY
+        self.client = genai.Client(api_key=GEMINI_API_KEY)
         self.session_id = session_id
         self.system_message = system_message
-        self.model = OPENAI_MODEL
-        self.client = AsyncOpenAI(api_key=self.api_key)
+        self.model = "gemini-3.1-flash-lite"
 
     def with_model(self, provider, model):
-        self.provider = provider.lower()
-        self.model = model
-        if self.provider == "gemini" or self.provider == "google":
-            self.client = genai.Client(api_key=self.api_key or GEMINI_API_KEY)
-        else:
-            self.client = AsyncOpenAI(api_key=self.api_key or OPENAI_API_KEY)
         return self
 
     async def send_message(self, message):
-        if self.provider in ("gemini", "google"):
-            response = await self.client.aio.models.generate_content(
-                model=self.model,
-                contents=message.text,
-                config={"system_instruction": self.system_message or ""},
-            )
-            return response.text or ""
-        else:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": self.system_message or ""},
-                    {"role": "user", "content": message.text},
-                ],
-            )
-            return response.choices[0].message.content or ""
+        response = await self.client.aio.models.generate_content(
+            model=self.model,
+            contents=message.text,
+            config={
+                "system_instruction": self.system_message or "",
+            },
+        )
+        return response.text or ""
 
     async def stream_message(self, message):
-        if self.provider in ("gemini", "google"):
-            stream = await self.client.aio.models.generate_content_stream(
-                model=self.model,
-                contents=message.text,
-                config={"system_instruction": self.system_message or ""},
-            )
-            async for chunk in stream:
-                if chunk.text:
-                    yield TextDelta(chunk.text)
-            yield StreamDone()
-        else:
-            stream = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": self.system_message or ""},
-                    {"role": "user", "content": message.text},
-                ],
-                stream=True,
-            )
-            async for chunk in stream:
-                content = getattr(chunk.choices[0].delta, "content", None)
-                if content:
-                    yield TextDelta(content)
-            yield StreamDone()
+        response = await self.client.aio.models.generate_content(
+            model=self.model,
+            contents=message.text,
+            config={
+                "system_instruction": self.system_message or "",
+            },
+        )
 
-ROOT_DIR = Path(__file__).parent
+        if response.text:
+            yield TextDelta(response.text)
+
+        yield StreamDone()
 load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB
