@@ -1241,15 +1241,7 @@ async def create_wedding_client(
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
 
- await db.clients.insert_one(client)
-client.pop("_id", None)
 
-return {
-
-    return {
-        "ok": True,
-        "client": client,
-    }
 
 
 @api_router.get("/vendor/weddings/{wedding_id}/clients")
