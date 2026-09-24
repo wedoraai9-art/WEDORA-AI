@@ -378,11 +378,11 @@ const [tasks, setTasks] = useState([]);
   <p className="text-sm font-medium text-[#3F3748] mt-1">
     {formatCurrency(wedding.budget)}
   </p>
-    </div>
-    </div>
-    3 </div>
-     )}
-    </div>
-     </div>
-     );
-     export default WeddingWorkspace;
+ </div>
+ </div>
+ )}
+ </div>
+ </div>
+ );
+
+ export default WeddingWorkspace;
