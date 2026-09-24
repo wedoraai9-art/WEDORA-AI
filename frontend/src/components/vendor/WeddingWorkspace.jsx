@@ -20,16 +20,19 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
   const [tasks, setTasks] = useState([]);
   const [clients, setClients] = useState([]);
   const [showClientForm, setShowClientForm] = useState(false);
-const [clientName, setClientName] = useState("");
-const [clientPhone, setClientPhone] = useState("");
-const [clientEmail, setClientEmail] = useState("");
-const [clientRelation, setClientRelation] = useState("");
-const [clientNotes, setClientNotes] = useState("");
+  const [clientName, setClientName] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
+  const [clientRelation, setClientRelation] = useState("");
+  const [clientNotes, setClientNotes] = useState("");
   const [savingClient, setSavingClient] = useState(false);
   const [editingClientId, setEditingClientId] = useState(null);
+
   useEffect(() => {
-  loadClients();
-}, [wedding.id]);
+    if (wedding?.id) {
+      loadClients();
+    }
+  }, [wedding?.id]);
 
   if (!wedding) {
     return (
@@ -38,45 +41,42 @@ const [clientNotes, setClientNotes] = useState("");
       </div>
     );
   }
-const loadClients = async () => {
-  try {
-    const response = await authAxios.get(
-      `/vendor/weddings/${wedding.id}/clients`
-    );
-    setClients(response.data.clients || []);
-  } catch (error) {
-    console.error("Failed to load clients:", error);
-  }
-};
-const saveClient = async () => {
-  if (!clientName.trim() || savingClient) return;
 
-  setSavingClient(true);
-
-  try {
-   const response = await authAxios.post(
-      `/vendor/weddings/${wedding.id}/clients`,
-      {
-        name: clientName.trim(),
-        phone: clientPhone,
-        email: clientEmail,
-        relation: clientRelation,
-        notes: clientNotes,
-      }
-    );
-
-    setClientName("");
-    setClientPhone("");
-    setClientEmail("");
-    setClientRelation("");
-    setClientNotes("");
-    setShowClientForm(false);
-   await loadClients();
+  const loadClients = async () => {
+    try {
+      const response = await authAxios.get(
+        `/vendor/weddings/${wedding.id}/clients`
+      );
+      setClients(response.data.clients || []);
     } catch (error) {
-    console.error("Failed to save client:", error);
-  } finally {
-    setSavingClient(false);
-  }
+      console.error("Failed to load clients:", error);
+    }
+  };
+
+  const saveClient = async () => {
+    if (!clientName.trim() || savingClient) return;
+
+    setSavingClient(true);
+
+    try {
+      await authAxios.post(
+        `/vendor/weddings/${wedding.id}/clients`,
+        {
+          name: clientName.trim(),
+          phone: clientPhone,
+          email: clientEmail,
+          relation: clientRelation,
+          notes: clientNotes,
+        }
+      );
+
+      resetClientForm();
+      await loadClients();
+    } catch (error) {
+      console.error("Failed to save client:", error);
+    } finally {
+      setSavingClient(false);
+    }
   };
 
   const updateClient = async () => {
@@ -96,14 +96,7 @@ const saveClient = async () => {
         }
       );
 
-      setClientName("");
-      setClientPhone("");
-      setClientEmail("");
-      setClientRelation("");
-      setClientNotes("");
-      setEditingClientId(null);
-      setShowClientForm(false);
-
+      resetClientForm();
       await loadClients();
     } catch (error) {
       console.error("Failed to update client:", error);
@@ -112,9 +105,18 @@ const saveClient = async () => {
     }
   };
 
+  const resetClientForm = () => {
+    setClientName("");
+    setClientPhone("");
+    setClientEmail("");
+    setClientRelation("");
+    setClientNotes("");
+    setEditingClientId(null);
+    setShowClientForm(false);
+  };
+
   const formatDate = (date) => {
     if (!date) return 'Date not set';
-
     const parsed = new Date(date);
     if (Number.isNaN(parsed.getTime())) return date;
 
@@ -127,51 +129,21 @@ const saveClient = async () => {
 
   const formatCurrency = (amount) => {
     if (!amount) return '₹0';
-
     return `₹${Number(amount).toLocaleString('en-IN')}`;
   };
 
   const modules = [
-    {
-      title: 'Overview',
-      description: 'Wedding details, timeline and important information',
-      icon: Heart,
-    },
-    {
-      title: 'Tasks',
-      description: 'Plan and track everything that needs to be done',
-      icon: CheckSquare,
-    },
-    {
-      title: 'Clients',
-      description: 'Manage bride, groom and client communication',
-      icon: Users,
-    },
-    {
-      title: 'Budget & Payments',
-      description: 'Track budget, expenses, advances and payments',
-      icon: Wallet,
-    },
-    {
-      title: 'Documents',
-      description: 'Keep contracts, bills and important files organized',
-      icon: FileText,
-    },
-    {
-      title: 'Notifications',
-      description: 'Important reminders and wedding updates',
-      icon: Bell,
-    },
-    {
-      title: 'AI Assistant',
-      description: 'Get AI-powered help for this wedding',
-      icon: Sparkles,
-    },
+    { title: 'Overview', description: 'Wedding details, timeline and important information', icon: Heart },
+    { title: 'Tasks', description: 'Plan and track everything that needs to be done', icon: CheckSquare },
+    { title: 'Clients', description: 'Manage bride, groom and client communication', icon: Users },
+    { title: 'Budget & Payments', description: 'Track budget, expenses, advances and payments', icon: Wallet },
+    { title: 'Documents', description: 'Keep contracts, bills and important files organized', icon: FileText },
+    { title: 'Notifications', description: 'Important reminders and wedding updates', icon: Bell },
+    { title: 'AI Assistant', description: 'Get AI-powered help for this wedding', icon: Sparkles },
   ];
 
   return (
     <div className="min-h-screen bg-[#fcf9ff] px-4 py-6 md:px-8 text-[#2D2638]">
-      {/* Header */}
       <div className="max-w-7xl mx-auto">
         <button
           onClick={onBack}
@@ -212,7 +184,6 @@ const saveClient = async () => {
                     <CalendarDays className="w-4 h-4" />
                     Wedding Date
                   </div>
-
                   <p className="text-[#3F3748] mt-1 font-medium">
                     {formatDate(wedding.wedding_date)}
                   </p>
@@ -223,7 +194,6 @@ const saveClient = async () => {
                     <MapPin className="w-4 h-4" />
                     Location
                   </div>
-
                   <p className="text-[#3F3748] mt-1 font-medium">
                     {wedding.city || 'Location not set'}
                   </p>
@@ -296,11 +266,7 @@ const saveClient = async () => {
                 <div className="w-11 h-11 rounded-xl bg-[#f4eafa] flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
                   <Icon className="w-5 h-5 text-[#8B6AA8]" />
                 </div>
-
-                <h3 className="text-[#2D2638] font-medium">
-                  {module.title}
-                </h3>
-
+                <h3 className="text-[#2D2638] font-medium">{module.title}</h3>
                 <p className="text-[#6B6175] text-sm mt-1 leading-relaxed">
                   {module.description}
                 </p>
@@ -327,288 +293,279 @@ const saveClient = async () => {
             <p className="mt-2 text-sm text-[#6B6175]">
               {activeModule === "Tasks"
                 ? "Manage and track everything that needs to be done for this wedding."
+                : activeModule === "Clients"
+                ? "Manage client details and communication for this wedding."
                 : "Wedding overview and important details."}
             </p>
 
+            {/* TASKS MODULE */}
             {activeModule === "Tasks" && (
+              <>
+                <div className="mt-4 mb-5 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-[#8B8194]">Task Management</p>
+                      <h4 className="text-lg font-semibold text-[#3F3748] mt-1">
+                        Wedding Tasks
+                      </h4>
+                      <p className="text-sm text-[#6B6175] mt-1">
+                        Create, organize and track tasks for this wedding.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowTaskForm(true)}
+                      className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadcf5]"
+                    >
+                      + Add Task
+                    </button>
+                  </div>
+                </div>
+
+                {showTaskForm && (
+                  <div className="mb-5 rounded-xl border border-[#eadff2] bg-white p-5">
+                    <p className="text-sm font-medium text-[#3F3748] mb-2">New Task</p>
+                    <input
+                      type="text"
+                      value={taskTitle}
+                      onChange={(e) => setTaskTitle(e.target.value)}
+                      placeholder="Enter task name"
+                      className="w-full rounded-xl border border-[#eadff2] bg-[#faf7ff] px-4 py-3 text-sm text-[#3F3748] outline-none focus:border-[#c9a9df]"
+                    />
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!taskTitle.trim()) return;
+                          setTasks([...tasks, { title: taskTitle, completed: false }]);
+                          setTaskTitle("");
+                          setShowTaskForm(false);
+                        }}
+                        className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8]"
+                      >
+                        Save Task
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowTaskForm(false)}
+                        className="rounded-xl px-4 py-2 text-sm text-[#8B8194]"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {tasks.length > 0 && (
+                  <div className="mb-5 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                    <p className="text-sm text-[#8B8194]">Your Tasks</p>
+                    <div className="mt-3 space-y-2">
+                      {tasks.map((task, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center gap-3 rounded-lg border border-[#eadff2] bg-white px-4 py-3"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTasks(
+                                tasks.map((item, i) =>
+                                  i === index ? { ...item, completed: !item.completed } : item
+                                )
+                              );
+                            }}
+                            className={`w-5 h-5 rounded-md border flex items-center justify-center ${
+                              task.completed
+                                ? "bg-[#8B6AA8] border-[#8B6AA8] text-white"
+                                : "border-[#c9b8d8] bg-white"
+                            }`}
+                          >
+                            {task.completed ? "✓" : ""}
+                          </button>
+                          <span className={`text-sm ${task.completed ? "text-[#9B91A3] line-through" : "text-[#3F3748]"}`}>
+                            {task.title}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* CLIENTS MODULE */}
+            {activeModule === "Clients" && (
               <div className="mt-4 mb-5 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-[#8B8194]">Task Management</p>
+                    <p className="text-sm text-[#8B8194]">Client Management</p>
                     <h4 className="text-lg font-semibold text-[#3F3748] mt-1">
-                      Wedding Tasks
+                      Wedding Clients
                     </h4>
                     <p className="text-sm text-[#6B6175] mt-1">
-                      Create, organize and track tasks for this wedding.
+                      Manage client details and communication for this wedding.
                     </p>
                   </div>
 
                   <button
                     type="button"
-                    onClick={() => setShowTaskForm(true)}
-                    className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadcf5]"
-                  >
-                    + Add Task
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {activeModule === "Tasks" && showTaskForm && (
-              <div className="mb-5 rounded-xl border border-[#eadff2] bg-white p-5">
-                <p className="text-sm font-medium text-[#3F3748] mb-2">
-                  New Task
-                </p>
-
-                <input
-                  type="text"
-                  value={taskTitle}
-                  onChange={(e) => setTaskTitle(e.target.value)}
-                  placeholder="Enter task name"
-                  className="w-full rounded-xl border border-[#eadff2] bg-[#faf7ff] px-4 py-3 text-sm text-[#3F3748] outline-none focus:border-[#c9a9df]"
-                />
-
-                <div className="flex gap-2 mt-3">
-                  <button
-                    type="button"
                     onClick={() => {
-                      if (!taskTitle.trim()) return;
-                      setTasks([...tasks, { title: taskTitle, completed: false }]);
-                      setTaskTitle("");
-                      setShowTaskForm(false);
+                      resetClientForm();
+                      setShowClientForm(true);
                     }}
-                    className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8]"
+                    className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadff5]"
                   >
-                    Save Task
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowTaskForm(false)}
-                    className="rounded-xl px-4 py-2 text-sm text-[#8B8194]"
-                  >
-                    Cancel
+                    + Add Client
                   </button>
                 </div>
-              </div>
-            )}
 
-            {activeModule === "Tasks" && tasks.length > 0 && (
-              <div className="mb-5 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
-                <p className="text-sm text-[#8B8194]">Your Tasks</p>
+                {showClientForm && (
+                  <div className="mt-5 rounded-xl border border-[#eadff2] bg-white p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <input
+                        value={clientName}
+                        onChange={(e) => setClientName(e.target.value)}
+                        placeholder="Client Name *"
+                        className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none"
+                      />
+                      <input
+                        value={clientPhone}
+                        onChange={(e) => setClientPhone(e.target.value)}
+                        placeholder="Phone"
+                        className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none"
+                      />
+                      <input
+                        value={clientEmail}
+                        onChange={(e) => setClientEmail(e.target.value)}
+                        placeholder="Email"
+                        className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none"
+                      />
+                      <input
+                        value={clientRelation}
+                        onChange={(e) => setClientRelation(e.target.value)}
+                        placeholder="Relation (Bride / Groom / Family)"
+                        className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none"
+                      />
+                      <textarea
+                        value={clientNotes}
+                        onChange={(e) => setClientNotes(e.target.value)}
+                        placeholder="Notes"
+                        rows="3"
+                        className="md:col-span-2 rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none"
+                      />
+                    </div>
 
-                <div className="mt-3 space-y-2">
-                  {tasks.map((task, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-3 rounded-lg border border-[#eadff2] bg-white px-4 py-3"
-                    >
+                    <div className="flex gap-2 mt-4">
                       <button
                         type="button"
-                        onClick={() => {
-                          setTasks(
-                            tasks.map((item, i) =>
-                              i === index
-                                ? { ...item, completed: !item.completed }
-                                : item
-                            )
-                          );
-                        }}
-                        className={`w-5 h-5 rounded-md border flex items-center justify-center ${
-                          task.completed
-                            ? "bg-[#8B6AA8] border-[#8B6AA8] text-white"
-                            : "border-[#c9b8d8] bg-white"
-                        }`}
+                        onClick={editingClientId ? updateClient : saveClient}
+                        disabled={savingClient}
+                        className="rounded-xl bg-[#8B6AA8] px-4 py-2 text-sm font-medium text-white disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        {task.completed ? "✓" : ""}
+                        {savingClient ? "Saving..." : editingClientId ? "Update Client" : "Save Client"}
                       </button>
-
-                      <span
-                        className={`text-sm ${
-                          task.completed
-                            ? "text-[#9B91A3] line-through"
-                            : "text-[#3F3748]"
-                        }`}
+                      <button
+                        type="button"
+                        onClick={resetClientForm}
+                        className="rounded-xl px-4 py-2 text-sm text-[#8B8194]"
                       >
-                        {task.title}
-                      </span>
+                        Cancel
+                      </button>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                  </div>
+                )}
 
-            {activeModule === "Clients" && (
-  <div className="mb-5 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-sm text-[#8B8194]">Client Management</p>
-        <h4 className="text-lg font-semibold text-[#3F3748] mt-1">
-          Wedding Clients
-        </h4>
-        <p className="text-sm text-[#6B6175] mt-1">
-          Manage client details and communication for this wedding.
-        </p>
-      </div>
-
-      <button
-        type="button"
-        onClick={() => setShowClientForm(true)}
-        className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadff5]"
-      >
-        + Add Client
-      </button>
-    </div>
-
-    {showClientForm && (
-      <div className="mt-5 rounded-xl border border-[#eadff2] bg-white p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input
-            value={clientName}
-            onChange={(e) => setClientName(e.target.value)}
-            placeholder="Client Name *"
-            className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none"
-          />
-
-          <input
-            value={clientPhone}
-            onChange={(e) => setClientPhone(e.target.value)}
-            placeholder="Phone"
-            className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none"
-          />
-
-          <input
-            value={clientEmail}
-            onChange={(e) => setClientEmail(e.target.value)}
-            placeholder="Email"
-            className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none"
-          />
-
-          <input
-            value={clientRelation}
-            onChange={(e) => setClientRelation(e.target.value)}
-            placeholder="Relation (Bride / Groom / Family)"
-            className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none"
-          />
-
-          <textarea
-            value={clientNotes}
-            onChange={(e) => setClientNotes(e.target.value)}
-            placeholder="Notes"
-            rows="3"
-            className="md:col-span-2 rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none"
-          />
-        </div>
-
-        <div className="flex gap-2 mt-4">
-          
-
-         <button
-            type="button"
-            onClick={saveClient}
-            disabled={savingClient}
-            className="rounded-xl bg-[#8B6AA8] px-4 py-2 text-sm font-medium text-white disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {savingClient ? "Saving..." : "Save Client"}
-          </button>
-        </div>
-      </div>
-    )}
-
-    {clients.length > 0 && (
-      <div className="mt-4 space-y-3">
-        {clients.map((client) => (
-          <div
-            key={client.id}
-            className="rounded-xl border border-[#eadff2] bg-white p-4"
-          >
-            <p className="font-medium text-[#3F3748]">
-              {client.name}
-            </p>
-
-            <div className="mt-1 text-sm text-[#6B6175] space-y-1">
-                {client.phone && <p>Phone: {client.phone}</p>}
-                {client.email && <p>Email: {client.email}</p>}
-                {client.relation && <p>Relation: {client.relation}</p>}
-                {client.notes && <p>Notes: {client.notes}</p>}
-              </div>
-
-              <div className="mt-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingClientId(client.id);
-                    setClientName(client.name || "");
-                    setClientPhone(client.phone || "");
-                    setClientEmail(client.email || "");
-                    setClientRelation(client.relation || "");
-                    setClientNotes(client.notes || "");
-                    setShowClientForm(true);
-                  }}
-                  className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadff5]"
-                >
-                  Edit
-                </button>
-              </div>
-              
-              </div>
+                {clients.length > 0 && (
+                  <div className="mt-4 space-y-3">
+                    {clients.map((client) => (
+                      <div
+                        key={client.id}
+                        className="rounded-xl border border-[#eadff2] bg-white p-4"
+                      >
+                        <p className="font-medium text-[#3F3748]">{client.name}</p>
+                        <div className="mt-1 text-sm text-[#6B6175] space-y-1">
+                          {client.phone && <p>Phone: {client.phone}</p>}
+                          {client.email && <p>Email: {client.email}</p>}
+                          {client.relation && <p>Relation: {client.relation}</p>}
+                          {client.notes && <p>Notes: {client.notes}</p>}
+                        </div>
+                        <div className="mt-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingClientId(client.id);
+                              setClientName(client.name || "");
+                              setClientPhone(client.phone || "");
+                              setClientEmail(client.email || "");
+                              setClientRelation(client.relation || "");
+                              setClientNotes(client.notes || "");
+                              setShowClientForm(true);
+                            }}
+                            className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadff5]"
+                          >
+                            Edit
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
             )}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
-              <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
-                <p className="text-xs text-[#8B8194]">Bride</p>
-                <p className="text-sm font-medium text-[#3F3748] mt-1">
-                  {wedding.bride_name || "Not added"}
-                </p>
-              </div>
 
-              <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
-                <p className="text-xs text-[#8B8194]">Groom</p>
-                <p className="text-sm font-medium text-[#3F3748] mt-1">
-                  {wedding.groom_name || "Not added"}
-                </p>
-              </div>
-            </div>
+            {/* OVERVIEW MODULE / DEFAULT INFO */}
+            {activeModule === "Overview" && (
+              <div className="mt-4 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
+                    <p className="text-xs text-[#8B8194]">Bride</p>
+                    <p className="text-sm font-medium text-[#3F3748] mt-1">
+                      {wedding.bride_name || "Not added"}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
+                    <p className="text-xs text-[#8B8194]">Groom</p>
+                    <p className="text-sm font-medium text-[#3F3748] mt-1">
+                      {wedding.groom_name || "Not added"}
+                    </p>
+                  </div>
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
-                <p className="text-xs text-[#8B8194]">Wedding Date</p>
-                <p className="text-sm font-medium text-[#3F3748] mt-1">
-                  {wedding.wedding_date || "Not added"}
-                </p>
-              </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
+                    <p className="text-xs text-[#8B8194]">Wedding Date</p>
+                    <p className="text-sm font-medium text-[#3F3748] mt-1">
+                      {formatDate(wedding.wedding_date)}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
+                    <p className="text-xs text-[#8B8194]">Venue & Location</p>
+                    <p className="text-sm font-medium text-[#3F3748] mt-1">
+                      {wedding.venue || "Venue not added"}
+                      {wedding.city ? `, ${wedding.city}` : ""}
+                    </p>
+                  </div>
+                </div>
 
-              <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
-                <p className="text-xs text-[#8B8194]">Venue & Location</p>
-                <p className="text-sm font-medium text-[#3F3748] mt-1">
-                  {wedding.venue || "Venue not added"}
-                  {wedding.city ? `, ${wedding.city}` : ""}
-                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
+                    <p className="text-xs text-[#8B8194]">Guest Count</p>
+                    <p className="text-sm font-medium text-[#3F3748] mt-1">
+                      {wedding.guest_count || "Not added"}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
+                    <p className="text-xs text-[#8B8194]">Budget</p>
+                    <p className="text-sm font-medium text-[#3F3748] mt-1">
+                      {formatCurrency(wedding.budget)}
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
-                <p className="text-xs text-[#8B8194]">Guest Count</p>
-                <p className="text-sm font-medium text-[#3F3748] mt-1">
-                  {wedding.guest_count || "Not added"}
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
-                <p className="text-xs text-[#8B8194]">Budget</p>
-                <p className="text-sm font-medium text-[#3F3748] mt-1">
-                  {formatCurrency(wedding.budget)}
-                </p>
-              </div>
-            </div>
+            )}
           </div>
         )}
-
       </div>
     </div>
   );
