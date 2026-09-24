@@ -13,6 +13,7 @@ import {
   Plus,
   Trash2,
   Edit3,
+  Download,
 } from 'lucide-react';
 import { authAxios } from '../../lib/auth';
 
@@ -68,10 +69,20 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
   const [editingExpenseId, setEditingExpenseId] = useState(null);
   const [editingPaymentId, setEditingPaymentId] = useState(null);
 
+  const [documents, setDocuments] = useState([]);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [documentUploading, setDocumentUploading] = useState(false);
+  const [documentEditingId, setDocumentEditingId] = useState(null);
+  const [showDocumentForm, setShowDocumentForm] = useState(false);
+  const [documentFile, setDocumentFile] = useState(null);
+  const [documentTitle, setDocumentTitle] = useState('');
+  const [documentCategory, setDocumentCategory] = useState('General');
+
   useEffect(() => {
     if (wedding?.id) {
       loadClients();
       loadBudget();
+      loadDocuments();
     }
   }, [wedding?.id]);
 
@@ -110,6 +121,130 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
     } finally {
       setBudgetLoading(false);
     }
+  };
+
+  const loadDocuments = async () => {
+    setDocumentsLoading(true);
+    try {
+      const response = await authAxios.get(
+        `/vendor/weddings/${wedding.id}/documents`
+      );
+      setDocuments(response.data?.documents || []);
+    } catch (error) {
+      console.error("Failed to load documents:", error);
+    } finally {
+      setDocumentsLoading(false);
+    }
+  };
+
+  const resetDocumentForm = () => {
+    setShowDocumentForm(false);
+    setDocumentEditingId(null);
+    setDocumentFile(null);
+    setDocumentTitle('');
+    setDocumentCategory('General');
+  };
+
+  const saveDocument = async () => {
+    if (documentEditingId) {
+      if (!documentTitle.trim()) return;
+
+      setDocumentUploading(true);
+      try {
+        await authAxios.put(
+          `/vendor/weddings/${wedding.id}/documents/${documentEditingId}`,
+          {
+            title: documentTitle.trim(),
+            category: documentCategory || 'General',
+          }
+        );
+        resetDocumentForm();
+        await loadDocuments();
+      } catch (error) {
+        console.error("Failed to update document:", error);
+        window.alert(error.response?.data?.detail || 'Could not update document.');
+      } finally {
+        setDocumentUploading(false);
+      }
+      return;
+    }
+
+    if (!documentFile || documentUploading) return;
+
+    const maxBytes = 10 * 1024 * 1024;
+    if (documentFile.size > maxBytes) {
+      window.alert('Document must be 10 MB or smaller.');
+      return;
+    }
+
+    setDocumentUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', documentFile);
+      formData.append('title', documentTitle.trim());
+      formData.append('category', documentCategory || 'General');
+
+      await authAxios.post(
+        `/vendor/weddings/${wedding.id}/documents`,
+        formData,
+        {}
+      );
+
+      resetDocumentForm();
+      await loadDocuments();
+    } catch (error) {
+      console.error("Failed to upload document:", error);
+      window.alert(error.response?.data?.detail || 'Could not upload document.');
+    } finally {
+      setDocumentUploading(false);
+    }
+  };
+
+  const editDocument = (document) => {
+    setDocumentEditingId(document.id);
+    setDocumentTitle(document.title || '');
+    setDocumentCategory(document.category || 'General');
+    setDocumentFile(null);
+    setShowDocumentForm(true);
+  };
+
+  const deleteDocument = async (id) => {
+    if (!window.confirm('Delete this document?')) return;
+
+    try {
+      await authAxios.delete(
+        `/vendor/weddings/${wedding.id}/documents/${id}`
+      );
+      await loadDocuments();
+    } catch (error) {
+      console.error("Failed to delete document:", error);
+      window.alert(error.response?.data?.detail || 'Could not delete document.');
+    }
+  };
+
+  const downloadDocument = (document) => {
+    if (!document?.data_url && !document?.url) {
+      window.alert('This document is not available for download.');
+      return;
+    }
+
+    const link = window.document.createElement('a');
+    link.href = document.data_url || document.url;
+    link.download = document.file_name || document.filename || document.title || 'document';
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    window.document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
+  const formatFileSize = (bytes) => {
+    const size = Number(bytes || 0);
+    if (!size) return '0 KB';
+    if (size < 1024 * 1024) {
+      return `${Math.max(1, Math.round(size / 1024))} KB`;
+    }
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const saveClient = async () => {
@@ -468,6 +603,8 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
                 ? "Manage client details and communication for this wedding."
                 : activeModule === "Budget & Payments"
                 ? "Track budget, expenses, advances and payments for this wedding."
+                : activeModule === "Documents"
+                ? "Keep contracts, bills and important files organized for this wedding."
                 : "Wedding overview and important details."}
             </p>
 
@@ -794,9 +931,182 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
               </div>
             )}
 
-            {/* PLACEHOLDER MODULES — kept unchanged until their dedicated backend work */}
+            {/* DOCUMENTS MODULE */}
             {activeModule === "Documents" && (
-              <div className="mt-4 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5"><p className="text-sm text-[#8B8194]">Documents</p><h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding Documents</h4><p className="text-sm text-[#6B6175] mt-1">Document management will be added next.</p></div>
+              <div className="mt-4 space-y-5">
+                <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <div>
+                      <p className="text-sm text-[#8B8194]">Document Management</p>
+                      <h4 className="text-lg font-semibold text-[#3F3748] mt-1">
+                        Wedding Documents
+                      </h4>
+                      <p className="text-sm text-[#6B6175] mt-1">
+                        Keep contracts, bills, invoices and important wedding files organized.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetDocumentForm();
+                        setShowDocumentForm(true);
+                      }}
+                      className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadcf5]"
+                    >
+                      <Plus className="inline w-4 h-4 mr-1" />
+                      Add Document
+                    </button>
+                  </div>
+                </div>
+
+                {showDocumentForm && (
+                  <div className="rounded-xl border border-[#eadff2] bg-white p-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <input
+                        value={documentTitle}
+                        onChange={(e) => setDocumentTitle(e.target.value)}
+                        placeholder="Document title"
+                        className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
+                      />
+
+                      <select
+                        value={documentCategory}
+                        onChange={(e) => setDocumentCategory(e.target.value)}
+                        className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none bg-white"
+                      >
+                        <option>General</option>
+                        <option>Contract</option>
+                        <option>Invoice</option>
+                        <option>Bill</option>
+                        <option>Venue</option>
+                        <option>Catering</option>
+                        <option>Photography</option>
+                        <option>Decor</option>
+                        <option>Guest List</option>
+                        <option>Invitation</option>
+                        <option>Other</option>
+                      </select>
+
+                      {!documentEditingId && (
+                        <div className="md:col-span-2">
+                          <input
+                            type="file"
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.webp"
+                            onChange={(e) => setDocumentFile(e.target.files?.[0] || null)}
+                            className="w-full rounded-lg border border-[#eadff2] bg-[#faf7ff] px-3 py-2 text-sm text-[#3F3748] outline-none"
+                          />
+                          <p className="text-xs text-[#8B8194] mt-2">
+                            PDF, Word, Excel, CSV, TXT and image files up to 10 MB.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2 mt-4">
+                      <button
+                        type="button"
+                        onClick={saveDocument}
+                        disabled={documentUploading || (!documentEditingId && !documentFile)}
+                        className="rounded-xl bg-[#8B6AA8] px-4 py-2 text-sm font-medium text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        {documentUploading
+                          ? documentEditingId
+                            ? 'Saving...'
+                            : 'Uploading...'
+                          : documentEditingId
+                          ? 'Update Document'
+                          : 'Upload Document'}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={resetDocumentForm}
+                        className="rounded-xl px-4 py-2 text-sm text-[#8B8194]"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-[#8B8194]">Your Files</p>
+                      <h4 className="text-lg font-semibold text-[#3F3748] mt-1">
+                        Saved Documents
+                      </h4>
+                    </div>
+                    <p className="text-sm text-[#8B8194]">
+                      {documents.length} {documents.length === 1 ? 'document' : 'documents'}
+                    </p>
+                  </div>
+
+                  {documentsLoading ? (
+                    <div className="mt-4 rounded-lg border border-[#eadff2] bg-white p-6 text-center text-sm text-[#8B8194]">
+                      Loading documents...
+                    </div>
+                  ) : documents.length > 0 ? (
+                    <div className="mt-4 space-y-2">
+                      {documents.map((document) => (
+                        <div
+                          key={document.id}
+                          className="flex flex-col md:flex-row md:items-center gap-3 rounded-lg border border-[#eadff2] bg-white px-4 py-3"
+                        >
+                          <div className="w-10 h-10 rounded-xl bg-[#f4eafa] flex items-center justify-center shrink-0">
+                            <FileText className="w-5 h-5 text-[#8B6AA8]" />
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-[#3F3748] truncate">
+                              {document.title || document.file_name || 'Document'}
+                            </p>
+                            <p className="text-xs text-[#8B8194] mt-1">
+                              {document.category || 'General'}
+                              {document.file_name ? ` • ${document.file_name}` : ''}
+                              {document.file_size ? ` • ${formatFileSize(document.file_size)}` : ''}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => downloadDocument(document)}
+                              className="rounded-lg bg-[#f4eafa] px-3 py-1 text-sm text-[#8B6AA8]"
+                            >
+                              <Download className="inline w-3.5 h-3.5 mr-1" />
+                              Download
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => editDocument(document)}
+                              className="rounded-lg bg-[#f4eafa] px-3 py-1 text-sm text-[#8B6AA8]"
+                            >
+                              <Edit3 className="inline w-3.5 h-3.5 mr-1" />
+                              Edit
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => deleteDocument(document.id)}
+                              className="rounded-lg bg-[#fff1f4] px-3 py-1 text-sm text-red-400"
+                            >
+                              <Trash2 className="inline w-3.5 h-3.5 mr-1" />
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-4 text-sm text-[#8B8194]">
+                      No documents added yet.
+                    </p>
+                  )}
+                </div>
+              </div>
             )}
             {activeModule === "Notifications" && (
               <div className="mt-4 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5"><p className="text-sm text-[#8B8194]">Notifications</p><h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding Notifications</h4><p className="text-sm text-[#6B6175] mt-1">Wedding reminders and updates will be added next.</p></div>
