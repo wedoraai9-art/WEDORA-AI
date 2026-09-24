@@ -24,6 +24,7 @@ import ipaddress
 import asyncio
 
 from openai import AsyncOpenAI
+from google import genai
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 PEXELS_API_KEY = os.environ.get("PEXELS_API_KEY")
