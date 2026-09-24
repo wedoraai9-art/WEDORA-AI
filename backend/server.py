@@ -62,12 +62,12 @@ class LlmChat:
         )
         return response.text or ""
 
-        async def stream_message(self, message):
-                max_retries = 3
-                retry_delays = [2, 4, 8]
-        
-                for attempt in range(max_retries):
-                    yielded_text = False
+ async def stream_message(self, message):
+        max_retries = 3
+        retry_delays = [2, 4, 8]
+
+        for attempt in range(max_retries):
+            yielded_text = False
 
             try:
                 stream = await self.client.aio.models.generate_content_stream(
