@@ -267,3 +267,17 @@ logger = logging.getLogger(__name__)
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+    # ================= VENUES & VENDORS =================
+@api_router.get("/venues")
+async def get_venues():
+    return [
+        {"id": "1", "name": "The Oberoi Rajvilas", "city": "Jaipur", "capacity": "500"},
+        {"id": "2", "name": "Rambagh Palace", "city": "Jaipur", "capacity": "800"}
+    ]
+
+@api_router.get("/vendors")
+async def get_vendors():
+    return [
+        {"id": "1", "name": "Royal Photography", "category": "Photography"},
+        {"id": "2", "name": "Shaadi Caterers", "category": "Catering"}
+    ]
