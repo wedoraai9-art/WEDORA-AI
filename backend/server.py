@@ -658,8 +658,16 @@ class WeddingElementIn(BaseModel):
     quantity: float = 1
     unit: Optional[str] = "pcs"
     dimensions: Optional[str] = ""
+    dimension_unit: Optional[str] = "ft"
     area: Optional[str] = ""
+    function: Optional[str] = "All Functions"
     status: Optional[str] = "planned"
+    pricing_type: Optional[str] = "manual"
+    rate: float = 0
+    estimated_cost: float = 0
+    actual_cost: float = 0
+    supplier: Optional[str] = ""
+    supplier_contact: Optional[str] = ""
     notes: Optional[str] = ""
 
 
@@ -669,8 +677,16 @@ class WeddingElementUpdateIn(BaseModel):
     quantity: Optional[float] = None
     unit: Optional[str] = None
     dimensions: Optional[str] = None
+    dimension_unit: Optional[str] = None
     area: Optional[str] = None
+    function: Optional[str] = None
     status: Optional[str] = None
+    pricing_type: Optional[str] = None
+    rate: Optional[float] = None
+    estimated_cost: Optional[float] = None
+    actual_cost: Optional[float] = None
+    supplier: Optional[str] = None
+    supplier_contact: Optional[str] = None
     notes: Optional[str] = None
 
 
@@ -1758,7 +1774,16 @@ async def vendor_delete_element_category(
 
 # ================= WEDDING ELEMENTS (DECORATOR ONLY) =================
 
-ELEMENT_STATUS_VALUES = {"planned", "in_progress", "ready", "completed"}
+ELEMENT_STATUS_VALUES = {
+    "planned",
+    "quotation",
+    "ordered",
+    "received",
+    "installed",
+    "in_progress",
+    "ready",
+    "completed",
+}
 ELEMENT_CATEGORIES = {
     "General",
     "Mandap",
@@ -1780,9 +1805,69 @@ ELEMENT_CATEGORIES = {
     "Signage",
     "Other",
 }
+ELEMENT_FUNCTIONS = {
+    "All Functions",
+    "Haldi",
+    "Mehendi",
+    "Sangeet",
+    "Wedding",
+    "Reception",
+    "Other",
+}
+
+
+def _dimension_area_sqft(dimensions: str, dimension_unit: str = "ft") -> float:
+    """
+    Convert the first two numeric dimensions into square feet.
+    Examples:
+      20*12 ft -> 240
+      20 x 12 ft -> 240
+      6*4 m -> 258.33
+    For 3D dimensions such as 20*12*3, only length x width is used
+    for floor/platform area.
+    """
+    values = re.findall(r"(?<![A-Za-z])(?:\d+(?:\.\d+)?)", str(dimensions or ""))
+    if len(values) < 2:
+        return 0.0
+
+    length = float(values[0])
+    width = float(values[1])
+    area = length * width
+
+    unit = str(dimension_unit or "ft").strip().lower()
+    if unit in {"m", "meter", "meters", "metre", "metres"}:
+        area *= 10.7639104167
+
+    return round(area, 2)
+
+
+def _element_calculated_cost(element: dict) -> dict:
+    dimensions = element.get("dimensions", "")
+    dimension_unit = element.get("dimension_unit", "ft") or "ft"
+    area_sqft = _dimension_area_sqft(dimensions, dimension_unit)
+
+    quantity = float(element.get("quantity", 1) or 0)
+    rate = float(element.get("rate", 0) or 0)
+    pricing_type = str(element.get("pricing_type", "manual") or "manual").lower()
+
+    if pricing_type == "per_sqft":
+        estimated_cost = round(area_sqft * rate * quantity, 2)
+    elif pricing_type == "per_unit":
+        estimated_cost = round(quantity * rate, 2)
+    else:
+        estimated_cost = round(float(element.get("estimated_cost", 0) or 0), 2)
+
+    actual_cost = round(float(element.get("actual_cost", 0) or 0), 2)
+
+    return {
+        "area_sqft": area_sqft,
+        "estimated_cost": estimated_cost,
+        "actual_cost": actual_cost,
+    }
 
 
 def _element_response(element: dict, wedding_id: str, vendor_id: str) -> dict:
+    calculated = _element_calculated_cost(element)
     return {
         "id": element.get("id"),
         "wedding_id": wedding_id,
@@ -1792,12 +1877,35 @@ def _element_response(element: dict, wedding_id: str, vendor_id: str) -> dict:
         "quantity": element.get("quantity", 1),
         "unit": element.get("unit", "pcs"),
         "dimensions": element.get("dimensions", ""),
+        "dimension_unit": element.get("dimension_unit", "ft"),
+        "area_sqft": calculated["area_sqft"],
         "area": element.get("area", ""),
+        "function": element.get("function", "All Functions"),
         "status": element.get("status", "planned"),
+        "pricing_type": element.get("pricing_type", "manual"),
+        "rate": element.get("rate", 0),
+        "estimated_cost": calculated["estimated_cost"],
+        "actual_cost": calculated["actual_cost"],
+        "supplier": element.get("supplier", ""),
+        "supplier_contact": element.get("supplier_contact", ""),
         "notes": element.get("notes", ""),
         "created_at": element.get("created_at"),
         "updated_at": element.get("updated_at"),
     }
+
+
+def _validate_element_status(status: str) -> str:
+    value = (status or "planned").strip().lower()
+    if value not in ELEMENT_STATUS_VALUES:
+        raise HTTPException(status_code=400, detail="Invalid element status")
+    return value
+
+
+def _validate_pricing_type(value: str) -> str:
+    pricing_type = (value or "manual").strip().lower()
+    if pricing_type not in {"manual", "per_sqft", "per_unit"}:
+        raise HTTPException(status_code=400, detail="Invalid element pricing type")
+    return pricing_type
 
 
 @api_router.get("/vendor/weddings/{wedding_id}/elements")
@@ -1836,15 +1944,22 @@ async def vendor_create_wedding_element(
     if quantity <= 0:
         raise HTTPException(status_code=400, detail="Quantity must be greater than 0")
 
-    status = (payload.status or "planned").strip().lower()
-    if status not in ELEMENT_STATUS_VALUES:
-        raise HTTPException(status_code=400, detail="Invalid element status")
+    status = _validate_element_status(payload.status)
+    pricing_type = _validate_pricing_type(payload.pricing_type)
+    rate = max(0.0, float(payload.rate or 0))
+    estimated_cost = max(0.0, float(payload.estimated_cost or 0))
+    actual_cost = max(0.0, float(payload.actual_cost or 0))
 
     category = (payload.category or "General").strip() or "General"
     unit = (payload.unit or "pcs").strip() or "pcs"
     dimensions = (payload.dimensions or "").strip()
+    dimension_unit = (payload.dimension_unit or "ft").strip().lower() or "ft"
     area = (payload.area or "").strip()
+    function = (payload.function or "All Functions").strip() or "All Functions"
+    supplier = (payload.supplier or "").strip()
+    supplier_contact = (payload.supplier_contact or "").strip()
     notes = (payload.notes or "").strip()
+
     now = datetime.now(timezone.utc).isoformat()
 
     element = {
@@ -1856,8 +1971,16 @@ async def vendor_create_wedding_element(
         "quantity": quantity,
         "unit": unit,
         "dimensions": dimensions,
+        "dimension_unit": dimension_unit,
         "area": area,
+        "function": function,
         "status": status,
+        "pricing_type": pricing_type,
+        "rate": rate,
+        "estimated_cost": estimated_cost,
+        "actual_cost": actual_cost,
+        "supplier": supplier,
+        "supplier_contact": supplier_contact,
         "notes": notes,
         "created_at": now,
         "updated_at": now,
@@ -1909,14 +2032,35 @@ async def vendor_update_wedding_element(
     if "dimensions" in data:
         updates["dimensions"] = (data["dimensions"] or "").strip()
 
+    if "dimension_unit" in data:
+        updates["dimension_unit"] = (data["dimension_unit"] or "ft").strip().lower() or "ft"
+
     if "area" in data:
         updates["area"] = (data["area"] or "").strip()
 
+    if "function" in data:
+        updates["function"] = (data["function"] or "All Functions").strip() or "All Functions"
+
     if "status" in data:
-        status = (data["status"] or "planned").strip().lower()
-        if status not in ELEMENT_STATUS_VALUES:
-            raise HTTPException(status_code=400, detail="Invalid element status")
-        updates["status"] = status
+        updates["status"] = _validate_element_status(data["status"])
+
+    if "pricing_type" in data:
+        updates["pricing_type"] = _validate_pricing_type(data["pricing_type"])
+
+    if "rate" in data:
+        updates["rate"] = max(0.0, float(data["rate"] or 0))
+
+    if "estimated_cost" in data:
+        updates["estimated_cost"] = max(0.0, float(data["estimated_cost"] or 0))
+
+    if "actual_cost" in data:
+        updates["actual_cost"] = max(0.0, float(data["actual_cost"] or 0))
+
+    if "supplier" in data:
+        updates["supplier"] = (data["supplier"] or "").strip()
+
+    if "supplier_contact" in data:
+        updates["supplier_contact"] = (data["supplier_contact"] or "").strip()
 
     if "notes" in data:
         updates["notes"] = (data["notes"] or "").strip()
@@ -1954,197 +2098,47 @@ async def vendor_delete_wedding_element(
     return {"success": True}
 
 
-# ================= WEDDING DOCUMENTS =================
-WEDDING_DOCUMENT_MAX_BYTES = 10 * 1024 * 1024
-WEDDING_DOCUMENT_ALLOWED_EXTENSIONS = {
-    ".pdf",
-    ".doc",
-    ".docx",
-    ".xls",
-    ".xlsx",
-    ".csv",
-    ".txt",
-    ".jpg",
-    ".jpeg",
-    ".png",
-    ".webp",
-}
-
-def _document_extension(filename: str) -> str:
-    return Path(filename or "").suffix.lower()
-
-def _document_response(document: dict) -> dict:
-    # Keep the API shape simple for the frontend while retaining compatibility
-    # with common names used by document cards/download buttons.
-    return {
-        "id": document.get("id"),
-        "wedding_id": document.get("wedding_id"),
-        "vendor_id": document.get("vendor_id"),
-        "title": document.get("title") or document.get("file_name") or "Document",
-        "category": document.get("category") or "General",
-        "file_name": document.get("file_name") or "document",
-        "filename": document.get("file_name") or "document",
-        "file_type": document.get("file_type") or "application/octet-stream",
-        "content_type": document.get("file_type") or "application/octet-stream",
-        "file_size": int(document.get("file_size") or 0),
-        "size": int(document.get("file_size") or 0),
-        "url": document.get("data_url"),
-        "data_url": document.get("data_url"),
-        "uploaded_at": document.get("uploaded_at") or document.get("created_at"),
-        "created_at": document.get("created_at"),
-        "updated_at": document.get("updated_at"),
-    }
-
-
-@api_router.get("/vendor/weddings/{wedding_id}/documents")
-async def vendor_get_wedding_documents(
+@api_router.get("/vendor/weddings/{wedding_id}/elements-summary")
+async def vendor_get_wedding_elements_summary(
     wedding_id: str,
     authorization: str = Header(None),
 ):
-    user = await get_vendor_user(authorization)
-    vendor = await _ensure_vendor_profile(user)
-    await _get_vendor_wedding(wedding_id, vendor["id"])
+    vendor = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(vendor)
+    await _get_decorator_wedding(wedding_id, vendor)
 
-    documents = await db.vendor_wedding_documents.find(
+    cursor = db.vendor_wedding_elements.find(
         {"wedding_id": wedding_id, "vendor_id": vendor["id"]},
         {"_id": 0},
-    ).sort("created_at", -1).to_list(200)
+    )
 
-    return {"documents": [_document_response(document) for document in documents]}
+    total = 0
+    ordered = 0
+    pending = 0
+    estimated_cost = 0.0
+    actual_cost = 0.0
 
+    async for item in cursor:
+        total += 1
+        status = str(item.get("status", "planned")).lower()
+        if status in {"ordered", "received", "installed", "completed"}:
+            ordered += 1
+        if status not in {"completed"}:
+            pending += 1
 
-@api_router.post("/vendor/weddings/{wedding_id}/documents")
-async def vendor_upload_wedding_document(
-    wedding_id: str,
-    file: UploadFile = File(...),
-    title: str = Form(""),
-    category: str = Form("General"),
-    authorization: str = Header(None),
-):
-    user = await get_vendor_user(authorization)
-    vendor = await _ensure_vendor_profile(user)
-    await _get_vendor_wedding(wedding_id, vendor["id"])
+        calculated = _element_calculated_cost(item)
+        estimated_cost += calculated["estimated_cost"]
+        actual_cost += calculated["actual_cost"]
 
-    filename = (file.filename or "").strip()
-    if not filename:
-        raise HTTPException(status_code=400, detail="Please select a document")
-
-    extension = _document_extension(filename)
-    if extension not in WEDDING_DOCUMENT_ALLOWED_EXTENSIONS:
-        allowed = ", ".join(sorted(WEDDING_DOCUMENT_ALLOWED_EXTENSIONS))
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported document type. Allowed: {allowed}",
-        )
-
-    content = await file.read()
-    if not content:
-        raise HTTPException(status_code=400, detail="The selected document is empty")
-
-    if len(content) > WEDDING_DOCUMENT_MAX_BYTES:
-        raise HTTPException(
-            status_code=413,
-            detail="Document must be 10 MB or smaller",
-        )
-
-    import base64
-
-    content_type = file.content_type or "application/octet-stream"
-    data_url = f"data:{content_type};base64,{base64.b64encode(content).decode('ascii')}"
-    now = datetime.now(timezone.utc).isoformat()
-
-    clean_title = (title or "").strip()
-    if not clean_title:
-        clean_title = Path(filename).stem or "Document"
-
-    clean_category = (category or "General").strip() or "General"
-
-    document = {
-        "id": str(uuid.uuid4()),
-        "wedding_id": wedding_id,
-        "vendor_id": vendor["id"],
-        "title": clean_title,
-        "category": clean_category,
-        "file_name": filename,
-        "file_type": content_type,
-        "file_size": len(content),
-        "data_url": data_url,
-        "uploaded_at": now,
-        "created_at": now,
-        "updated_at": now,
+    return {
+        "summary": {
+            "total_elements": total,
+            "ordered_elements": ordered,
+            "pending_elements": pending,
+            "estimated_cost": round(estimated_cost, 2),
+            "actual_cost": round(actual_cost, 2),
+        }
     }
-
-    await db.vendor_wedding_documents.insert_one(document.copy())
-    return _document_response(document)
-
-
-@api_router.put("/vendor/weddings/{wedding_id}/documents/{document_id}")
-async def vendor_update_wedding_document(
-    wedding_id: str,
-    document_id: str,
-    payload: WeddingDocumentUpdateIn,
-    authorization: str = Header(None),
-):
-    user = await get_vendor_user(authorization)
-    vendor = await _ensure_vendor_profile(user)
-    await _get_vendor_wedding(wedding_id, vendor["id"])
-
-    updates = {}
-
-    if payload.title is not None:
-        title = payload.title.strip()
-        if not title:
-            raise HTTPException(status_code=400, detail="Document title cannot be empty")
-        updates["title"] = title
-
-    if payload.category is not None:
-        updates["category"] = payload.category.strip() or "General"
-
-    if not updates:
-        document = await db.vendor_wedding_documents.find_one(
-            {"id": document_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
-            {"_id": 0},
-        )
-        if not document:
-            raise HTTPException(status_code=404, detail="Document not found")
-        return _document_response(document)
-
-    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
-
-    result = await db.vendor_wedding_documents.update_one(
-        {"id": document_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
-        {"$set": updates},
-    )
-
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Document not found")
-
-    document = await db.vendor_wedding_documents.find_one(
-        {"id": document_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
-        {"_id": 0},
-    )
-    return _document_response(document)
-
-
-@api_router.delete("/vendor/weddings/{wedding_id}/documents/{document_id}")
-async def vendor_delete_wedding_document(
-    wedding_id: str,
-    document_id: str,
-    authorization: str = Header(None),
-):
-    user = await get_vendor_user(authorization)
-    vendor = await _ensure_vendor_profile(user)
-    await _get_vendor_wedding(wedding_id, vendor["id"])
-
-    result = await db.vendor_wedding_documents.delete_one(
-        {"id": document_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]}
-    )
-
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Document not found")
-
-    return {"success": True}
-
 
 
 # ================= WEDDING NOTIFICATIONS =================
