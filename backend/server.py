@@ -1280,6 +1280,76 @@ async def wedding_clients(
         "count": len(clients),
         "clients": clients,
     }
+class ClientUpdateIn(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    relation: Optional[str] = None
+    notes: Optional[str] = None
+
+
+@api_router.put("/vendor/weddings/{wedding_id}/clients/{client_id}")
+async def update_wedding_client(
+    wedding_id: str,
+    client_id: str,
+    payload: ClientUpdateIn,
+    authorization: str = Header(None)
+):
+    user, vendor, plan = await get_vendor_wedding_access(authorization)
+
+    wedding = await db.weddings.find_one({
+        "id": wedding_id,
+        "vendor_id": vendor["id"],
+    })
+
+    if not wedding:
+        raise HTTPException(
+            status_code=404,
+            detail="Wedding not found"
+        )
+
+    client = await db.clients.find_one({
+        "id": client_id,
+        "wedding_id": wedding_id,
+        "vendor_id": vendor["id"],
+    })
+
+    if not client:
+        raise HTTPException(
+            status_code=404,
+            detail="Client not found"
+        )
+
+    updates = payload.dict(exclude_unset=True)
+
+    if "name" in updates and updates["name"] is not None:
+        updates["name"] = updates["name"].strip()
+
+    await db.clients.update_one(
+        {
+            "id": client_id,
+            "wedding_id": wedding_id,
+            "vendor_id": vendor["id"],
+        },
+        {
+            "$set": updates
+        }
+    )
+
+    updated_client = await db.clients.find_one(
+        {
+            "id": client_id,
+            "wedding_id": wedding_id,
+            "vendor_id": vendor["id"],
+        },
+        {"_id": 0}
+    )
+
+    return {
+        "ok": True,
+        "client": updated_client,
+    }
+
 
 
 # ---- Object Storage ----
