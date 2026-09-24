@@ -77,7 +77,41 @@ const saveClient = async () => {
   } finally {
     setSavingClient(false);
   }
-};
+  };
+
+  const updateClient = async () => {
+    if (!editingClientId || !clientName.trim() || savingClient) return;
+
+    setSavingClient(true);
+
+    try {
+      await authAxios.put(
+        `/vendor/weddings/${wedding.id}/clients/${editingClientId}`,
+        {
+          name: clientName.trim(),
+          phone: clientPhone,
+          email: clientEmail,
+          relation: clientRelation,
+          notes: clientNotes,
+        }
+      );
+
+      setClientName("");
+      setClientPhone("");
+      setClientEmail("");
+      setClientRelation("");
+      setClientNotes("");
+      setEditingClientId(null);
+      setShowClientForm(false);
+
+      await loadClients();
+    } catch (error) {
+      console.error("Failed to update client:", error);
+    } finally {
+      setSavingClient(false);
+    }
+  };
+
   const formatDate = (date) => {
     if (!date) return 'Date not set';
 
