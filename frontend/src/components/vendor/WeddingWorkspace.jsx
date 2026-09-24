@@ -204,14 +204,12 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
                 type="button"
                onClick={() => {
                 setActiveModule(module.title);
-                if (module.title === "Overview") {
-                  setTimeout(() => {
-                    document.getElementById("wedding-overview")?.scrollIntoView({
-                      behavior: "smooth",
-                      block: "start"
-                    });
-                  }, 100);
-                }
+             setTimeout(() => {
+                document.getElementById("wedding-module")?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "start"
+                });
+              }, 100);
               }}
                 className="group text-left rounded-2xl border border-[#eadff2] bg-white/80 hover:bg-white hover:border-[#d9c7e6] shadow-[0_10px_30px_rgba(190,160,210,0.08)] transition-all duration-200 p-5"
               >
@@ -234,7 +232,7 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
 
         </div>
 {activeModule && (
- <div id="wedding-overview" className="mt-6 rounded-2xl border border-[#eadff2] bg-white/80 p-6 shadow-[0_10px_30px_rgba(190,160,210,0.08)]">
+ <div id="wedding-module" className="mt-6 rounded-2xl border border-[#eadff2] bg-white/80 p-6 shadow-[0_10px_30px_rgba(190,160,210,0.08)]">
     <div className="flex items-center justify-between">
       <h3 className="text-lg font-semibold text-[#2D2638]">
         {activeModule}
