@@ -25,6 +25,7 @@ const [clientPhone, setClientPhone] = useState("");
 const [clientEmail, setClientEmail] = useState("");
 const [clientRelation, setClientRelation] = useState("");
 const [clientNotes, setClientNotes] = useState("");
+  const [savingClient, setSavingClient] = useState(false);
   useEffect(() => {
   loadClients();
 }, [wedding.id]);
@@ -47,7 +48,9 @@ const loadClients = async () => {
   }
 };
 const saveClient = async () => {
-  if (!clientName.trim()) return;
+  if (!clientName.trim() || savingClient) return;
+
+  setSavingClient(true);
 
   try {
     await authAxios.post(
@@ -68,8 +71,10 @@ const saveClient = async () => {
     setClientNotes("");
     setShowClientForm(false);
     loadClients();
-  } catch (error) {
+    } catch (error) {
     console.error("Failed to save client:", error);
+  } finally {
+    setSavingClient(false);
   }
 };
   const formatDate = (date) => {
@@ -469,12 +474,13 @@ const saveClient = async () => {
             Save Client
           </button>
 
-          <button
+         <button
             type="button"
-            onClick={() => setShowClientForm(false)}
-            className="rounded-xl px-4 py-2 text-sm text-[#8B8194]"
+            onClick={saveClient}
+            disabled={savingClient}
+            className="rounded-xl bg-[#8B6AA8] px-4 py-2 text-sm font-medium text-white disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Cancel
+            {savingClient ? "Saving..." : "Save Client"}
           </button>
         </div>
       </div>
