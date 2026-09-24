@@ -532,6 +532,28 @@ const saveClient = async () => {
               {client.relation && <p>Relation: {client.relation}</p>}
               {client.notes && <p>Notes: {client.notes}</p>}
             </div>
+            {client.notes && <p>Notes: {client.notes}</p>}
+</div>
+
+<div className="mt-3">
+  <button
+    type="button"
+    onClick={() => {
+      setEditingClientId(client.id);
+      setClientName(client.name || "");
+      setClientPhone(client.phone || "");
+      setClientEmail(client.email || "");
+      setClientRelation(client.relation || "");
+      setClientNotes(client.notes || "");
+      setShowClientForm(true);
+    }}
+    className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadff5]"
+  >
+    Edit
+  </button>
+</div>
+
+</div>
           </div>
         ))}
       </div>
