@@ -246,7 +246,9 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
       </button>
     </div>
    <p className="mt-2 text-sm text-[#6B6175]">
- Manage and track everything that needs to be done for this wedding.
+{activeModule === "Tasks"
+  ? "Manage and track everything that needs to be done for this wedding."
+  : "Wedding overview and important details."}
 </p>
 
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
