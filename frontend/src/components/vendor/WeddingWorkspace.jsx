@@ -89,7 +89,7 @@ const [tasks, setTasks] = useState([]);
 
         <button
           onClick={onBack}
-          className="flex items-center gap-2  text-[#8B8194] hover:text-white transition mb-6"
+          className="flex items-center gap-2  text-[#8B8194]hover:text-[#2D2638] transition mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Weddings
