@@ -10,8 +10,27 @@ import {
   Sparkles,
   MapPin,
   Heart,
+  Plus,
+  Trash2,
+  Edit3,
 } from 'lucide-react';
 import { authAxios } from '../../lib/auth';
+
+const emptyExpense = {
+  title: '',
+  category: 'General',
+  amount: '',
+  expense_date: '',
+  notes: '',
+};
+
+const emptyPayment = {
+  title: '',
+  payment_type: 'payment',
+  amount: '',
+  payment_date: '',
+  notes: '',
+};
 
 const WeddingWorkspace = ({ wedding, onBack }) => {
   const [activeModule, setActiveModule] = useState(null);
@@ -29,9 +48,30 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
   const [editingClientId, setEditingClientId] = useState(null);
   const [editingTaskIndex, setEditingTaskIndex] = useState(null);
 
+  const [budgetData, setBudgetData] = useState({
+    budget: {
+      total_budget: Number(wedding?.budget || 0),
+      total_expenses: 0,
+      total_payments: 0,
+      remaining_budget: Number(wedding?.budget || 0),
+      payment_balance: 0,
+    },
+    expenses: [],
+    payments: [],
+  });
+  const [budgetLoading, setBudgetLoading] = useState(false);
+  const [budgetSaving, setBudgetSaving] = useState(false);
+  const [showExpenseForm, setShowExpenseForm] = useState(false);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [expenseForm, setExpenseForm] = useState(emptyExpense);
+  const [paymentForm, setPaymentForm] = useState(emptyPayment);
+  const [editingExpenseId, setEditingExpenseId] = useState(null);
+  const [editingPaymentId, setEditingPaymentId] = useState(null);
+
   useEffect(() => {
     if (wedding?.id) {
       loadClients();
+      loadBudget();
     }
   }, [wedding?.id]);
 
@@ -51,6 +91,24 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
       setClients(response.data.clients || []);
     } catch (error) {
       console.error("Failed to load clients:", error);
+    }
+  };
+
+  const loadBudget = async () => {
+    setBudgetLoading(true);
+    try {
+      const response = await authAxios.get(
+        `/vendor/weddings/${wedding.id}/budget`
+      );
+      setBudgetData({
+        budget: response.data?.budget || budgetData.budget,
+        expenses: response.data?.expenses || [],
+        payments: response.data?.payments || [],
+      });
+    } catch (error) {
+      console.error("Failed to load wedding budget:", error);
+    } finally {
+      setBudgetLoading(false);
     }
   };
 
@@ -116,6 +174,116 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
     setShowClientForm(false);
   };
 
+  const resetExpenseForm = () => {
+    setExpenseForm(emptyExpense);
+    setEditingExpenseId(null);
+    setShowExpenseForm(false);
+  };
+
+  const resetPaymentForm = () => {
+    setPaymentForm(emptyPayment);
+    setEditingPaymentId(null);
+    setShowPaymentForm(false);
+  };
+
+  const saveExpense = async () => {
+    if (!expenseForm.title.trim() || !Number(expenseForm.amount) || budgetSaving) return;
+    setBudgetSaving(true);
+    try {
+      const payload = {
+        ...expenseForm,
+        title: expenseForm.title.trim(),
+        amount: Number(expenseForm.amount),
+      };
+      if (editingExpenseId) {
+        await authAxios.put(
+          `/vendor/weddings/${wedding.id}/expenses/${editingExpenseId}`,
+          payload
+        );
+      } else {
+        await authAxios.post(`/vendor/weddings/${wedding.id}/expenses`, payload);
+      }
+      resetExpenseForm();
+      await loadBudget();
+    } catch (error) {
+      console.error("Failed to save expense:", error);
+      window.alert(error.response?.data?.detail || 'Could not save expense.');
+    } finally {
+      setBudgetSaving(false);
+    }
+  };
+
+  const deleteExpense = async (id) => {
+    if (!window.confirm('Delete this expense?')) return;
+    try {
+      await authAxios.delete(`/vendor/weddings/${wedding.id}/expenses/${id}`);
+      await loadBudget();
+    } catch (error) {
+      console.error("Failed to delete expense:", error);
+      window.alert(error.response?.data?.detail || 'Could not delete expense.');
+    }
+  };
+
+  const savePayment = async () => {
+    if (!paymentForm.title.trim() || !Number(paymentForm.amount) || budgetSaving) return;
+    setBudgetSaving(true);
+    try {
+      const payload = {
+        ...paymentForm,
+        title: paymentForm.title.trim(),
+        amount: Number(paymentForm.amount),
+      };
+      if (editingPaymentId) {
+        await authAxios.put(
+          `/vendor/weddings/${wedding.id}/payments/${editingPaymentId}`,
+          payload
+        );
+      } else {
+        await authAxios.post(`/vendor/weddings/${wedding.id}/payments`, payload);
+      }
+      resetPaymentForm();
+      await loadBudget();
+    } catch (error) {
+      console.error("Failed to save payment:", error);
+      window.alert(error.response?.data?.detail || 'Could not save payment.');
+    } finally {
+      setBudgetSaving(false);
+    }
+  };
+
+  const deletePayment = async (id) => {
+    if (!window.confirm('Delete this payment?')) return;
+    try {
+      await authAxios.delete(`/vendor/weddings/${wedding.id}/payments/${id}`);
+      await loadBudget();
+    } catch (error) {
+      console.error("Failed to delete payment:", error);
+      window.alert(error.response?.data?.detail || 'Could not delete payment.');
+    }
+  };
+
+  const updateWeddingBudget = async (value) => {
+    const amount = Number(value);
+    if (!Number.isFinite(amount) || amount < 0 || budgetSaving) return;
+    setBudgetSaving(true);
+    try {
+      const response = await authAxios.put(
+        `/vendor/weddings/${wedding.id}/budget`,
+        { total_budget: amount }
+      );
+      setBudgetData({
+        budget: response.data?.budget || budgetData.budget,
+        expenses: response.data?.expenses || budgetData.expenses,
+        payments: response.data?.payments || budgetData.payments,
+      });
+    } catch (error) {
+      console.error("Failed to update wedding budget:", error);
+      window.alert(error.response?.data?.detail || 'Could not update budget.');
+    } finally {
+      setBudgetSaving(false);
+    }
+  };
+
   const formatDate = (date) => {
     if (!date) return 'Date not set';
     const parsed = new Date(date);
@@ -142,6 +310,8 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
     { title: 'Notifications', description: 'Important reminders and wedding updates', icon: Bell },
     { title: 'AI Assistant', description: 'Get AI-powered help for this wedding', icon: Sparkles },
   ];
+
+  const budget = budgetData.budget || {};
 
   return (
     <div className="min-h-screen bg-[#fcf9ff] px-4 py-6 md:px-8 text-[#2D2638]">
@@ -296,6 +466,8 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
                 ? "Manage and track everything that needs to be done for this wedding."
                 : activeModule === "Clients"
                 ? "Manage client details and communication for this wedding."
+                : activeModule === "Budget & Payments"
+                ? "Track budget, expenses, advances and payments for this wedding."
                 : "Wedding overview and important details."}
             </p>
 
@@ -356,7 +528,6 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
                         }}
                         className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8]"
                       >
-                       >
                         {editingTaskIndex !== null ? "Update Task" : "Save Task"}
                       </button>
                       <button
@@ -400,16 +571,16 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
                             {task.title}
                           </span>
                           <button
-                          type="button"
-                          onClick={() => {
-                            setEditingTaskIndex(index);
-                            setTaskTitle(task.title);
-                            setShowTaskForm(true);
-                          }}
-                          className="ml-auto rounded-lg bg-[#f4eafa] px-3 py-1 text-sm text-[#8B6AA8]"
-                        >
-                          Edit
-                        </button>
+                            type="button"
+                            onClick={() => {
+                              setEditingTaskIndex(index);
+                              setTaskTitle(task.title);
+                              setShowTaskForm(true);
+                            }}
+                            className="ml-auto rounded-lg bg-[#f4eafa] px-3 py-1 text-sm text-[#8B6AA8]"
+                          >
+                            Edit
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -447,53 +618,18 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
                 {showClientForm && (
                   <div className="mt-5 rounded-xl border border-[#eadff2] bg-white p-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <input
-                        value={clientName}
-                        onChange={(e) => setClientName(e.target.value)}
-                        placeholder="Client Name *"
-                        className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none"
-                      />
-                      <input
-                        value={clientPhone}
-                        onChange={(e) => setClientPhone(e.target.value)}
-                        placeholder="Phone"
-                        className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none"
-                      />
-                      <input
-                        value={clientEmail}
-                        onChange={(e) => setClientEmail(e.target.value)}
-                        placeholder="Email"
-                        className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none"
-                      />
-                      <input
-                        value={clientRelation}
-                        onChange={(e) => setClientRelation(e.target.value)}
-                        placeholder="Relation (Bride / Groom / Family)"
-                        className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none"
-                      />
-                      <textarea
-                        value={clientNotes}
-                        onChange={(e) => setClientNotes(e.target.value)}
-                        placeholder="Notes"
-                        rows="3"
-                        className="md:col-span-2 rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none"
-                      />
+                      <input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Client Name *" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
+                      <input value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} placeholder="Phone" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
+                      <input value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} placeholder="Email" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
+                      <input value={clientRelation} onChange={(e) => setClientRelation(e.target.value)} placeholder="Relation (Bride / Groom / Family)" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
+                      <textarea value={clientNotes} onChange={(e) => setClientNotes(e.target.value)} placeholder="Notes" rows="3" className="md:col-span-2 rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
                     </div>
 
                     <div className="flex gap-2 mt-4">
-                      <button
-                        type="button"
-                        onClick={editingClientId ? updateClient : saveClient}
-                        disabled={savingClient}
-                        className="rounded-xl bg-[#8B6AA8] px-4 py-2 text-sm font-medium text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                      >
+                      <button type="button" onClick={editingClientId ? updateClient : saveClient} disabled={savingClient} className="rounded-xl bg-[#8B6AA8] px-4 py-2 text-sm font-medium text-white disabled:opacity-60 disabled:cursor-not-allowed">
                         {savingClient ? "Saving..." : editingClientId ? "Update Client" : "Save Client"}
                       </button>
-                      <button
-                        type="button"
-                        onClick={resetClientForm}
-                        className="rounded-xl px-4 py-2 text-sm text-[#8B8194]"
-                      >
+                      <button type="button" onClick={resetClientForm} className="rounded-xl px-4 py-2 text-sm text-[#8B8194]">
                         Cancel
                       </button>
                     </div>
@@ -503,10 +639,7 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
                 {clients.length > 0 && (
                   <div className="mt-4 space-y-3">
                     {clients.map((client) => (
-                      <div
-                        key={client.id}
-                        className="rounded-xl border border-[#eadff2] bg-white p-4"
-                      >
+                      <div key={client.id} className="rounded-xl border border-[#eadff2] bg-white p-4">
                         <p className="font-medium text-[#3F3748]">{client.name}</p>
                         <div className="mt-1 text-sm text-[#6B6175] space-y-1">
                           {client.phone && <p>Phone: {client.phone}</p>}
@@ -515,19 +648,15 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
                           {client.notes && <p>Notes: {client.notes}</p>}
                         </div>
                         <div className="mt-3">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingClientId(client.id);
-                              setClientName(client.name || "");
-                              setClientPhone(client.phone || "");
-                              setClientEmail(client.email || "");
-                              setClientRelation(client.relation || "");
-                              setClientNotes(client.notes || "");
-                              setShowClientForm(true);
-                            }}
-                            className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadff5]"
-                          >
+                          <button type="button" onClick={() => {
+                            setEditingClientId(client.id);
+                            setClientName(client.name || "");
+                            setClientPhone(client.phone || "");
+                            setClientEmail(client.email || "");
+                            setClientRelation(client.relation || "");
+                            setClientNotes(client.notes || "");
+                            setShowClientForm(true);
+                          }} className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadff5]">
                             Edit
                           </button>
                         </div>
@@ -538,55 +667,142 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
               </div>
             )}
 
-            {/* OVERVIEW MODULE / DEFAULT INFO */}
+            {/* OVERVIEW MODULE */}
             {activeModule === "Overview" && (
               <div className="mt-4 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
-                    <p className="text-xs text-[#8B8194]">Bride</p>
-                    <p className="text-sm font-medium text-[#3F3748] mt-1">
-                      {wedding.bride_name || "Not added"}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
-                    <p className="text-xs text-[#8B8194]">Groom</p>
-                    <p className="text-sm font-medium text-[#3F3748] mt-1">
-                      {wedding.groom_name || "Not added"}
-                    </p>
-                  </div>
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4"><p className="text-xs text-[#8B8194]">Bride</p><p className="text-sm font-medium text-[#3F3748] mt-1">{wedding.bride_name || "Not added"}</p></div>
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4"><p className="text-xs text-[#8B8194]">Groom</p><p className="text-sm font-medium text-[#3F3748] mt-1">{wedding.groom_name || "Not added"}</p></div>
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
-                    <p className="text-xs text-[#8B8194]">Wedding Date</p>
-                    <p className="text-sm font-medium text-[#3F3748] mt-1">
-                      {formatDate(wedding.wedding_date)}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
-                    <p className="text-xs text-[#8B8194]">Venue & Location</p>
-                    <p className="text-sm font-medium text-[#3F3748] mt-1">
-                      {wedding.venue || "Venue not added"}
-                      {wedding.city ? `, ${wedding.city}` : ""}
-                    </p>
-                  </div>
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4"><p className="text-xs text-[#8B8194]">Wedding Date</p><p className="text-sm font-medium text-[#3F3748] mt-1">{formatDate(wedding.wedding_date)}</p></div>
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4"><p className="text-xs text-[#8B8194]">Venue & Location</p><p className="text-sm font-medium text-[#3F3748] mt-1">{wedding.venue || "Venue not added"}{wedding.city ? `, ${wedding.city}` : ""}</p></div>
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
-                    <p className="text-xs text-[#8B8194]">Guest Count</p>
-                    <p className="text-sm font-medium text-[#3F3748] mt-1">
-                      {wedding.guest_count || "Not added"}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
-                    <p className="text-xs text-[#8B8194]">Budget</p>
-                    <p className="text-sm font-medium text-[#3F3748] mt-1">
-                      {formatCurrency(wedding.budget)}
-                    </p>
-                  </div>
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4"><p className="text-xs text-[#8B8194]">Guest Count</p><p className="text-sm font-medium text-[#3F3748] mt-1">{wedding.guest_count || "Not added"}</p></div>
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4"><p className="text-xs text-[#8B8194]">Budget</p><p className="text-sm font-medium text-[#3F3748] mt-1">{formatCurrency(wedding.budget)}</p></div>
                 </div>
               </div>
+            )}
+
+            {/* BUDGET & PAYMENTS MODULE */}
+            {activeModule === "Budget & Payments" && (
+              <div className="mt-4 space-y-5">
+                <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                      <p className="text-sm text-[#8B8194]">Financial Management</p>
+                      <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding Budget</h4>
+                      <p className="text-sm text-[#6B6175] mt-1">Track your planned budget, expenses and client payments.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-[#8B8194]">Total Budget</label>
+                      <input
+                        type="number"
+                        min="0"
+                        defaultValue={budget.total_budget || 0}
+                        key={budget.total_budget}
+                        onBlur={(e) => updateWeddingBudget(e.target.value)}
+                        className="w-40 rounded-xl border border-[#eadff2] bg-white px-3 py-2 text-sm text-[#3F3748] outline-none focus:border-[#c9a9df]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4"><p className="text-xs text-[#8B8194]">Total Budget</p><p className="text-xl font-semibold text-[#3F3748] mt-1">{formatCurrency(budget.total_budget)}</p></div>
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4"><p className="text-xs text-[#8B8194]">Expenses</p><p className="text-xl font-semibold text-[#3F3748] mt-1">{formatCurrency(budget.total_expenses)}</p></div>
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4"><p className="text-xs text-[#8B8194]">Payments Received</p><p className="text-xl font-semibold text-[#3F3748] mt-1">{formatCurrency(budget.total_payments)}</p></div>
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4"><p className="text-xs text-[#8B8194]">Remaining Budget</p><p className="text-xl font-semibold text-[#3F3748] mt-1">{formatCurrency(budget.remaining_budget)}</p></div>
+                </div>
+
+                {budgetLoading ? (
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-8 text-center text-sm text-[#8B8194]">Loading budget...</div>
+                ) : (
+                  <>
+                    <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                        <div><p className="text-sm text-[#8B8194]">Expense Management</p><h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding Expenses</h4></div>
+                        <button type="button" onClick={() => { resetExpenseForm(); setShowExpenseForm(true); }} className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadcf5]"><Plus className="inline w-4 h-4 mr-1" />Add Expense</button>
+                      </div>
+
+                      {showExpenseForm && (
+                        <div className="mt-4 rounded-xl border border-[#eadff2] bg-white p-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input value={expenseForm.title} onChange={(e) => setExpenseForm({ ...expenseForm, title: e.target.value })} placeholder="Expense title *" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
+                            <input type="number" min="0" value={expenseForm.amount} onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })} placeholder="Amount *" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
+                            <select value={expenseForm.category} onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })} className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none bg-white"><option>General</option><option>Venue</option><option>Decor</option><option>Catering</option><option>Photography</option><option>Entertainment</option><option>Transport</option><option>Accommodation</option><option>Invitations</option><option>Other</option></select>
+                            <input type="date" value={expenseForm.expense_date} onChange={(e) => setExpenseForm({ ...expenseForm, expense_date: e.target.value })} className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
+                            <textarea value={expenseForm.notes} onChange={(e) => setExpenseForm({ ...expenseForm, notes: e.target.value })} placeholder="Notes" rows="2" className="md:col-span-2 rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
+                          </div>
+                          <div className="flex gap-2 mt-4"><button type="button" onClick={saveExpense} disabled={budgetSaving} className="rounded-xl bg-[#8B6AA8] px-4 py-2 text-sm font-medium text-white disabled:opacity-60">{budgetSaving ? 'Saving...' : editingExpenseId ? 'Update Expense' : 'Save Expense'}</button><button type="button" onClick={resetExpenseForm} className="rounded-xl px-4 py-2 text-sm text-[#8B8194]">Cancel</button></div>
+                        </div>
+                      )}
+
+                      {budgetData.expenses.length > 0 ? (
+                        <div className="mt-4 space-y-2">
+                          {budgetData.expenses.map((expense) => (
+                            <div key={expense.id} className="flex flex-col md:flex-row md:items-center gap-3 rounded-lg border border-[#eadff2] bg-white px-4 py-3">
+                              <div className="flex-1"><p className="text-sm font-medium text-[#3F3748]">{expense.title}</p><p className="text-xs text-[#8B8194] mt-1">{expense.category}{expense.expense_date ? ` • ${expense.expense_date}` : ''}{expense.notes ? ` • ${expense.notes}` : ''}</p></div>
+                              <p className="text-sm font-semibold text-[#3F3748]">{formatCurrency(expense.amount)}</p>
+                              <button type="button" onClick={() => { setEditingExpenseId(expense.id); setExpenseForm({ title: expense.title || '', category: expense.category || 'General', amount: expense.amount || '', expense_date: expense.expense_date || '', notes: expense.notes || '' }); setShowExpenseForm(true); }} className="rounded-lg bg-[#f4eafa] px-3 py-1 text-sm text-[#8B6AA8]"><Edit3 className="inline w-3.5 h-3.5 mr-1" />Edit</button>
+                              <button type="button" onClick={() => deleteExpense(expense.id)} className="rounded-lg bg-[#fff1f4] px-3 py-1 text-sm text-red-400"><Trash2 className="inline w-3.5 h-3.5 mr-1" />Delete</button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : <p className="mt-4 text-sm text-[#8B8194]">No expenses added yet.</p>}
+                    </div>
+
+                    <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                        <div><p className="text-sm text-[#8B8194]">Payment Management</p><h4 className="text-lg font-semibold text-[#3F3748] mt-1">Advances & Payments</h4></div>
+                        <button type="button" onClick={() => { resetPaymentForm(); setShowPaymentForm(true); }} className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadcf5]"><Plus className="inline w-4 h-4 mr-1" />Add Payment</button>
+                      </div>
+
+                      {showPaymentForm && (
+                        <div className="mt-4 rounded-xl border border-[#eadff2] bg-white p-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input value={paymentForm.title} onChange={(e) => setPaymentForm({ ...paymentForm, title: e.target.value })} placeholder="Payment title *" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
+                            <input type="number" min="0" value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} placeholder="Amount *" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
+                            <select value={paymentForm.payment_type} onChange={(e) => setPaymentForm({ ...paymentForm, payment_type: e.target.value })} className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none bg-white"><option value="advance">Advance</option><option value="payment">Payment</option><option value="refund">Refund</option></select>
+                            <input type="date" value={paymentForm.payment_date} onChange={(e) => setPaymentForm({ ...paymentForm, payment_date: e.target.value })} className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
+                            <textarea value={paymentForm.notes} onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })} placeholder="Notes" rows="2" className="md:col-span-2 rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
+                          </div>
+                          <div className="flex gap-2 mt-4"><button type="button" onClick={savePayment} disabled={budgetSaving} className="rounded-xl bg-[#8B6AA8] px-4 py-2 text-sm font-medium text-white disabled:opacity-60">{budgetSaving ? 'Saving...' : editingPaymentId ? 'Update Payment' : 'Save Payment'}</button><button type="button" onClick={resetPaymentForm} className="rounded-xl px-4 py-2 text-sm text-[#8B8194]">Cancel</button></div>
+                        </div>
+                      )}
+
+                      {budgetData.payments.length > 0 ? (
+                        <div className="mt-4 space-y-2">
+                          {budgetData.payments.map((payment) => (
+                            <div key={payment.id} className="flex flex-col md:flex-row md:items-center gap-3 rounded-lg border border-[#eadff2] bg-white px-4 py-3">
+                              <div className="flex-1"><p className="text-sm font-medium text-[#3F3748]">{payment.title}</p><p className="text-xs text-[#8B8194] mt-1 capitalize">{payment.payment_type}{payment.payment_date ? ` • ${payment.payment_date}` : ''}{payment.notes ? ` • ${payment.notes}` : ''}</p></div>
+                              <p className={`text-sm font-semibold ${payment.payment_type === 'refund' ? 'text-red-400' : 'text-[#3F3748]'}`}>{payment.payment_type === 'refund' ? '-' : ''}{formatCurrency(payment.amount)}</p>
+                              <button type="button" onClick={() => { setEditingPaymentId(payment.id); setPaymentForm({ title: payment.title || '', payment_type: payment.payment_type || 'payment', amount: payment.amount || '', payment_date: payment.payment_date || '', notes: payment.notes || '' }); setShowPaymentForm(true); }} className="rounded-lg bg-[#f4eafa] px-3 py-1 text-sm text-[#8B6AA8]"><Edit3 className="inline w-3.5 h-3.5 mr-1" />Edit</button>
+                              <button type="button" onClick={() => deletePayment(payment.id)} className="rounded-lg bg-[#fff1f4] px-3 py-1 text-sm text-red-400"><Trash2 className="inline w-3.5 h-3.5 mr-1" />Delete</button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : <p className="mt-4 text-sm text-[#8B8194]">No payments added yet.</p>}
+                    </div>
+
+                    <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                      <div className="flex items-center justify-between"><div><p className="text-sm text-[#8B8194]">Payment Balance</p><h4 className="text-lg font-semibold text-[#3F3748] mt-1">Expense vs. Payments</h4></div><p className="text-lg font-semibold text-[#3F3748]">{formatCurrency(budget.payment_balance)}</p></div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* PLACEHOLDER MODULES — kept unchanged until their dedicated backend work */}
+            {activeModule === "Documents" && (
+              <div className="mt-4 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5"><p className="text-sm text-[#8B8194]">Documents</p><h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding Documents</h4><p className="text-sm text-[#6B6175] mt-1">Document management will be added next.</p></div>
+            )}
+            {activeModule === "Notifications" && (
+              <div className="mt-4 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5"><p className="text-sm text-[#8B8194]">Notifications</p><h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding Notifications</h4><p className="text-sm text-[#6B6175] mt-1">Wedding reminders and updates will be added next.</p></div>
+            )}
+            {activeModule === "AI Assistant" && (
+              <div className="mt-4 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5"><p className="text-sm text-[#8B8194]">AI Assistant</p><h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding AI Assistant</h4><p className="text-sm text-[#6B6175] mt-1">Wedding-specific AI assistance will be added next.</p></div>
             )}
           </div>
         )}
