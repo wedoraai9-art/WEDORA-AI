@@ -247,27 +247,9 @@ async def get_current_user(authorization: str = Header(None)):
         raise HTTPException(status_code=401, detail="User not found")
     return user
 
-# ================= HEALTH =================
-@api_router.get("/")
-async def root():
-    return {"service": "WEDORA AI", "status": "ok"}
+# Other chat & auth routes here...
 
-app.include_router(api_router)
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
-    # ================= VENUES & VENDORS =================
+# ================= VENUES & VENDORS =================
 @api_router.get("/venues")
 async def get_venues():
     return [
@@ -281,3 +263,19 @@ async def get_vendors():
         {"id": "1", "name": "Royal Photography", "category": "Photography"},
         {"id": "2", "name": "Shaadi Caterers", "category": "Catering"}
     ]
+
+# ================= HEALTH =================
+@api_router.get("/")
+async def root():
+    return {"service": "WEDORA AI", "status": "ok"}
+
+# REGISTER THE ROUTER HERE (Must be after all api_router definitions)
+app.include_router(api_router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
