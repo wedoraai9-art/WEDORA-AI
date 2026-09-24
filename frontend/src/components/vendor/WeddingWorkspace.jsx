@@ -70,7 +70,7 @@ const saveClient = async () => {
     setClientRelation("");
     setClientNotes("");
     setShowClientForm(false);
-    setClients((current) => [response.data.client, ...current]);
+   await loadClients();
     } catch (error) {
     console.error("Failed to save client:", error);
   } finally {
