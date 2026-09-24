@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Request, UploadFile, File, Header, Query
+
 from fastapi.responses import StreamingResponse, Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -144,6 +144,136 @@ class BudgetOut(BaseModel):
     functions: int
     per_head: float
     categories: List[BudgetCategory]
+
+
+# ---------- WEDORA DESIGNER ----------
+class DesignerIn(BaseModel):
+    dream_description: str
+
+
+@api_router.post("/designer/generate")
+async def designer_generate(payload: DesignerIn):
+    """
+    Generate a custom wedding design from the user's description.
+    Uses the same Gemini setup as the working WEDORA chat.
+    """
+    if not payload.dream_description.strip():
+        raise HTTPException(status_code=400, detail="Please describe the wedding design.")
+
+    session_id = f"designer-{uuid.uuid4()}"
+
+    designer_system = """
+You are WEDORA Designs It — a premium Indian wedding design intelligence.
+
+Your job is to turn the client's exact design request into a CUSTOM wedding design.
+Never return a generic default design. Every request must produce a fresh design based
+on the client's colors, mood, style, culture, venue, season, or other details.
+
+Return ONLY valid JSON with exactly these keys:
+{
+  "theme": "unique theme name",
+  "palette": ["#HEX", "#HEX", "#HEX", "#HEX", "#HEX"],
+  "mandap": "specific mandap design",
+  "stage": "specific stage design",
+  "entrance": "specific entrance design",
+  "table_decor": "specific table decor design",
+  "lighting": "specific lighting design",
+  "florals": "specific floral design",
+  "design_summary": "short summary of the complete design",
+  "image_prompt": "detailed photorealistic prompt describing this exact wedding design"
+}
+
+IMPORTANT:
+- Follow the client's request exactly.
+- If the client says red and gold, the palette must be red/gold-led.
+- Do not use the same pastel palette for every request.
+- Create a different theme and design details for different requests.
+- Use Indian wedding design knowledge when appropriate.
+- The image_prompt must describe the same design you created.
+"""
+
+    prompt = f"""
+Client's wedding design request:
+
+{payload.dream_description}
+
+Create the complete custom design now.
+"""
+
+    try:
+        chat = LlmChat(
+            api_key=GEMINI_API_KEY,
+            session_id=session_id,
+            system_message=designer_system,
+        )
+
+        raw = await chat.send_message(UserMessage(text=prompt))
+        text = raw.strip()
+
+        # Safely extract a JSON object even if the model adds code fences.
+        match = re.search(r"\{[\s\S]*\}", text)
+        if not match:
+            raise ValueError("Gemini did not return a JSON design.")
+
+        parsed = jsonlib.loads(match.group(0))
+
+        required = [
+            "theme", "palette", "mandap", "stage", "entrance",
+            "table_decor", "lighting", "florals",
+            "design_summary", "image_prompt"
+        ]
+
+        for key in required:
+            if key not in parsed:
+                raise ValueError(f"Missing design field: {key}")
+
+        if not isinstance(parsed["palette"], list) or len(parsed["palette"]) < 3:
+            raise ValueError("Invalid design palette.")
+
+    except Exception as e:
+        logging.exception("Designer AI failed")
+        raise HTTPException(status_code=500, detail=f"Designer AI failed: {str(e)}")
+
+    # Optional visual references. This does NOT control the AI design itself.
+    hero_image = None
+    reference_images = []
+
+    if PEXELS_API_KEY:
+        try:
+            search_query = f"{parsed['theme']} Indian wedding {payload.dream_description}"
+
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                response = await client.get(
+                    "https://api.pexels.com/v1/search",
+                    headers={"Authorization": PEXELS_API_KEY},
+                    params={
+                        "query": search_query[:180],
+                        "per_page": 6,
+                        "orientation": "landscape",
+                    },
+                )
+                response.raise_for_status()
+                data = response.json()
+
+                for photo in data.get("photos", []):
+                    src = photo.get("src", {})
+                    image_url = src.get("large2x") or src.get("large")
+                    if image_url:
+                        reference_images.append(image_url)
+
+                if reference_images:
+                    hero_image = reference_images[0]
+
+        except Exception:
+            logging.exception("Pexels reference search failed")
+            # Design generation still succeeds if Pexels is unavailable.
+
+    parsed["hero_image"] = hero_image
+    parsed["reference_images"] = reference_images
+    parsed["session_id"] = session_id
+
+    return parsed
+
 
 # ---------- Chat (SSE streaming) ----------
 @api_router.post("/chat/stream")
