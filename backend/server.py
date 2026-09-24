@@ -62,20 +62,43 @@ class LlmChat:
         )
         return response.text or ""
 
-    async def stream_message(self, message):
-        stream = await self.client.aio.models.generate_content_stream(
-            model=self.model,
-            contents=message.text,
-            config={
-                "system_instruction": self.system_message or "",
-            },
-        )
+        async def stream_message(self, message):
+        max_retries = 3
+        retry_delays = [2, 4, 8]
 
-        async for chunk in stream:
-            if chunk.text:
-                yield TextDelta(chunk.text)
+        for attempt in range(max_retries):
+            yielded_text = False
 
-        yield StreamDone()
+            try:
+                stream = await self.client.aio.models.generate_content_stream(
+                    model=self.model,
+                    contents=message.text,
+                    config={
+                        "system_instruction": self.system_message or "",
+                    },
+                )
+
+                async for chunk in stream:
+                    if chunk.text:
+                        yielded_text = True
+                        yield TextDelta(chunk.text)
+
+                yield StreamDone()
+                return
+
+            except Exception as e:
+                error_text = str(e)
+
+                is_retryable = (
+                    "503" in error_text
+                    or "UNAVAILABLE" in error_text
+                    or "Service Unavailable" in error_text
+                )
+
+                if not is_retryable or yielded_text or attempt == max_retries - 1:
+                    raise
+
+                await asyncio.sleep(retry_delays[attempt])
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
