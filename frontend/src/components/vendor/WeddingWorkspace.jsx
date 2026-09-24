@@ -56,26 +56,213 @@ const DECORATOR_ELEMENT_CATEGORIES = [
   'Custom',
 ];
 
-const COMMON_DECOR_ITEMS = [
-  'Platform',
-  'Carpet',
-  'Decor Truss',
-  'Sound Truss',
-  'Flex',
-  'Backdrop',
-  'Riser',
-  'Podium',
-  'Stall',
-  'Panel',
-  'Table',
-  'Chair',
-  'Sofa',
-  'Backdrop Fabric',
-  'Fairy Lights',
-  'Chandelier',
-  'Signage',
-  'Props',
-];
+const CATEGORY_DECOR_ITEMS = {
+  General: [
+    'Platform',
+    'Carpet',
+    'Decor Truss',
+    'Sound Truss',
+    'Flex',
+    'Backdrop',
+    'Riser',
+    'Podium',
+    'Stall',
+    'Panel',
+    'Table',
+    'Chair',
+    'Sofa',
+    'Backdrop Fabric',
+    'Fairy Lights',
+    'Chandelier',
+    'Signage',
+    'Props',
+  ],
+  Mandap: [
+    'Mandap Platform',
+    'Mandap Structure',
+    'Mandap Pillars',
+    'Mandap Backdrop',
+    'Mandap Carpet',
+    'Mandap Florals',
+    'Mandap Draping',
+    'Mandap Ceiling',
+    'Mandap Seating',
+    'Mandap Lighting',
+  ],
+  Stage: [
+    'Stage Platform',
+    'Stage Backdrop',
+    'LED Wall',
+    'Stage Carpet',
+    'Stage Riser',
+    'Stage Sofa',
+    'Stage Chairs',
+    'Stage Panels',
+    'Stage Florals',
+    'Stage Lighting',
+  ],
+  Entrance: [
+    'Entrance Gate',
+    'Welcome Board',
+    'Floral Arch',
+    'Entrance Carpet',
+    'Entrance Signage',
+    'Entrance Draping',
+    'Entrance Florals',
+    'Entrance Lighting',
+    'Valet Signage',
+  ],
+  Furniture: [
+    'Chair',
+    'Sofa',
+    'Table',
+    'Bar Counter',
+    'Cocktail Table',
+    'Ottoman',
+    'Bench',
+    'Podium',
+    'High Table',
+    'Lounge Set',
+  ],
+  'Flooring & Carpet': [
+    'Carpet',
+    'Wooden Flooring',
+    'Artificial Grass',
+    'Platform',
+    'Riser',
+    'Aisle Carpet',
+    'Dance Floor',
+    'Red Carpet',
+  ],
+  Floral: [
+    'Floral Backdrop',
+    'Floral Arch',
+    'Centerpiece',
+    'Table Florals',
+    'Ceiling Florals',
+    'Hanging Florals',
+    'Petal Decor',
+    'Garland',
+    'Flower Wall',
+  ],
+  Lighting: [
+    'Fairy Lights',
+    'Chandelier',
+    'Moving Head',
+    'Par Can',
+    'Profile Light',
+    'Uplighter',
+    'Pin Spot',
+    'String Lights',
+    'Festoon Lights',
+    'Warm Wash',
+  ],
+  Truss: [
+    'Decor Truss',
+    'Sound Truss',
+    'Lighting Truss',
+    'Ground Support',
+    'Truss Gate',
+    'Truss Backdrop',
+    'Truss Arch',
+  ],
+  'Sound & AV': [
+    'Sound Truss',
+    'Line Array',
+    'Subwoofer',
+    'Stage Monitor',
+    'Microphone',
+    'DJ Console',
+    'LED Screen',
+    'Projector',
+    'Confidence Monitor',
+  ],
+  'Fabric & Draping': [
+    'Backdrop Fabric',
+    'Ceiling Draping',
+    'Wall Draping',
+    'Pillar Draping',
+    'Stage Draping',
+    'Mandap Draping',
+    'Entrance Draping',
+    'Table Skirting',
+    'Fabric Panels',
+  ],
+  'Decor Props': [
+    'Decor Props',
+    'Vases',
+    'Lanterns',
+    'Candle Stands',
+    'Mirror',
+    'Vintage Props',
+    'Rajasthani Props',
+    'Decorative Panels',
+    'Pedestals',
+  ],
+  'Table Decor': [
+    'Table',
+    'Table Cloth',
+    'Table Runner',
+    'Centerpiece',
+    'Candle Holder',
+    'Table Number',
+    'Menu Card',
+    'Napkin Ring',
+    'Charger Plate',
+  ],
+  'Printing & Branding': [
+    'Flex',
+    'Welcome Board',
+    'Backdrop Print',
+    'Vinyl Print',
+    'Foam Board',
+    'Sunboard',
+    'Table Number',
+    'Menu Card',
+    'Directional Sign',
+  ],
+  Electrical: [
+    'Power Distribution',
+    'Extension Board',
+    'Cable',
+    'Generator Connection',
+    'DB Box',
+    'Electrical Panel',
+    'Cable Cover',
+  ],
+  Production: [
+    'Platform',
+    'Riser',
+    'Backdrop',
+    'Panel',
+    'Podium',
+    'Stall',
+    'Production Desk',
+    'Service Table',
+  ],
+  Transportation: [
+    'Transport Vehicle',
+    'Tempo',
+    'Truck',
+    'Loading',
+    'Unloading',
+    'Material Pickup',
+  ],
+  Signage: [
+    'Welcome Sign',
+    'Directional Sign',
+    'Parking Sign',
+    'Table Sign',
+    'Room Sign',
+    'Bride & Groom Sign',
+    'Hashtag Sign',
+  ],
+  Other: [
+    'Miscellaneous Decor',
+    'Custom Prop',
+    'Special Requirement',
+  ],
+};
 
 const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
   const [activeModule, setActiveModule] = useState(null);
@@ -532,7 +719,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
     }
   };
 
-  const selectCommonElement = (name) => {
+  const selectCategoryElement = (name) => {
     if (!name) return;
     setElementForm((current) => ({ ...current, name }));
   };
@@ -1984,21 +2171,29 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                             <option value={elementForm.category}>{elementForm.category}</option>
                           )}
                       </select>
-                      {elementForm.category === 'General' && (
+                      {elementForm.category !== 'Custom' && (
                         <div className="md:col-span-2 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
                           <div className="flex items-center justify-between gap-3">
                             <div>
-                              <p className="text-sm font-medium text-[#3F3748]">Common Decor Items</p>
-                              <p className="text-xs text-[#8B8194] mt-1">Quickly select a commonly used item or type your own below.</p>
+                              <p className="text-sm font-medium text-[#3F3748]">
+                                {elementForm.category === 'General' ? 'Common Decor Items' : `${elementForm.category} Items`}
+                              </p>
+                              <p className="text-xs text-[#8B8194] mt-1">
+                                Quickly select a commonly used {elementForm.category.toLowerCase()} item or type your own below.
+                              </p>
                             </div>
                           </div>
                           <select
                             defaultValue=""
-                            onChange={(e) => { selectCommonElement(e.target.value); e.target.value = ''; }}
+                            onChange={(e) => { selectCategoryElement(e.target.value); e.target.value = ''; }}
                             className="mt-3 w-full rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
                           >
-                            <option value="">Select a common item...</option>
-                            {COMMON_DECOR_ITEMS.map((item) => <option key={item} value={item}>{item}</option>)}
+                            <option value="">
+                              Select a {elementForm.category.toLowerCase()} item...
+                            </option>
+                            {(CATEGORY_DECOR_ITEMS[elementForm.category] || CATEGORY_DECOR_ITEMS.General).map((item) => (
+                              <option key={item} value={item}>{item}</option>
+                            ))}
                           </select>
                         </div>
                       )}
@@ -2184,7 +2379,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                 ) : (
                   <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-8 text-center">
                     <p className="text-sm text-[#8B8194]">No wedding elements added yet.</p>
-                    <p className="text-sm text-[#6B6175] mt-1">Add furniture, florals, lighting, props, fabric and other decor requirements for this wedding.</p>
+                    <p className="text-sm text-[#6B6175] mt-1">Add category-specific furniture, florals, lighting, truss, flooring, printing and other decor requirements for this wedding.</p>
                   </div>
                 )}
               </div>
