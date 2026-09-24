@@ -134,6 +134,7 @@ const VendorDashboard = () => {
     return (
       <WeddingWorkspace
         wedding={selectedWedding}
+        vendor={vendor}
         onBack={() => setSelectedWedding(null)}
       />
     );
