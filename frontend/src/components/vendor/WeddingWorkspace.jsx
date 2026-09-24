@@ -527,39 +527,37 @@ const saveClient = async () => {
             </p>
 
             <div className="mt-1 text-sm text-[#6B6175] space-y-1">
-              {client.phone && <p>Phone: {client.phone}</p>}
-              {client.email && <p>Email: {client.email}</p>}
-              {client.relation && <p>Relation: {client.relation}</p>}
-              {client.notes && <p>Notes: {client.notes}</p>}
-            </div>
-            {client.notes && <p>Notes: {client.notes}</p>}
-</div>
+                {client.phone && <p>Phone: {client.phone}</p>}
+                {client.email && <p>Email: {client.email}</p>}
+                {client.relation && <p>Relation: {client.relation}</p>}
+                {client.notes && <p>Notes: {client.notes}</p>}
+              </div>
 
-<div className="mt-3">
-  <button
-    type="button"
-    onClick={() => {
-      setEditingClientId(client.id);
-      setClientName(client.name || "");
-      setClientPhone(client.phone || "");
-      setClientEmail(client.email || "");
-      setClientRelation(client.relation || "");
-      setClientNotes(client.notes || "");
-      setShowClientForm(true);
-    }}
-    className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadff5]"
-  >
-    Edit
-  </button>
-</div>
-
-</div>
-          </div>
-        ))}
-      </div>
-    )}
-  </div>
-)}
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingClientId(client.id);
+                    setClientName(client.name || "");
+                    setClientPhone(client.phone || "");
+                    setClientEmail(client.email || "");
+                    setClientRelation(client.relation || "");
+                    setClientNotes(client.notes || "");
+                    setShowClientForm(true);
+                  }}
+                  className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadff5]"
+                >
+                  Edit
+                </button>
+              </div>
+              
+              </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
               <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
                 <p className="text-xs text-[#8B8194]">Bride</p>
