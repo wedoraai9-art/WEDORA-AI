@@ -80,6 +80,39 @@ class LlmChat:
             if content:
                 yield TextDelta(content)
 
+       class LlmChat:
+    def __init__(self, api_key=None, session_id=None, system_message=None):
+        self.client = genai.Client(api_key=api_key or GEMINI_API_KEY)
+        self.session_id = session_id
+        self.system_message = system_message
+        self.model = "gemini-3.1-flash-lite"
+
+    def with_model(self, provider, model):
+        return self
+
+    async def send_message(self, message):
+        response = await self.client.aio.models.generate_content(
+            model=self.model,
+            contents=message.text,
+            config={
+                "system_instruction": self.system_message or "",
+            },
+        )
+        return response.text or ""
+
+    async def stream_message(self, message):
+        stream = await self.client.aio.models.generate_content_stream(
+            model=self.model,
+            contents=message.text,
+            config={
+                "system_instruction": self.system_message or "",
+            },
+        )
+
+        async for chunk in stream:
+            if chunk.text:
+                yield TextDelta(chunk.text)
+
         yield StreamDone()
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
