@@ -108,6 +108,23 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
   const [designDeleting, setDesignDeleting] = useState(false);
   const [designReferenceUrl, setDesignReferenceUrl] = useState('');
 
+  const emptyElement = {
+    name: '',
+    category: 'General',
+    quantity: '1',
+    unit: 'pcs',
+    area: '',
+    status: 'planned',
+    notes: '',
+  };
+  const [elements, setElements] = useState([]);
+  const [elementsLoading, setElementsLoading] = useState(false);
+  const [elementSaving, setElementSaving] = useState(false);
+  const [elementDeletingId, setElementDeletingId] = useState(null);
+  const [showElementForm, setShowElementForm] = useState(false);
+  const [editingElementId, setEditingElementId] = useState(null);
+  const [elementForm, setElementForm] = useState(emptyElement);
+
   useEffect(() => {
     if (wedding?.id) {
       loadClients();
@@ -116,6 +133,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
       loadNotifications();
       if (isDecorator) {
         loadDesign();
+        loadElements();
       }
     }
   }, [wedding?.id]);
@@ -404,6 +422,87 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
       ...current,
       reference_images: (current.reference_images || []).filter((_, itemIndex) => itemIndex !== index),
     }));
+  };
+
+  const loadElements = async () => {
+    if (!wedding?.id || !isDecorator) return;
+    setElementsLoading(true);
+    try {
+      const response = await authAxios.get(`/vendor/weddings/${wedding.id}/elements`);
+      setElements(response.data?.elements || []);
+    } catch (error) {
+      console.error("Failed to load wedding elements:", error);
+    } finally {
+      setElementsLoading(false);
+    }
+  };
+
+  const resetElementForm = () => {
+    setElementForm(emptyElement);
+    setEditingElementId(null);
+    setShowElementForm(false);
+  };
+
+  const saveElement = async () => {
+    if (!isDecorator || !elementForm.name.trim() || !Number(elementForm.quantity) || elementSaving) return;
+
+    setElementSaving(true);
+    try {
+      const payload = {
+        name: elementForm.name.trim(),
+        category: elementForm.category || 'General',
+        quantity: Number(elementForm.quantity),
+        unit: elementForm.unit.trim() || 'pcs',
+        area: elementForm.area.trim(),
+        status: elementForm.status || 'planned',
+        notes: elementForm.notes.trim(),
+      };
+
+      if (editingElementId) {
+        await authAxios.put(
+          `/vendor/weddings/${wedding.id}/elements/${editingElementId}`,
+          payload
+        );
+      } else {
+        await authAxios.post(`/vendor/weddings/${wedding.id}/elements`, payload);
+      }
+
+      resetElementForm();
+      await loadElements();
+    } catch (error) {
+      console.error("Failed to save wedding element:", error);
+      window.alert(error.response?.data?.detail || 'Could not save wedding element.');
+    } finally {
+      setElementSaving(false);
+    }
+  };
+
+  const editElement = (element) => {
+    setEditingElementId(element.id);
+    setElementForm({
+      name: element.name || '',
+      category: element.category || 'General',
+      quantity: String(element.quantity ?? 1),
+      unit: element.unit || 'pcs',
+      area: element.area || '',
+      status: element.status || 'planned',
+      notes: element.notes || '',
+    });
+    setShowElementForm(true);
+  };
+
+  const deleteElement = async (id) => {
+    if (!window.confirm('Delete this wedding element?')) return;
+    setElementDeletingId(id);
+    try {
+      await authAxios.delete(`/vendor/weddings/${wedding.id}/elements/${id}`);
+      setElements((current) => current.filter((item) => item.id !== id));
+    } catch (error) {
+      console.error("Failed to delete wedding element:", error);
+      window.alert(error.response?.data?.detail || 'Could not delete wedding element.');
+    } finally {
+      setElementDeletingId(null);
+    }
   };
 
   const loadNotifications = async () => {
@@ -1693,10 +1792,174 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
             )}
 
             {isDecorator && activeModule === "Elements" && (
-              <div className="mt-4 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
-                <p className="text-sm text-[#8B8194]">Elements</p>
-                <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding Elements</h4>
-                <p className="text-sm text-[#6B6175] mt-1">Decor elements, materials and design requirements for this wedding will be managed here.</p>
+              <div className="mt-4 space-y-5">
+                <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <div>
+                      <p className="text-sm text-[#8B8194]">Element Management</p>
+                      <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding Elements</h4>
+                      <p className="text-sm text-[#6B6175] mt-1">Manage decor elements, materials, quantities and execution requirements for this wedding.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { resetElementForm(); setShowElementForm(true); }}
+                      className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadcf5]"
+                    >
+                      <Plus className="inline w-4 h-4 mr-1" />
+                      Add Element
+                    </button>
+                  </div>
+                </div>
+
+                {showElementForm && (
+                  <div className="rounded-xl border border-[#eadff2] bg-white p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <p className="text-sm text-[#8B8194]">{editingElementId ? 'Edit Element' : 'New Element'}</p>
+                        <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Element Details</h4>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <input
+                        value={elementForm.name}
+                        onChange={(e) => setElementForm({ ...elementForm, name: e.target.value })}
+                        placeholder="Element name *"
+                        className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
+                      />
+                      <select
+                        value={elementForm.category}
+                        onChange={(e) => setElementForm({ ...elementForm, category: e.target.value })}
+                        className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none bg-white"
+                      >
+                        <option>General</option>
+                        <option>Furniture</option>
+                        <option>Floral</option>
+                        <option>Lighting</option>
+                        <option>Mandap</option>
+                        <option>Stage</option>
+                        <option>Entrance</option>
+                        <option>Table Decor</option>
+                        <option>Props</option>
+                        <option>Fabric</option>
+                        <option>Signage</option>
+                        <option>Other</option>
+                      </select>
+                      <input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        value={elementForm.quantity}
+                        onChange={(e) => setElementForm({ ...elementForm, quantity: e.target.value })}
+                        placeholder="Quantity *"
+                        className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
+                      />
+                      <input
+                        value={elementForm.unit}
+                        onChange={(e) => setElementForm({ ...elementForm, unit: e.target.value })}
+                        placeholder="Unit (pcs, ft, set, etc.)"
+                        className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
+                      />
+                      <input
+                        value={elementForm.area}
+                        onChange={(e) => setElementForm({ ...elementForm, area: e.target.value })}
+                        placeholder="Area / Location (Mandap, Stage, Entrance...)"
+                        className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
+                      />
+                      <select
+                        value={elementForm.status}
+                        onChange={(e) => setElementForm({ ...elementForm, status: e.target.value })}
+                        className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none bg-white"
+                      >
+                        <option value="planned">Planned</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="ready">Ready</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                      <textarea
+                        value={elementForm.notes}
+                        onChange={(e) => setElementForm({ ...elementForm, notes: e.target.value })}
+                        placeholder="Notes / specifications"
+                        rows="3"
+                        className="md:col-span-2 rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
+                      />
+                    </div>
+                    <div className="flex gap-2 mt-4">
+                      <button
+                        type="button"
+                        onClick={saveElement}
+                        disabled={elementSaving}
+                        className="rounded-xl bg-[#8B6AA8] px-4 py-2 text-sm font-medium text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        {elementSaving ? 'Saving...' : editingElementId ? 'Update Element' : 'Save Element'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={resetElementForm}
+                        className="rounded-xl px-4 py-2 text-sm text-[#8B8194]"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {elementsLoading ? (
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-8 text-center text-sm text-[#8B8194]">Loading elements...</div>
+                ) : elements.length > 0 ? (
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm text-[#8B8194]">Your Elements</p>
+                        <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Decor Requirements</h4>
+                      </div>
+                      <p className="text-sm text-[#8B8194]">{elements.length} item{elements.length === 1 ? '' : 's'}</p>
+                    </div>
+                    <div className="mt-4 space-y-3">
+                      {elements.map((element) => (
+                        <div key={element.id} className="rounded-xl border border-[#eadff2] bg-white p-4">
+                          <div className="flex flex-col md:flex-row md:items-start gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-medium text-[#3F3748]">{element.name}</p>
+                                <span className="rounded-full bg-[#f4eafa] px-2.5 py-1 text-xs text-[#8B6AA8]">{element.category}</span>
+                                <span className="rounded-full bg-[#faf7ff] border border-[#eadff2] px-2.5 py-1 text-xs text-[#8B8194] capitalize">{String(element.status || 'planned').replace('_', ' ')}</span>
+                              </div>
+                              <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-[#6B6175]">
+                                <p><span className="text-[#8B8194]">Quantity:</span> {element.quantity} {element.unit || 'pcs'}</p>
+                                <p><span className="text-[#8B8194]">Area:</span> {element.area || 'Not specified'}</p>
+                                <p><span className="text-[#8B8194]">Status:</span> {String(element.status || 'planned').replace('_', ' ')}</p>
+                              </div>
+                              {element.notes && <p className="mt-2 text-sm text-[#6B6175]">{element.notes}</p>}
+                            </div>
+                            <div className="flex gap-2 md:shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => editElement(element)}
+                                className="rounded-lg bg-[#f4eafa] px-3 py-1.5 text-sm text-[#8B6AA8]"
+                              >
+                                <Edit3 className="inline w-3.5 h-3.5 mr-1" />Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteElement(element.id)}
+                                disabled={elementDeletingId === element.id}
+                                className="rounded-lg bg-[#fff1f4] px-3 py-1.5 text-sm text-red-400 disabled:opacity-60"
+                              >
+                                <Trash2 className="inline w-3.5 h-3.5 mr-1" />
+                                {elementDeletingId === element.id ? 'Deleting...' : 'Delete'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-8 text-center">
+                    <p className="text-sm text-[#8B8194]">No wedding elements added yet.</p>
+                    <p className="text-sm text-[#6B6175] mt-1">Add furniture, florals, lighting, props, fabric and other decor requirements for this wedding.</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
