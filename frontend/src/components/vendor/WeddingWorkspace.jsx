@@ -14,9 +14,9 @@ import {
 
 const WeddingWorkspace = ({ wedding, onBack }) => {
   const [activeModule, setActiveModule] = useState(null);
-  const [tasks, setTasks] = useState([]);
-  const [showTaskForm, setShowTaskForm] = useState(false);
-  const [taskTitle, setTaskTitle] = useState("");
+ const [showTaskForm, setShowTaskForm] = useState(false);
+const [taskTitle, setTaskTitle] = useState("");
+const [tasks, setTasks] = useState([]);
   if (!wedding) {
     return (
       <div className="min-h-screen flex items-center justify-center text-[#2D2638]">
@@ -276,6 +276,66 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
     </div>
   </div>
 )}
+   {activeModule === "Tasks" && showTaskForm && (
+  <div className="mb-5 rounded-xl border border-[#eadff2] bg-white p-5">
+    <p className="text-sm font-medium text-[#3F3748] mb-2">
+      New Task
+    </p>
+
+    <input
+      type="text"
+      value={taskTitle}
+      onChange={(e) => setTaskTitle(e.target.value)}
+      placeholder="Enter task name"
+      className="w-full rounded-xl border border-[#eadff2] bg-[#faf7ff] px-4 py-3 text-sm text-[#3F3748] outline-none focus:border-[#c9a9df]"
+    />
+
+    <div className="flex gap-2 mt-3">
+      <button
+        type="button"
+        onClick={() => {
+          if (!taskTitle.trim()) return;
+          setTasks([...tasks, { title: taskTitle, completed: false }]);
+          setTaskTitle("");
+          setShowTaskForm(false);
+        }}
+        className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8]"
+      >
+        Save Task
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setShowTaskForm(false)}
+        className="rounded-xl px-4 py-2 text-sm text-[#8B8194]"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
+   )}
+
+{activeModule === "Tasks" && tasks.length > 0 && (
+  <div className="mb-5 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+    <p className="text-sm text-[#8B8194]">Your Tasks</p>
+
+    <div className="mt-3 space-y-2">
+      {tasks.map((task, index) => (
+        <div
+          key={index}
+          className="flex items-center justify-between rounded-lg border border-[#eadff2] bg-white px-4 py-3"
+        >
+          <span className="text-sm text-[#3F3748]">
+            {task.title}
+          </span>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
   <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
     <p className="text-xs text-[#8B8194]">Bride</p>
