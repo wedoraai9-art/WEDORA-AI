@@ -497,6 +497,741 @@ async def auth_me(authorization: str = Header(None)):
     }
 
 
+
+# ================= VENDOR SYSTEM =================
+
+VENDOR_PLANS = {
+    "free": {
+        "label": "WEDORA FREE",
+        "price_monthly": 0,
+        "price_yearly": 0,
+        "wedding_limit": 3,
+        "export_enabled": False,
+        "lead_access": False,
+        "priority_leads": False,
+        "photo_limit": 5,
+        "featured": False,
+        "ai_profile": False,
+        "badge": None,
+    },
+    "pro": {
+        "label": "WEDORA PRO",
+        "price_monthly": 399,
+        "price_yearly": 4399,
+        "wedding_limit": None,
+        "export_enabled": True,
+        "lead_access": True,
+        "priority_leads": True,
+        "photo_limit": 9999,
+        "featured": True,
+        "ai_profile": True,
+        "badge": "PRO VENDOR",
+    },
+    "premium": {
+        "label": "WEDORA PREMIUM",
+        "price_monthly": 0,
+        "price_yearly": 0,
+        "wedding_limit": None,
+        "export_enabled": True,
+        "lead_access": True,
+        "priority_leads": True,
+        "photo_limit": 9999,
+        "featured": True,
+        "ai_profile": True,
+        "badge": "PREMIUM VENDOR",
+    },
+}
+
+
+class VendorRegisterIn(BaseModel):
+    email: str
+    password: str
+    business_name: str = ""
+    name: Optional[str] = None
+    category: str = "Wedding Vendor"
+    city: str = "Jaipur"
+    phone: Optional[str] = None
+
+
+class VendorUpdateIn(BaseModel):
+    business_name: Optional[str] = None
+    name: Optional[str] = None
+    category: Optional[str] = None
+    city: Optional[str] = None
+    phone: Optional[str] = None
+    whatsapp: Optional[str] = None
+    email: Optional[str] = None
+    website: Optional[str] = None
+    instagram: Optional[str] = None
+    description: Optional[str] = None
+    about: Optional[str] = None
+    address: Optional[str] = None
+    logo: Optional[str] = None
+    slug: Optional[str] = None
+
+
+class VendorLeadUpdateIn(BaseModel):
+    status: str
+
+
+class VendorPlanIn(BaseModel):
+    plan: str
+
+
+class WeddingCreateIn(BaseModel):
+    name: str
+    client_name: Optional[str] = ""
+    event_date: Optional[str] = ""
+    city: Optional[str] = ""
+    guest_count: Optional[int] = 0
+    budget: Optional[float] = 0
+    status: Optional[str] = "planning"
+    notes: Optional[str] = ""
+
+
+class WeddingUpdateIn(BaseModel):
+    name: Optional[str] = None
+    client_name: Optional[str] = None
+    event_date: Optional[str] = None
+    city: Optional[str] = None
+    guest_count: Optional[int] = None
+    budget: Optional[float] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None
+
+
+async def get_vendor_user(authorization: str = Header(None)):
+    user = await get_current_user(authorization)
+    if user.get("role") not in ("vendor", "admin"):
+        raise HTTPException(status_code=403, detail="Vendor access required")
+    return user
+
+
+def _vendor_slug(name: str) -> str:
+    value = re.sub(r"[^a-z0-9]+", "-", (name or "vendor").lower()).strip("-")
+    return value or f"vendor-{uuid.uuid4().hex[:8]}"
+
+
+def _vendor_plan_details(plan: str):
+    return VENDOR_PLANS.get(plan, VENDOR_PLANS["free"])
+
+
+async def _ensure_vendor_profile(user: dict):
+    vendor = await db.vendors.find_one({"user_id": user["id"]}, {"_id": 0})
+
+    if vendor:
+        return vendor
+
+    business_name = (
+        user.get("business_name")
+        or user.get("name")
+        or (user.get("email", "").split("@")[0] if user.get("email") else "WEDORA Vendor")
+    )
+    plan = user.get("plan", "free")
+    if plan not in VENDOR_PLANS:
+        plan = "free"
+
+    vendor = {
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "business_name": business_name,
+        "name": user.get("name") or business_name,
+        "email": user.get("email", ""),
+        "category": user.get("category", "Wedding Vendor"),
+        "city": user.get("city", "Jaipur"),
+        "phone": user.get("phone"),
+        "whatsapp": user.get("whatsapp"),
+        "website": "",
+        "instagram": "",
+        "description": "",
+        "about": "",
+        "address": "",
+        "logo": None,
+        "portfolio": [],
+        "slug": _vendor_slug(business_name),
+        "plan": plan,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    await db.vendors.insert_one(vendor.copy())
+    return {k: v for k, v in vendor.items()}
+
+
+def _profile_completion(vendor: dict) -> int:
+    fields = [
+        vendor.get("business_name"),
+        vendor.get("category"),
+        vendor.get("city"),
+        vendor.get("phone"),
+        vendor.get("description") or vendor.get("about"),
+        vendor.get("logo"),
+        vendor.get("instagram"),
+        vendor.get("website"),
+        vendor.get("address"),
+    ]
+    filled = sum(1 for value in fields if value)
+    return round((filled / len(fields)) * 100)
+
+
+@api_router.post("/vendor/register")
+async def vendor_register(payload: VendorRegisterIn):
+    email = payload.email.strip().lower()
+
+    existing = await db.users.find_one({"email": email})
+    if existing:
+        raise HTTPException(status_code=409, detail="An account with this email already exists")
+
+    user_id = str(uuid.uuid4())
+    name = (payload.name or payload.business_name or email.split("@")[0]).strip()
+    business_name = (payload.business_name or name).strip()
+
+    user = {
+        "id": user_id,
+        "email": email,
+        "name": name,
+        "role": "vendor",
+        "business_name": business_name,
+        "category": payload.category,
+        "city": payload.city,
+        "phone": payload.phone,
+        "plan": "free",
+        "password_hash": hash_password(payload.password),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    await db.users.insert_one(user)
+
+    vendor = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "business_name": business_name,
+        "name": name,
+        "email": email,
+        "category": payload.category,
+        "city": payload.city,
+        "phone": payload.phone,
+        "whatsapp": payload.phone,
+        "website": "",
+        "instagram": "",
+        "description": "",
+        "about": "",
+        "address": "",
+        "logo": None,
+        "portfolio": [],
+        "slug": _vendor_slug(business_name),
+        "plan": "free",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    await db.vendors.insert_one(vendor.copy())
+
+    token = create_token(user_id, "vendor")
+
+    return {
+        "token": token,
+        "user": {
+            "id": user_id,
+            "email": email,
+            "name": name,
+            "role": "vendor",
+        },
+        "vendor": {k: v for k, v in vendor.items()},
+        "plan_details": _vendor_plan_details("free"),
+    }
+
+
+@api_router.get("/vendor/me")
+async def vendor_me(authorization: str = Header(None)):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+
+    plan = vendor.get("plan") or user.get("plan") or "free"
+    if plan not in VENDOR_PLANS:
+        plan = "free"
+
+    vendor["plan"] = plan
+    vendor["profile_completion"] = _profile_completion(vendor)
+
+    return {
+        "vendor": vendor,
+        "plan_details": _vendor_plan_details(plan),
+    }
+
+
+@api_router.put("/vendor/me")
+async def vendor_update(payload: VendorUpdateIn, authorization: str = Header(None)):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+
+    updates = payload.model_dump(exclude_none=True)
+
+    if "business_name" in updates:
+        updates["business_name"] = updates["business_name"].strip()
+        if updates["business_name"] and not payload.slug:
+            updates["slug"] = _vendor_slug(updates["business_name"])
+
+    if "email" in updates:
+        updates["email"] = updates["email"].strip().lower()
+
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    if updates:
+        await db.vendors.update_one(
+            {"id": vendor["id"]},
+            {"$set": updates},
+        )
+
+    vendor = await db.vendors.find_one({"id": vendor["id"]}, {"_id": 0})
+    plan = vendor.get("plan", "free")
+
+    return {
+        "vendor": vendor,
+        "plan_details": _vendor_plan_details(plan),
+    }
+
+
+@api_router.get("/vendor/stats")
+async def vendor_stats(authorization: str = Header(None)):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    vendor_id = vendor["id"]
+    slug = vendor.get("slug")
+
+    weddings = await db.vendor_weddings.count_documents({"vendor_id": vendor_id})
+    leads = await db.vendor_leads.count_documents({"vendor_id": vendor_id})
+    new_leads = await db.vendor_leads.count_documents(
+        {"vendor_id": vendor_id, "status": {"$in": ["new", "pending"]}}
+    )
+    portfolio_views = await db.vendor_events.count_documents(
+        {"vendor_id": vendor_id, "event": "portfolio_view"}
+    )
+    profile_views = await db.vendor_events.count_documents(
+        {"vendor_id": vendor_id, "event": "profile_view"}
+    )
+    whatsapp_clicks = await db.vendor_events.count_documents(
+        {"vendor_id": vendor_id, "event": "whatsapp_click"}
+    )
+    contact_requests = await db.vendor_events.count_documents(
+        {"vendor_id": vendor_id, "event": "contact_request"}
+    )
+
+    # Also support older tracking records that may have been stored by public-profile slug.
+    if slug:
+        profile_views += await db.vendor_events.count_documents(
+            {"slug": slug, "event": "profile_view"}
+        )
+        portfolio_views += await db.vendor_events.count_documents(
+            {"slug": slug, "event": "portfolio_view"}
+        )
+        whatsapp_clicks += await db.vendor_events.count_documents(
+            {"slug": slug, "event": "whatsapp_click"}
+        )
+        contact_requests += await db.vendor_events.count_documents(
+            {"slug": slug, "event": "contact_request"}
+        )
+
+    return {
+        "profile_views": profile_views,
+        "leads": leads,
+        "whatsapp_clicks": whatsapp_clicks,
+        "contact_requests": contact_requests,
+        "portfolio_views": portfolio_views,
+        "profile_completion": _profile_completion(vendor),
+        "new_leads": new_leads,
+        "weddings": weddings,
+    }
+
+
+@api_router.post("/vendor/plan")
+async def vendor_switch_plan(payload: VendorPlanIn, authorization: str = Header(None)):
+    user = await get_vendor_user(authorization)
+    plan = payload.plan.strip().lower()
+
+    if plan not in VENDOR_PLANS:
+        raise HTTPException(status_code=400, detail="Invalid vendor plan")
+
+    vendor = await _ensure_vendor_profile(user)
+
+    await db.vendors.update_one(
+        {"id": vendor["id"]},
+        {
+            "$set": {
+                "plan": plan,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+        },
+    )
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {"plan": plan}},
+    )
+
+    vendor["plan"] = plan
+
+    return {
+        "vendor": vendor,
+        "plan_details": _vendor_plan_details(plan),
+    }
+
+
+@api_router.get("/vendor/leads")
+async def vendor_leads(authorization: str = Header(None)):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+
+    docs = await db.vendor_leads.find(
+        {"vendor_id": vendor["id"]},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(200)
+
+    return {"leads": docs}
+
+
+@api_router.patch("/vendor/leads/{lead_id}")
+async def vendor_update_lead(
+    lead_id: str,
+    payload: VendorLeadUpdateIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+
+    result = await db.vendor_leads.update_one(
+        {"id": lead_id, "vendor_id": vendor["id"]},
+        {
+            "$set": {
+                "status": payload.status,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+        },
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    lead = await db.vendor_leads.find_one(
+        {"id": lead_id, "vendor_id": vendor["id"]},
+        {"_id": 0},
+    )
+    return lead
+
+
+@api_router.post("/vendor/upload/logo")
+async def vendor_upload_logo(
+    file: UploadFile = File(...),
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+
+    # Store the uploaded image as a small data URL so this feature works
+    # without adding a paid storage provider.
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Logo must be 5 MB or smaller")
+
+    import base64
+    mime = file.content_type or "image/jpeg"
+    logo_url = f"data:{mime};base64,{base64.b64encode(content).decode('ascii')}"
+
+    await db.vendors.update_one(
+        {"id": vendor["id"]},
+        {"$set": {"logo": logo_url, "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+
+    return {"logo": logo_url}
+
+
+@api_router.delete("/vendor/logo")
+async def vendor_delete_logo(authorization: str = Header(None)):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+
+    await db.vendors.update_one(
+        {"id": vendor["id"]},
+        {"$set": {"logo": None, "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+
+    return {"success": True}
+
+
+@api_router.post("/vendor/upload/portfolio")
+async def vendor_upload_portfolio(
+    file: UploadFile = File(...),
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+
+    plan = vendor.get("plan", "free")
+    limit = _vendor_plan_details(plan)["photo_limit"]
+
+    portfolio = vendor.get("portfolio") or []
+    if len(portfolio) >= limit:
+        raise HTTPException(status_code=403, detail="Your current plan has reached its portfolio limit")
+
+    content = await file.read()
+    if len(content) > 8 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Portfolio image must be 8 MB or smaller")
+
+    import base64
+    mime = file.content_type or "image/jpeg"
+    image_url = f"data:{mime};base64,{base64.b64encode(content).decode('ascii')}"
+
+    portfolio.append(image_url)
+
+    await db.vendors.update_one(
+        {"id": vendor["id"]},
+        {"$set": {"portfolio": portfolio, "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+
+    return {"portfolio": portfolio, "url": image_url}
+
+
+@api_router.delete("/vendor/portfolio")
+async def vendor_delete_portfolio(
+    url: str = Query(...),
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+
+    portfolio = [item for item in (vendor.get("portfolio") or []) if item != url]
+
+    await db.vendors.update_one(
+        {"id": vendor["id"]},
+        {"$set": {"portfolio": portfolio, "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+
+    return {"portfolio": portfolio}
+
+
+@api_router.get("/vendor/weddings")
+async def vendor_get_weddings(authorization: str = Header(None)):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+
+    weddings = await db.vendor_weddings.find(
+        {"vendor_id": vendor["id"]},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(200)
+
+    return {"weddings": weddings}
+
+
+@api_router.post("/vendor/weddings")
+async def vendor_create_wedding(
+    payload: WeddingCreateIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+
+    plan = vendor.get("plan", "free")
+    limit = _vendor_plan_details(plan)["wedding_limit"]
+
+    if limit is not None:
+        existing_count = await db.vendor_weddings.count_documents({"vendor_id": vendor["id"]})
+        if existing_count >= limit:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Your {VENDOR_PLANS[plan]['label']} plan allows up to {limit} weddings.",
+            )
+
+    wedding = {
+        "id": str(uuid.uuid4()),
+        "vendor_id": vendor["id"],
+        "name": payload.name,
+        "client_name": payload.client_name or "",
+        "event_date": payload.event_date or "",
+        "city": payload.city or vendor.get("city", "Jaipur"),
+        "guest_count": payload.guest_count or 0,
+        "budget": payload.budget or 0,
+        "status": payload.status or "planning",
+        "notes": payload.notes or "",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    await db.vendor_weddings.insert_one(wedding.copy())
+    return wedding
+
+
+@api_router.put("/vendor/weddings/{wedding_id}")
+async def vendor_update_wedding(
+    wedding_id: str,
+    payload: WeddingUpdateIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+
+    updates = payload.model_dump(exclude_none=True)
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    result = await db.vendor_weddings.update_one(
+        {"id": wedding_id, "vendor_id": vendor["id"]},
+        {"$set": updates},
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Wedding not found")
+
+    wedding = await db.vendor_weddings.find_one(
+        {"id": wedding_id, "vendor_id": vendor["id"]},
+        {"_id": 0},
+    )
+    return wedding
+
+
+@api_router.delete("/vendor/weddings/{wedding_id}")
+async def vendor_delete_wedding(
+    wedding_id: str,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+
+    result = await db.vendor_weddings.delete_one(
+        {"id": wedding_id, "vendor_id": vendor["id"]}
+    )
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Wedding not found")
+
+    return {"success": True}
+
+
+@api_router.get("/vendor/weddings/{wedding_id}")
+async def vendor_get_wedding(
+    wedding_id: str,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+
+    wedding = await db.vendor_weddings.find_one(
+        {"id": wedding_id, "vendor_id": vendor["id"]},
+        {"_id": 0},
+    )
+
+    if not wedding:
+        raise HTTPException(status_code=404, detail="Wedding not found")
+
+    return wedding
+
+
+@api_router.post("/vendor/profile/ai-generate")
+async def vendor_ai_generate_profile(
+    payload: dict,
+    authorization: str = Header(None),
+):
+    # Kept deliberately free of any paid external AI provider.
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+
+    business_name = payload.get("business_name") or vendor.get("business_name") or "Wedding Vendor"
+    category = payload.get("category") or vendor.get("category") or "Wedding Vendor"
+    city = payload.get("city") or vendor.get("city") or "Jaipur"
+
+    description = (
+        f"{business_name} is a {category.lower()} serving weddings in {city}. "
+        "We create thoughtful, reliable wedding experiences tailored to each couple's "
+        "style, celebration and budget."
+    )
+
+    return {"description": description}
+
+
+@api_router.get("/marketplace/vendors")
+async def marketplace_vendors(
+    city: Optional[str] = None,
+    category: Optional[str] = None,
+    search: Optional[str] = None,
+):
+    query = {}
+    if city:
+        query["city"] = {"$regex": re.escape(city), "$options": "i"}
+    if category:
+        query["category"] = {"$regex": re.escape(category), "$options": "i"}
+    if search:
+        query["$or"] = [
+            {"business_name": {"$regex": re.escape(search), "$options": "i"}},
+            {"category": {"$regex": re.escape(search), "$options": "i"}},
+            {"city": {"$regex": re.escape(search), "$options": "i"}},
+        ]
+
+    vendors = await db.vendors.find(query, {"_id": 0, "password_hash": 0}).sort(
+        "created_at", -1
+    ).to_list(200)
+
+    return {"vendors": vendors}
+
+
+@api_router.get("/marketplace/vendors/{slug}")
+async def marketplace_vendor_profile(slug: str):
+    vendor = await db.vendors.find_one({"slug": slug}, {"_id": 0})
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor profile not found")
+    return vendor
+
+
+@api_router.post("/marketplace/track/{slug}")
+async def marketplace_track(slug: str, event: str = Query(...)):
+    allowed_events = {
+        "profile_view",
+        "portfolio_view",
+        "whatsapp_click",
+        "contact_request",
+    }
+    if event not in allowed_events:
+        raise HTTPException(status_code=400, detail="Invalid tracking event")
+
+    vendor = await db.vendors.find_one({"slug": slug}, {"_id": 0, "id": 1})
+    vendor_id = vendor.get("id") if vendor else None
+
+    await db.vendor_events.insert_one({
+        "id": str(uuid.uuid4()),
+        "vendor_id": vendor_id,
+        "slug": slug,
+        "event": event,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+
+    return {"success": True}
+
+
+@api_router.post("/leads")
+async def marketplace_create_lead(payload: dict):
+    vendor_id = payload.get("vendor_id")
+    slug = payload.get("vendor_slug") or payload.get("slug")
+
+    if not vendor_id and slug:
+        vendor = await db.vendors.find_one({"slug": slug}, {"_id": 0, "id": 1})
+        vendor_id = vendor.get("id") if vendor else None
+
+    if not vendor_id:
+        raise HTTPException(status_code=400, detail="Vendor is required")
+
+    lead = {
+        "id": str(uuid.uuid4()),
+        "vendor_id": vendor_id,
+        "name": payload.get("name", ""),
+        "email": payload.get("email", ""),
+        "phone": payload.get("phone", ""),
+        "message": payload.get("message", ""),
+        "event_date": payload.get("event_date", ""),
+        "city": payload.get("city", ""),
+        "status": "new",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    await db.vendor_leads.insert_one(lead.copy())
+    return lead
+
+
 # ================= VENUES & VENDORS =================
 @api_router.get("/venues")
 async def get_venues():
