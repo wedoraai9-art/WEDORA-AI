@@ -635,6 +635,14 @@ class WeddingDocumentUpdateIn(BaseModel):
     category: Optional[str] = None
 
 
+class WeddingNotificationIn(BaseModel):
+    title: str
+    message: str = ""
+    notification_type: str = "reminder"
+    reminder_date: Optional[str] = ""
+    priority: str = "normal"
+
+
 async def get_vendor_user(authorization: str = Header(None)):
     user = await get_current_user(authorization)
     if user.get("role") not in ("vendor", "admin"):
@@ -1628,6 +1636,295 @@ async def vendor_delete_wedding_document(
 
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Document not found")
+
+    return {"success": True}
+
+
+
+# ================= WEDDING NOTIFICATIONS =================
+
+WEDDING_NOTIFICATION_TYPES = {
+    "reminder",
+    "payment",
+    "budget",
+    "document",
+    "update",
+    "system",
+}
+
+WEDDING_NOTIFICATION_PRIORITIES = {
+    "low",
+    "normal",
+    "high",
+}
+
+
+def _notification_response(notification: dict) -> dict:
+    return {
+        "id": notification.get("id"),
+        "wedding_id": notification.get("wedding_id"),
+        "vendor_id": notification.get("vendor_id"),
+        "title": notification.get("title") or "Wedding Notification",
+        "message": notification.get("message") or "",
+        "notification_type": notification.get("notification_type") or "reminder",
+        "reminder_date": notification.get("reminder_date") or "",
+        "priority": notification.get("priority") or "normal",
+        "read": bool(notification.get("read", False)),
+        "created_at": notification.get("created_at"),
+        "updated_at": notification.get("updated_at"),
+    }
+
+
+async def _seed_wedding_date_notification(wedding: dict, vendor_id: str):
+    """
+    Create one automatic reminder when the wedding date is within 30 days.
+    The reminder is stored once, so repeated page loads do not create duplicates.
+    """
+    wedding_date_raw = wedding.get("wedding_date") or wedding.get("event_date") or ""
+    if not wedding_date_raw:
+        return
+
+    try:
+        parsed_date = datetime.fromisoformat(str(wedding_date_raw).replace("Z", "+00:00"))
+        if parsed_date.tzinfo is None:
+            parsed_date = parsed_date.replace(tzinfo=timezone.utc)
+        wedding_date = parsed_date.astimezone(timezone.utc).date()
+    except Exception:
+        return
+
+    today = datetime.now(timezone.utc).date()
+    days_left = (wedding_date - today).days
+
+    if days_left < 0 or days_left > 30:
+        return
+
+    existing = await db.vendor_wedding_notifications.find_one(
+        {
+            "wedding_id": wedding["id"],
+            "vendor_id": vendor_id,
+            "system_key": "wedding_date_30_day_reminder",
+        },
+        {"_id": 0, "id": 1},
+    )
+
+    if existing:
+        return
+
+    if days_left == 0:
+        message = "Your wedding is today. Wishing you a smooth and beautiful celebration."
+    elif days_left == 1:
+        message = "Your wedding is tomorrow. Make sure the final details are ready."
+    else:
+        message = f"Your wedding is in {days_left} days. Review your tasks, documents and payments."
+
+    now = datetime.now(timezone.utc).isoformat()
+    notification = {
+        "id": str(uuid.uuid4()),
+        "wedding_id": wedding["id"],
+        "vendor_id": vendor_id,
+        "title": "Wedding date reminder",
+        "message": message,
+        "notification_type": "reminder",
+        "reminder_date": wedding_date.isoformat(),
+        "priority": "high" if days_left <= 7 else "normal",
+        "read": False,
+        "system_key": "wedding_date_30_day_reminder",
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    await db.vendor_wedding_notifications.insert_one(notification.copy())
+
+
+@api_router.get("/vendor/weddings/{wedding_id}/notifications")
+async def vendor_get_wedding_notifications(
+    wedding_id: str,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    wedding = await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    await _seed_wedding_date_notification(wedding, vendor["id"])
+
+    notifications = await db.vendor_wedding_notifications.find(
+        {"wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(500)
+
+    unread_count = sum(1 for item in notifications if not item.get("read", False))
+
+    return {
+        "notifications": [_notification_response(item) for item in notifications],
+        "unread_count": unread_count,
+    }
+
+
+@api_router.post("/vendor/weddings/{wedding_id}/notifications")
+async def vendor_create_wedding_notification(
+    wedding_id: str,
+    payload: WeddingNotificationIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    title = payload.title.strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Notification title is required")
+
+    notification_type = (payload.notification_type or "reminder").strip().lower()
+    if notification_type not in WEDDING_NOTIFICATION_TYPES:
+        raise HTTPException(status_code=400, detail="Invalid notification type")
+
+    priority = (payload.priority or "normal").strip().lower()
+    if priority not in WEDDING_NOTIFICATION_PRIORITIES:
+        raise HTTPException(status_code=400, detail="Invalid notification priority")
+
+    now = datetime.now(timezone.utc).isoformat()
+    notification = {
+        "id": str(uuid.uuid4()),
+        "wedding_id": wedding_id,
+        "vendor_id": vendor["id"],
+        "title": title,
+        "message": (payload.message or "").strip(),
+        "notification_type": notification_type,
+        "reminder_date": (payload.reminder_date or "").strip(),
+        "priority": priority,
+        "read": False,
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    await db.vendor_wedding_notifications.insert_one(notification.copy())
+    return _notification_response(notification)
+
+
+@api_router.patch("/vendor/weddings/{wedding_id}/notifications/{notification_id}")
+async def vendor_update_wedding_notification(
+    wedding_id: str,
+    notification_id: str,
+    payload: dict,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    allowed_updates = {}
+
+    if "read" in payload:
+        allowed_updates["read"] = bool(payload.get("read"))
+
+    if "title" in payload:
+        title = str(payload.get("title") or "").strip()
+        if not title:
+            raise HTTPException(status_code=400, detail="Notification title is required")
+        allowed_updates["title"] = title
+
+    if "message" in payload:
+        allowed_updates["message"] = str(payload.get("message") or "").strip()
+
+    if "notification_type" in payload:
+        notification_type = str(payload.get("notification_type") or "reminder").strip().lower()
+        if notification_type not in WEDDING_NOTIFICATION_TYPES:
+            raise HTTPException(status_code=400, detail="Invalid notification type")
+        allowed_updates["notification_type"] = notification_type
+
+    if "reminder_date" in payload:
+        allowed_updates["reminder_date"] = str(payload.get("reminder_date") or "").strip()
+
+    if "priority" in payload:
+        priority = str(payload.get("priority") or "normal").strip().lower()
+        if priority not in WEDDING_NOTIFICATION_PRIORITIES:
+            raise HTTPException(status_code=400, detail="Invalid notification priority")
+        allowed_updates["priority"] = priority
+
+    if not allowed_updates:
+        notification = await db.vendor_wedding_notifications.find_one(
+            {
+                "id": notification_id,
+                "wedding_id": wedding_id,
+                "vendor_id": vendor["id"],
+            },
+            {"_id": 0},
+        )
+        if not notification:
+            raise HTTPException(status_code=404, detail="Notification not found")
+        return _notification_response(notification)
+
+    allowed_updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    result = await db.vendor_wedding_notifications.update_one(
+        {
+            "id": notification_id,
+            "wedding_id": wedding_id,
+            "vendor_id": vendor["id"],
+        },
+        {"$set": allowed_updates},
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Notification not found")
+
+    notification = await db.vendor_wedding_notifications.find_one(
+        {
+            "id": notification_id,
+            "wedding_id": wedding_id,
+            "vendor_id": vendor["id"],
+        },
+        {"_id": 0},
+    )
+    return _notification_response(notification)
+
+
+@api_router.post("/vendor/weddings/{wedding_id}/notifications/read-all")
+async def vendor_mark_all_wedding_notifications_read(
+    wedding_id: str,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    await db.vendor_wedding_notifications.update_many(
+        {
+            "wedding_id": wedding_id,
+            "vendor_id": vendor["id"],
+            "read": False,
+        },
+        {
+            "$set": {
+                "read": True,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+        },
+    )
+
+    return {"success": True, "unread_count": 0}
+
+
+@api_router.delete("/vendor/weddings/{wedding_id}/notifications/{notification_id}")
+async def vendor_delete_wedding_notification(
+    wedding_id: str,
+    notification_id: str,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    result = await db.vendor_wedding_notifications.delete_one(
+        {
+            "id": notification_id,
+            "wedding_id": wedding_id,
+            "vendor_id": vendor["id"],
+        }
+    )
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Notification not found")
 
     return {"success": True}
 
