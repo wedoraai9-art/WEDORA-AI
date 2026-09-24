@@ -33,7 +33,7 @@ const emptyPayment = {
   notes: '',
 };
 
-const WeddingWorkspace = ({ wedding, onBack }) => {
+const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
   const [activeModule, setActiveModule] = useState(null);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [taskTitle, setTaskTitle] = useState("");
@@ -553,6 +553,16 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
     return `₹${Number(amount).toLocaleString('en-IN')}`;
   };
 
+  const vendorCategory = String(vendor?.category || '').trim().toLowerCase();
+
+  // Decorator-only workspace modules.
+  // Support the category names currently used across the vendor system.
+  const isDecorator =
+    vendorCategory === 'wedding decorator' ||
+    vendorCategory === 'wedding decor' ||
+    vendorCategory === 'decorator' ||
+    vendorCategory === 'decor';
+
   const modules = [
     { title: 'Overview', description: 'Wedding details, timeline and important information', icon: Heart },
     { title: 'Tasks', description: 'Plan and track everything that needs to be done', icon: CheckSquare },
@@ -561,6 +571,12 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
     { title: 'Documents', description: 'Keep contracts, bills and important files organized', icon: FileText },
     { title: 'Notifications', description: 'Important reminders and wedding updates', icon: Bell },
     { title: 'AI Assistant', description: 'Get AI-powered help for this wedding', icon: Sparkles },
+    ...(isDecorator
+      ? [
+          { title: 'Design', description: 'Manage wedding design concepts, themes and visual direction', icon: Sparkles },
+          { title: 'Elements', description: 'Manage decor elements, materials and design requirements', icon: FileText },
+        ]
+      : []),
   ];
 
   const budget = budgetData.budget || {};
@@ -1410,6 +1426,22 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
             )}
             {activeModule === "AI Assistant" && (
               <div className="mt-4 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5"><p className="text-sm text-[#8B8194]">AI Assistant</p><h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding AI Assistant</h4><p className="text-sm text-[#6B6175] mt-1">Wedding-specific AI assistance will be added next.</p></div>
+            )}
+
+            {isDecorator && activeModule === "Design" && (
+              <div className="mt-4 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                <p className="text-sm text-[#8B8194]">Design</p>
+                <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding Design</h4>
+                <p className="text-sm text-[#6B6175] mt-1">Design concepts, themes and visual direction for this wedding will be managed here.</p>
+              </div>
+            )}
+
+            {isDecorator && activeModule === "Elements" && (
+              <div className="mt-4 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                <p className="text-sm text-[#8B8194]">Elements</p>
+                <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding Elements</h4>
+                <p className="text-sm text-[#6B6175] mt-1">Decor elements, materials and design requirements for this wedding will be managed here.</p>
+              </div>
             )}
           </div>
         )}
