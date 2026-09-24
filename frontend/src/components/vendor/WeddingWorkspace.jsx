@@ -373,6 +373,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
   const [elementFilterPricing, setElementFilterPricing] = useState('All Pricing');
   const [elementSaving, setElementSaving] = useState(false);
   const [elementDeletingId, setElementDeletingId] = useState(null);
+  const [elementStatusUpdatingId, setElementStatusUpdatingId] = useState(null);
   const [showElementForm, setShowElementForm] = useState(false);
   const [editingElementId, setEditingElementId] = useState(null);
   const [elementForm, setElementForm] = useState(emptyElement);
@@ -968,6 +969,24 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
         behavior: 'smooth',
       });
     }, 120);
+  };
+
+  const updateElementStatus = async (element, nextStatus) => {
+    if (!element?.id || !nextStatus || nextStatus === element.status || elementStatusUpdatingId) return;
+
+    setElementStatusUpdatingId(element.id);
+    try {
+      await authAxios.put(
+        `/vendor/weddings/${wedding.id}/elements/${element.id}`,
+        { status: nextStatus }
+      );
+      await loadElements();
+    } catch (error) {
+      console.error("Failed to update wedding element status:", error);
+      window.alert(error.response?.data?.detail || 'Could not update element status.');
+    } finally {
+      setElementStatusUpdatingId(null);
+    }
   };
 
   const deleteElement = async (id) => {
@@ -2777,7 +2796,22 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                               <div className="flex flex-wrap items-center gap-2">
                                 <p className="font-medium text-[#3F3748]">{element.name}</p>
                                 <span className="rounded-full bg-[#f4eafa] px-2.5 py-1 text-xs text-[#8B6AA8]">{element.category}</span>
-                                <span className="rounded-full bg-[#faf7ff] border border-[#eadff2] px-2.5 py-1 text-xs text-[#8B8194] capitalize">{String(element.status || 'planned').replace('_', ' ')}</span>
+                                <select
+                                  value={element.status || 'planned'}
+                                  onChange={(e) => updateElementStatus(element, e.target.value)}
+                                  disabled={elementStatusUpdatingId === element.id}
+                                  className="rounded-full bg-[#faf7ff] border border-[#eadff2] px-2.5 py-1 text-xs text-[#8B8194] capitalize outline-none disabled:opacity-60"
+                                  aria-label={`Update status for ${element.name}`}
+                                >
+                                  <option value="planned">Planned</option>
+                                  <option value="quotation">Quotation</option>
+                                  <option value="ordered">Ordered</option>
+                                  <option value="received">Received</option>
+                                  <option value="installed">Installed</option>
+                                  <option value="in_progress">In Progress</option>
+                                  <option value="ready">Ready</option>
+                                  <option value="completed">Completed</option>
+                                </select>
                               </div>
 
                               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs text-[#6B6175]">
