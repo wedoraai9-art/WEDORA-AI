@@ -314,7 +314,7 @@ const [tasks, setTasks] = useState([]);
     </div>
   </div>
 )}
- 
+
 {activeModule === "Tasks" && tasks.length > 0 && (
   <div className="mb-5 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
     <p className="text-sm text-[#8B8194]">Your Tasks</p>
