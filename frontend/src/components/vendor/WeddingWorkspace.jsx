@@ -345,12 +345,31 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
     quantity: '1',
     unit: 'pcs',
     dimensions: '',
+    dimension_unit: 'ft',
     area: '',
+    function: 'All Functions',
     status: 'planned',
+    pricing_type: 'manual',
+    rate: '',
+    estimated_cost: '',
+    actual_cost: '',
+    supplier: '',
+    supplier_contact: '',
     notes: '',
   };
   const [elements, setElements] = useState([]);
   const [elementsLoading, setElementsLoading] = useState(false);
+  const [elementSummary, setElementSummary] = useState({
+    total_elements: 0,
+    ordered_elements: 0,
+    pending_elements: 0,
+    estimated_cost: 0,
+    actual_cost: 0,
+  });
+  const [elementSearch, setElementSearch] = useState('');
+  const [elementFilterCategory, setElementFilterCategory] = useState('All Categories');
+  const [elementFilterFunction, setElementFilterFunction] = useState('All Functions');
+  const [elementFilterStatus, setElementFilterStatus] = useState('All Status');
   const [elementSaving, setElementSaving] = useState(false);
   const [elementDeletingId, setElementDeletingId] = useState(null);
   const [showElementForm, setShowElementForm] = useState(false);
@@ -728,14 +747,80 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
     if (!wedding?.id || !isDecorator) return;
     setElementsLoading(true);
     try {
-      const response = await authAxios.get(`/vendor/weddings/${wedding.id}/elements`);
-      setElements(response.data?.elements || []);
+      const [elementsResponse, summaryResponse] = await Promise.all([
+        authAxios.get(`/vendor/weddings/${wedding.id}/elements`),
+        authAxios.get(`/vendor/weddings/${wedding.id}/elements-summary`),
+      ]);
+      setElements(elementsResponse.data?.elements || []);
+      setElementSummary(summaryResponse.data?.summary || {
+        total_elements: 0,
+        ordered_elements: 0,
+        pending_elements: 0,
+        estimated_cost: 0,
+        actual_cost: 0,
+      });
     } catch (error) {
       console.error("Failed to load wedding elements:", error);
     } finally {
       setElementsLoading(false);
     }
   };
+
+  const parseElementAreaSqft = (dimensions, dimensionUnit = 'ft') => {
+    const values = String(dimensions || '').match(/\d+(?:\.\d+)?/g) || [];
+    if (values.length < 2) return 0;
+    let area = Number(values[0]) * Number(values[1]);
+    if (String(dimensionUnit).toLowerCase() === 'm') {
+      area *= 10.7639104167;
+    }
+    return Number(area.toFixed(2));
+  };
+
+  const getElementEstimatedCost = (form) => {
+    const quantity = Number(form.quantity || 0);
+    const rate = Number(form.rate || 0);
+
+    if (form.pricing_type === 'per_sqft') {
+      return Number((parseElementAreaSqft(form.dimensions, form.dimension_unit) * rate * quantity).toFixed(2));
+    }
+
+    if (form.pricing_type === 'per_unit') {
+      return Number((quantity * rate).toFixed(2));
+    }
+
+    return Number(form.estimated_cost || 0);
+  };
+
+  const formatElementCurrency = (amount) => {
+    const value = Number(amount || 0);
+    return `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+  };
+
+  const filteredElements = elements.filter((element) => {
+    const query = elementSearch.trim().toLowerCase();
+    const matchesSearch = !query || [
+      element.name,
+      element.category,
+      element.function,
+      element.area,
+      element.supplier,
+      element.notes,
+    ].some((value) => String(value || '').toLowerCase().includes(query));
+
+    const matchesCategory =
+      elementFilterCategory === 'All Categories' ||
+      String(element.category || 'General') === elementFilterCategory;
+
+    const matchesFunction =
+      elementFilterFunction === 'All Functions' ||
+      String(element.function || 'All Functions') === elementFilterFunction;
+
+    const matchesStatus =
+      elementFilterStatus === 'All Status' ||
+      String(element.status || 'planned') === elementFilterStatus;
+
+    return matchesSearch && matchesCategory && matchesFunction && matchesStatus;
+  });
 
   const resetElementForm = () => {
     setElementForm(emptyElement);
@@ -776,8 +861,16 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
         quantity: Number(elementForm.quantity),
         unit: elementForm.unit.trim() || 'pcs',
         dimensions: elementForm.dimensions.trim(),
+        dimension_unit: elementForm.dimension_unit || 'ft',
         area: elementForm.area.trim(),
+        function: elementForm.function || 'All Functions',
         status: elementForm.status || 'planned',
+        pricing_type: elementForm.pricing_type || 'manual',
+        rate: Number(elementForm.rate || 0),
+        estimated_cost: getElementEstimatedCost(elementForm),
+        actual_cost: Number(elementForm.actual_cost || 0),
+        supplier: elementForm.supplier.trim(),
+        supplier_contact: elementForm.supplier_contact.trim(),
         notes: elementForm.notes.trim(),
       };
 
@@ -808,8 +901,16 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
       quantity: String(element.quantity ?? 1),
       unit: element.unit || 'pcs',
       dimensions: element.dimensions || '',
-      area: element.area || '',
+      dimension_unit: element.dimension_unit || 'ft',
+      area: element.area ? String(element.area) : '',
+      function: element.function || 'All Functions',
       status: element.status || 'planned',
+      pricing_type: element.pricing_type || 'manual',
+      rate: element.rate != null ? String(element.rate) : '',
+      estimated_cost: element.estimated_cost != null ? String(element.estimated_cost) : '',
+      actual_cost: element.actual_cost != null ? String(element.actual_cost) : '',
+      supplier: element.supplier || '',
+      supplier_contact: element.supplier_contact || '',
       notes: element.notes || '',
     });
     setShowElementForm(true);
@@ -820,7 +921,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
     setElementDeletingId(id);
     try {
       await authAxios.delete(`/vendor/weddings/${wedding.id}/elements/${id}`);
-      setElements((current) => current.filter((item) => item.id !== id));
+      await loadElements();
     } catch (error) {
       console.error("Failed to delete wedding element:", error);
       window.alert(error.response?.data?.detail || 'Could not delete wedding element.');
@@ -2122,7 +2223,9 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                     <div>
                       <p className="text-sm text-[#8B8194]">Element Management</p>
                       <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding Elements</h4>
-                      <p className="text-sm text-[#6B6175] mt-1">Manage decor elements, materials, quantities and execution requirements for this wedding.</p>
+                      <p className="text-sm text-[#6B6175] mt-1">
+                        Manage decor materials, dimensions, quantity, pricing, suppliers and execution requirements.
+                      </p>
                     </div>
                     <button
                       type="button"
@@ -2135,6 +2238,30 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                   </div>
                 </div>
 
+                {/* ELEMENT SUMMARY */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
+                    <p className="text-xs text-[#8B8194]">Total Elements</p>
+                    <p className="text-xl font-semibold text-[#3F3748] mt-1">{elementSummary.total_elements}</p>
+                  </div>
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
+                    <p className="text-xs text-[#8B8194]">Ordered</p>
+                    <p className="text-xl font-semibold text-[#3F3748] mt-1">{elementSummary.ordered_elements}</p>
+                  </div>
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
+                    <p className="text-xs text-[#8B8194]">Pending</p>
+                    <p className="text-xl font-semibold text-[#3F3748] mt-1">{elementSummary.pending_elements}</p>
+                  </div>
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
+                    <p className="text-xs text-[#8B8194]">Estimated Cost</p>
+                    <p className="text-lg font-semibold text-[#3F3748] mt-1">{formatElementCurrency(elementSummary.estimated_cost)}</p>
+                  </div>
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
+                    <p className="text-xs text-[#8B8194]">Actual Cost</p>
+                    <p className="text-lg font-semibold text-[#3F3748] mt-1">{formatElementCurrency(elementSummary.actual_cost)}</p>
+                  </div>
+                </div>
+
                 {showElementForm && (
                   <div className="rounded-xl border border-[#eadff2] bg-white p-5">
                     <div className="flex items-center justify-between mb-4">
@@ -2143,6 +2270,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                         <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Element Details</h4>
                       </div>
                     </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <input
                         value={elementForm.name}
@@ -2150,6 +2278,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                         placeholder="Element name *"
                         className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
                       />
+
                       <select
                         value={elementForm.category}
                         onChange={(e) => {
@@ -2171,26 +2300,21 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                             <option value={elementForm.category}>{elementForm.category}</option>
                           )}
                       </select>
+
                       {elementForm.category !== 'Custom' && (
                         <div className="md:col-span-2 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-medium text-[#3F3748]">
-                                {elementForm.category === 'General' ? 'Common Decor Items' : `${elementForm.category} Items`}
-                              </p>
-                              <p className="text-xs text-[#8B8194] mt-1">
-                                Quickly select a commonly used {elementForm.category.toLowerCase()} item or type your own below.
-                              </p>
-                            </div>
-                          </div>
+                          <p className="text-sm font-medium text-[#3F3748]">
+                            {elementForm.category === 'General' ? 'Common Decor Items' : `${elementForm.category} Items`}
+                          </p>
+                          <p className="text-xs text-[#8B8194] mt-1">
+                            Quickly select a commonly used {elementForm.category.toLowerCase()} item or type your own below.
+                          </p>
                           <select
                             defaultValue=""
                             onChange={(e) => { selectCategoryElement(e.target.value); e.target.value = ''; }}
                             className="mt-3 w-full rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
                           >
-                            <option value="">
-                              Select a {elementForm.category.toLowerCase()} item...
-                            </option>
+                            <option value="">Select an item...</option>
                             {(CATEGORY_DECOR_ITEMS[elementForm.category] || CATEGORY_DECOR_ITEMS.General).map((item) => (
                               <option key={item} value={item}>{item}</option>
                             ))}
@@ -2265,37 +2389,171 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                         placeholder="Quantity *"
                         className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
                       />
+
                       <input
                         value={elementForm.unit}
                         onChange={(e) => setElementForm({ ...elementForm, unit: e.target.value })}
-                        placeholder="Unit (pcs, ft, set, etc.)"
+                        placeholder="Quantity unit (pcs, set, ft, etc.)"
                         className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
                       />
-                      <div>
-                        <input
-                          value={elementForm.dimensions}
-                          onChange={(e) => setElementForm({ ...elementForm, dimensions: e.target.value })}
-                          placeholder="Dimensions / Size (20 × 12, 8 × 4 × 2...)"
-                          className="w-full rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
-                        />
-                        <p className="mt-1 text-xs text-[#8B8194]">Use ×, x or * for dimensions, e.g. 20 × 12 ft.</p>
+
+                      <input
+                        value={elementForm.dimensions}
+                        onChange={(e) => setElementForm({ ...elementForm, dimensions: e.target.value })}
+                        placeholder="Size (20 × 12, 8 × 4 × 2...)"
+                        className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
+                      />
+
+                      <select
+                        value={elementForm.dimension_unit}
+                        onChange={(e) => setElementForm({ ...elementForm, dimension_unit: e.target.value })}
+                        className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none bg-white"
+                      >
+                        <option value="ft">Size Unit: Feet (ft)</option>
+                        <option value="m">Size Unit: Metres (m)</option>
+                      </select>
+
+                      <div className="rounded-lg border border-[#eadff2] bg-[#faf7ff] px-3 py-2">
+                        <p className="text-xs text-[#8B8194]">Calculated Area</p>
+                        <p className="text-sm font-semibold text-[#3F3748] mt-1">
+                          {parseElementAreaSqft(elementForm.dimensions, elementForm.dimension_unit)
+                            ? `${parseElementAreaSqft(elementForm.dimensions, elementForm.dimension_unit)} sq ft`
+                            : 'Enter length × width'}
+                        </p>
                       </div>
+
                       <input
                         value={elementForm.area}
                         onChange={(e) => setElementForm({ ...elementForm, area: e.target.value })}
                         placeholder="Area / Location (Mandap, Stage, Entrance...)"
                         className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
                       />
+
+                      <select
+                        value={elementForm.function}
+                        onChange={(e) => setElementForm({ ...elementForm, function: e.target.value })}
+                        className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none bg-white"
+                      >
+                        {['All Functions', 'Haldi', 'Mehendi', 'Sangeet', 'Wedding', 'Reception', 'Other'].map((item) => (
+                          <option key={item} value={item}>{item}</option>
+                        ))}
+                      </select>
+
                       <select
                         value={elementForm.status}
                         onChange={(e) => setElementForm({ ...elementForm, status: e.target.value })}
                         className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none bg-white"
                       >
                         <option value="planned">Planned</option>
+                        <option value="quotation">Quotation</option>
+                        <option value="ordered">Ordered</option>
+                        <option value="received">Received</option>
+                        <option value="installed">Installed</option>
                         <option value="in_progress">In Progress</option>
                         <option value="ready">Ready</option>
                         <option value="completed">Completed</option>
                       </select>
+
+                      {/* PRICING */}
+                      <div className="md:col-span-2 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
+                        <p className="text-sm font-medium text-[#3F3748]">Pricing</p>
+                        <p className="text-xs text-[#8B8194] mt-1">
+                          Choose how this element is priced. For platform/carpet/flooring, use Per Sq Ft.
+                        </p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+                          <select
+                            value={elementForm.pricing_type}
+                            onChange={(e) => setElementForm({ ...elementForm, pricing_type: e.target.value })}
+                            className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none"
+                          >
+                            <option value="manual">Manual Estimated Cost</option>
+                            <option value="per_sqft">Rate Per Sq Ft</option>
+                            <option value="per_unit">Rate Per Unit</option>
+                          </select>
+
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={elementForm.rate}
+                            onChange={(e) => setElementForm({ ...elementForm, rate: e.target.value })}
+                            placeholder={elementForm.pricing_type === 'per_sqft' ? 'Rate / sq ft (₹)' : 'Rate (₹)'}
+                            className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
+                          />
+
+                          <div className="rounded-lg border border-[#eadff2] bg-white px-3 py-2">
+                            <p className="text-xs text-[#8B8194]">Estimated Cost</p>
+                            <p className="text-sm font-semibold text-[#3F3748] mt-1">
+                              {formatElementCurrency(getElementEstimatedCost(elementForm))}
+                            </p>
+                          </div>
+                        </div>
+
+                        {elementForm.pricing_type === 'per_sqft' && (
+                          <div className="mt-3 rounded-lg bg-white border border-[#eadff2] px-3 py-3 text-sm text-[#6B6175]">
+                            {parseElementAreaSqft(elementForm.dimensions, elementForm.dimension_unit) > 0 && Number(elementForm.rate) > 0 ? (
+                              <>
+                                <span className="font-medium text-[#3F3748]">
+                                  {parseElementAreaSqft(elementForm.dimensions, elementForm.dimension_unit)} sq ft
+                                </span>
+                                {' × '}
+                                <span className="font-medium text-[#3F3748]">₹{Number(elementForm.rate).toLocaleString('en-IN')}</span>
+                                {' / sq ft × '}
+                                <span className="font-medium text-[#3F3748]">{Number(elementForm.quantity || 1)}</span>
+                                {' = '}
+                                <span className="font-semibold text-[#8B6AA8]">
+                                  {formatElementCurrency(getElementEstimatedCost(elementForm))}
+                                </span>
+                              </>
+                            ) : (
+                              'Enter a size such as 20 × 12 ft and a rate such as ₹27 / sq ft.'
+                            )}
+                          </div>
+                        )}
+
+                        {elementForm.pricing_type === 'manual' && (
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={elementForm.estimated_cost}
+                            onChange={(e) => setElementForm({ ...elementForm, estimated_cost: e.target.value })}
+                            placeholder="Estimated Cost (₹)"
+                            className="mt-3 w-full rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
+                          />
+                        )}
+
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={elementForm.actual_cost}
+                          onChange={(e) => setElementForm({ ...elementForm, actual_cost: e.target.value })}
+                          placeholder="Actual Cost (₹) — fill after final supplier price"
+                          className="mt-3 w-full rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
+                        />
+                      </div>
+
+                      {/* SUPPLIER */}
+                      <div className="md:col-span-2 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
+                        <p className="text-sm font-medium text-[#3F3748]">Supplier / Source</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                          <input
+                            value={elementForm.supplier}
+                            onChange={(e) => setElementForm({ ...elementForm, supplier: e.target.value })}
+                            placeholder="Supplier / Vendor name"
+                            className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
+                          />
+                          <input
+                            value={elementForm.supplier_contact}
+                            onChange={(e) => setElementForm({ ...elementForm, supplier_contact: e.target.value })}
+                            placeholder="Supplier contact"
+                            className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
+                          />
+                        </div>
+                      </div>
+
                       <textarea
                         value={elementForm.notes}
                         onChange={(e) => setElementForm({ ...elementForm, notes: e.target.value })}
@@ -2304,6 +2562,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                         className="md:col-span-2 rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
                       />
                     </div>
+
                     <div className="flex gap-2 mt-4">
                       <button
                         type="button"
@@ -2324,19 +2583,72 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                   </div>
                 )}
 
+                {/* SEARCH + FILTERS */}
+                <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <input
+                      value={elementSearch}
+                      onChange={(e) => setElementSearch(e.target.value)}
+                      placeholder="Search elements, supplier, notes..."
+                      className="md:col-span-2 rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
+                    />
+
+                    <select
+                      value={elementFilterCategory}
+                      onChange={(e) => setElementFilterCategory(e.target.value)}
+                      className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none"
+                    >
+                      <option>All Categories</option>
+                      {DECORATOR_ELEMENT_CATEGORIES.filter((item) => item !== 'Custom').map((category) => (
+                        <option key={category}>{category}</option>
+                      ))}
+                      {customElementCategories.map((category) => (
+                        <option key={category.id}>{category.name}</option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={elementFilterFunction}
+                      onChange={(e) => setElementFilterFunction(e.target.value)}
+                      className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none"
+                    >
+                      {['All Functions', 'Haldi', 'Mehendi', 'Sangeet', 'Wedding', 'Reception', 'Other'].map((item) => (
+                        <option key={item}>{item}</option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={elementFilterStatus}
+                      onChange={(e) => setElementFilterStatus(e.target.value)}
+                      className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none"
+                    >
+                      <option>All Status</option>
+                      <option value="planned">Planned</option>
+                      <option value="quotation">Quotation</option>
+                      <option value="ordered">Ordered</option>
+                      <option value="received">Received</option>
+                      <option value="installed">Installed</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="ready">Ready</option>
+                      <option value="completed">Completed</option>
+                    </select>
+                  </div>
+                </div>
+
                 {elementsLoading ? (
                   <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-8 text-center text-sm text-[#8B8194]">Loading elements...</div>
-                ) : elements.length > 0 ? (
+                ) : filteredElements.length > 0 ? (
                   <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="text-sm text-[#8B8194]">Your Elements</p>
                         <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Decor Requirements</h4>
                       </div>
-                      <p className="text-sm text-[#8B8194]">{elements.length} item{elements.length === 1 ? '' : 's'}</p>
+                      <p className="text-sm text-[#8B8194]">{filteredElements.length} shown / {elements.length} total</p>
                     </div>
+
                     <div className="mt-4 space-y-3">
-                      {elements.map((element) => (
+                      {filteredElements.map((element) => (
                         <div key={element.id} className="rounded-xl border border-[#eadff2] bg-white p-4">
                           <div className="flex flex-col md:flex-row md:items-start gap-3">
                             <div className="flex-1 min-w-0">
@@ -2345,14 +2657,27 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                                 <span className="rounded-full bg-[#f4eafa] px-2.5 py-1 text-xs text-[#8B6AA8]">{element.category}</span>
                                 <span className="rounded-full bg-[#faf7ff] border border-[#eadff2] px-2.5 py-1 text-xs text-[#8B8194] capitalize">{String(element.status || 'planned').replace('_', ' ')}</span>
                               </div>
-                              <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-[#6B6175]">
+
+                              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs text-[#6B6175]">
                                 <p><span className="text-[#8B8194]">Quantity:</span> {element.quantity} {element.unit || 'pcs'}</p>
-                                <p><span className="text-[#8B8194]">Size:</span> {element.dimensions || 'Not specified'}</p>
-                                <p><span className="text-[#8B8194]">Area:</span> {element.area || 'Not specified'}</p>
-                                <p><span className="text-[#8B8194]">Status:</span> {String(element.status || 'planned').replace('_', ' ')}</p>
+                                <p><span className="text-[#8B8194]">Size:</span> {element.dimensions ? `${element.dimensions} ${element.dimension_unit || 'ft'}` : 'Not specified'}</p>
+                                <p><span className="text-[#8B8194]">Area:</span> {Number(element.area_sqft || 0) > 0 ? `${element.area_sqft} sq ft` : 'Not calculated'}</p>
+                                <p><span className="text-[#8B8194]">Function:</span> {element.function || 'All Functions'}</p>
+                                <p><span className="text-[#8B8194]">Estimated:</span> {formatElementCurrency(element.estimated_cost)}</p>
+                                <p><span className="text-[#8B8194]">Actual:</span> {formatElementCurrency(element.actual_cost)}</p>
+                                <p><span className="text-[#8B8194]">Supplier:</span> {element.supplier || 'Not assigned'}</p>
+                                <p><span className="text-[#8B8194]">Area / Location:</span> {element.area || 'Not specified'}</p>
                               </div>
+
+                              {element.pricing_type === 'per_sqft' && Number(element.rate || 0) > 0 && (
+                                <p className="mt-2 text-xs text-[#8B8194]">
+                                  Rate: ₹{Number(element.rate).toLocaleString('en-IN')} / sq ft
+                                </p>
+                              )}
+
                               {element.notes && <p className="mt-2 text-sm text-[#6B6175]">{element.notes}</p>}
                             </div>
+
                             <div className="flex gap-2 md:shrink-0">
                               <button
                                 type="button"
@@ -2378,8 +2703,8 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                   </div>
                 ) : (
                   <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-8 text-center">
-                    <p className="text-sm text-[#8B8194]">No wedding elements added yet.</p>
-                    <p className="text-sm text-[#6B6175] mt-1">Add category-specific furniture, florals, lighting, truss, flooring, printing and other decor requirements for this wedding.</p>
+                    <p className="text-sm text-[#8B8194]">No matching wedding elements.</p>
+                    <p className="text-sm text-[#6B6175] mt-1">Add a decor element or adjust your search and filters.</p>
                   </div>
                 )}
               </div>
