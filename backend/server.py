@@ -1200,7 +1200,85 @@ async def update_vendor_wedding(
         "ok": True,
         "wedding": wedding,
     }
+# ---- Vendor Wedding Clients ----
 
+class ClientCreateIn(BaseModel):
+    name: str
+    phone: Optional[str] = ""
+    email: Optional[str] = ""
+    relation: Optional[str] = ""
+    notes: Optional[str] = ""
+
+
+@api_router.post("/vendor/weddings/{wedding_id}/clients")
+async def create_wedding_client(
+    wedding_id: str,
+    payload: ClientCreateIn,
+    authorization: str = Header(None)
+):
+    user, vendor, plan = await get_vendor_wedding_access(authorization)
+
+    wedding = await db.weddings.find_one({
+        "id": wedding_id,
+        "vendor_id": vendor["id"],
+    })
+
+    if not wedding:
+        raise HTTPException(
+            status_code=404,
+            detail="Wedding not found"
+        )
+
+    client = {
+        "id": str(uuid.uuid4()),
+        "vendor_id": vendor["id"],
+        "wedding_id": wedding_id,
+        "name": payload.name.strip(),
+        "phone": payload.phone or "",
+        "email": payload.email or "",
+        "relation": payload.relation or "",
+        "notes": payload.notes or "",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    await db.clients.insert_one(client)
+
+    return {
+        "ok": True,
+        "client": client,
+    }
+
+
+@api_router.get("/vendor/weddings/{wedding_id}/clients")
+async def wedding_clients(
+    wedding_id: str,
+    authorization: str = Header(None)
+):
+    user, vendor, plan = await get_vendor_wedding_access(authorization)
+
+    wedding = await db.weddings.find_one({
+        "id": wedding_id,
+        "vendor_id": vendor["id"],
+    })
+
+    if not wedding:
+        raise HTTPException(
+            status_code=404,
+            detail="Wedding not found"
+        )
+
+    clients = await db.clients.find(
+        {
+            "wedding_id": wedding_id,
+            "vendor_id": vendor["id"],
+        },
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(500)
+
+    return {
+        "count": len(clients),
+        "clients": clients,
+    }
 
 
 # ---- Object Storage ----
