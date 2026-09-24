@@ -477,7 +477,7 @@ async def auth_login(payload: AuthLoginIn):
         user.get("role", "couple")
     )
 
-       return {
+    return {
         "token": token,
         "user": {
             "id": user["id"],
