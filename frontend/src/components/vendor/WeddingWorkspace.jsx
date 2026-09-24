@@ -370,6 +370,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
   const [elementFilterCategory, setElementFilterCategory] = useState('All Categories');
   const [elementFilterFunction, setElementFilterFunction] = useState('All Functions');
   const [elementFilterStatus, setElementFilterStatus] = useState('All Status');
+  const [elementFilterPricing, setElementFilterPricing] = useState('All Pricing');
   const [elementSaving, setElementSaving] = useState(false);
   const [elementDeletingId, setElementDeletingId] = useState(null);
   const [showElementForm, setShowElementForm] = useState(false);
@@ -819,8 +820,29 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
       elementFilterStatus === 'All Status' ||
       String(element.status || 'planned') === elementFilterStatus;
 
-    return matchesSearch && matchesCategory && matchesFunction && matchesStatus;
+    const matchesPricing =
+      elementFilterPricing === 'All Pricing' ||
+      (elementFilterPricing === 'Per Sq Ft' && String(element.pricing_type || 'manual') === 'per_sqft') ||
+      (elementFilterPricing === 'Per Unit' && String(element.pricing_type || 'manual') === 'per_unit') ||
+      (elementFilterPricing === 'Manual' && String(element.pricing_type || 'manual') === 'manual');
+
+    return matchesSearch && matchesCategory && matchesFunction && matchesStatus && matchesPricing;
   });
+
+  const clearElementFilters = () => {
+    setElementSearch('');
+    setElementFilterCategory('All Categories');
+    setElementFilterFunction('All Functions');
+    setElementFilterStatus('All Status');
+    setElementFilterPricing('All Pricing');
+  };
+
+  const hasActiveElementFilters =
+    Boolean(elementSearch.trim()) ||
+    elementFilterCategory !== 'All Categories' ||
+    elementFilterFunction !== 'All Functions' ||
+    elementFilterStatus !== 'All Status' ||
+    elementFilterPricing !== 'All Pricing';
 
   const resetElementForm = () => {
     setElementForm(emptyElement);
@@ -2645,6 +2667,35 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                       <option value="ready">Ready</option>
                       <option value="completed">Completed</option>
                     </select>
+
+                    <select
+                      value={elementFilterPricing}
+                      onChange={(e) => setElementFilterPricing(e.target.value)}
+                      className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none"
+                    >
+                      <option>All Pricing</option>
+                      <option>Per Sq Ft</option>
+                      <option>Per Unit</option>
+                      <option>Manual</option>
+                    </select>
+
+                    <div className="md:col-span-3 flex items-center justify-between gap-3">
+                      <p className="text-xs text-[#8B8194]">
+                        {hasActiveElementFilters
+                          ? `${filteredElements.length} matching element${filteredElements.length === 1 ? '' : 's'}`
+                          : `${elements.length} element${elements.length === 1 ? '' : 's'} total`}
+                      </p>
+
+                      {hasActiveElementFilters && (
+                        <button
+                          type="button"
+                          onClick={clearElementFilters}
+                          className="rounded-lg bg-[#f4eafa] px-3 py-2 text-sm text-[#8B6AA8] hover:bg-[#eadcf5]"
+                        >
+                          Clear Filters
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
