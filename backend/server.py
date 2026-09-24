@@ -146,6 +146,50 @@ class BudgetOut(BaseModel):
     categories: List[BudgetCategory]
 
 
+# ---------- Budget Planner ----------
+DEFAULT_SPLIT = [
+    ("Venue", 0.22, "Halls, palace grounds, resort takeover, décor-inclusive"),
+    ("Food & Catering", 0.22, "Per-plate multi-cuisine, live counters, bar service"),
+    ("Décor & Florals", 0.15, "Mandap, stage, entrance, table florals, drapes"),
+    ("Photography & Video", 0.10, "Candid, cinematic film, pre-wedding shoot"),
+    ("Bridal & Groom Wear", 0.08, "Lehenga, sherwani, jewellery, accessories"),
+    ("Makeup & Styling", 0.04, "HD makeup, hair, family styling touch-ups"),
+    ("Entertainment", 0.05, "DJ, sangeet choreo, live band, dhol"),
+    ("Invitations & Gifting", 0.03, "Digital + boxed invites, welcome hampers"),
+    ("Transportation & Stay", 0.06, "Guest transfers, family stay, honeymoon start"),
+    ("Miscellaneous", 0.05, "Buffer for last-minute magic ✿"),
+]
+
+
+@api_router.post("/budget/estimate", response_model=BudgetOut)
+async def budget_estimate(payload: BudgetIn):
+    total = float(payload.total_budget)
+
+    categories = [
+        BudgetCategory(
+            name=name,
+            percent=round(pct * 100, 1),
+            amount=round(total * pct, 0),
+            note=note,
+        )
+        for name, pct, note in DEFAULT_SPLIT
+    ]
+
+    per_head = round(
+        total * 0.22 / max(payload.guest_count, 1),
+        0,
+    )
+
+    return BudgetOut(
+        total=total,
+        guest_count=payload.guest_count,
+        city=payload.city,
+        functions=payload.functions,
+        per_head=per_head,
+        categories=categories,
+    )
+
+
 # ---------- WEDORA DESIGNER ----------
 class DesignerIn(BaseModel):
     dream_description: str
