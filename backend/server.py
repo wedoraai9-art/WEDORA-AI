@@ -579,57 +579,55 @@ class VendorPlanIn(BaseModel):
 
 
 class WeddingCreateIn(BaseModel):
-    # Canonical backend fields
     name: Optional[str] = None
     client_name: Optional[str] = ""
     event_date: Optional[str] = ""
-
-    # Frontend-friendly wedding workspace fields
-    wedding_name: Optional[str] = None
-    bride_name: Optional[str] = ""
-    groom_name: Optional[str] = ""
-    wedding_date: Optional[str] = None
-    venue: Optional[str] = ""
-
     city: Optional[str] = ""
     guest_count: Optional[int] = 0
     budget: Optional[float] = 0
-    status: Optional[str] = "upcoming"
+    status: Optional[str] = "planning"
     notes: Optional[str] = ""
+    wedding_name: Optional[str] = None
+    bride_name: Optional[str] = ""
+    groom_name: Optional[str] = ""
+    wedding_date: Optional[str] = ""
+    venue: Optional[str] = ""
 
 
 class WeddingUpdateIn(BaseModel):
     name: Optional[str] = None
     client_name: Optional[str] = None
     event_date: Optional[str] = None
-
+    city: Optional[str] = None
+    guest_count: Optional[int] = None
+    budget: Optional[float] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None
     wedding_name: Optional[str] = None
     bride_name: Optional[str] = None
     groom_name: Optional[str] = None
     wedding_date: Optional[str] = None
     venue: Optional[str] = None
 
-    city: Optional[str] = None
-    guest_count: Optional[int] = None
-    budget: Optional[float] = None
-    status: Optional[str] = None
-    notes: Optional[str] = None
+
+class WeddingBudgetUpdateIn(BaseModel):
+    total_budget: float = 0
 
 
-class WeddingClientCreateIn(BaseModel):
-    name: str
-    phone: Optional[str] = ""
-    email: Optional[str] = ""
-    relation: Optional[str] = ""
+class WeddingExpenseIn(BaseModel):
+    title: str
+    category: Optional[str] = "General"
+    amount: float = 0
+    expense_date: Optional[str] = ""
     notes: Optional[str] = ""
 
 
-class WeddingClientUpdateIn(BaseModel):
-    name: Optional[str] = None
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    relation: Optional[str] = None
-    notes: Optional[str] = None
+class WeddingPaymentIn(BaseModel):
+    title: str
+    payment_type: Optional[str] = "payment"
+    amount: float = 0
+    payment_date: Optional[str] = ""
+    notes: Optional[str] = ""
 
 
 async def get_vendor_user(authorization: str = Header(None)):
@@ -1040,22 +1038,6 @@ async def vendor_delete_portfolio(
     return {"portfolio": portfolio}
 
 
-
-def _wedding_for_workspace(wedding: dict):
-    """Return a wedding with both legacy API fields and workspace-friendly aliases."""
-    if not wedding:
-        return wedding
-
-    wedding = dict(wedding)
-    wedding.setdefault("wedding_name", wedding.get("name", ""))
-    wedding.setdefault("name", wedding.get("wedding_name", ""))
-    wedding.setdefault("wedding_date", wedding.get("event_date", ""))
-    wedding.setdefault("event_date", wedding.get("wedding_date", ""))
-    wedding.setdefault("bride_name", "")
-    wedding.setdefault("groom_name", "")
-    wedding.setdefault("venue", "")
-    return wedding
-
 @api_router.get("/vendor/weddings")
 async def vendor_get_weddings(authorization: str = Header(None)):
     user = await get_vendor_user(authorization)
@@ -1066,7 +1048,7 @@ async def vendor_get_weddings(authorization: str = Header(None)):
         {"_id": 0},
     ).sort("created_at", -1).to_list(200)
 
-    return {"weddings": [_wedding_for_workspace(w) for w in weddings]}
+    return {"weddings": weddings}
 
 
 @api_router.post("/vendor/weddings")
@@ -1085,34 +1067,29 @@ async def vendor_create_wedding(
         if existing_count >= limit:
             raise HTTPException(
                 status_code=403,
-                detail={
-                    "code": "WEDDING_LIMIT_REACHED",
-                    "message": f"Your {VENDOR_PLANS[plan]['label']} plan allows up to {limit} weddings.",
-                },
+                detail=f"Your {VENDOR_PLANS[plan]['label']} plan allows up to {limit} weddings.",
             )
 
-    wedding_name = (payload.wedding_name or payload.name or "").strip()
-    if not wedding_name:
-        raise HTTPException(status_code=422, detail="Wedding / Project Name is required.")
-
-    wedding_date = payload.wedding_date or payload.event_date or ""
+    wedding_name = (payload.wedding_name or payload.name or "Untitled Wedding").strip()
+    event_date = payload.wedding_date or payload.event_date or ""
 
     wedding = {
         "id": str(uuid.uuid4()),
         "vendor_id": vendor["id"],
         "name": wedding_name,
-        "wedding_name": wedding_name,
         "client_name": payload.client_name or "",
-        "bride_name": payload.bride_name or "",
-        "groom_name": payload.groom_name or "",
-        "event_date": wedding_date,
-        "wedding_date": wedding_date,
-        "venue": payload.venue or "",
+        "event_date": event_date,
         "city": payload.city or vendor.get("city", "Jaipur"),
         "guest_count": payload.guest_count or 0,
         "budget": payload.budget or 0,
-        "status": payload.status or "upcoming",
+        "status": payload.status or "planning",
         "notes": payload.notes or "",
+        # Workspace-friendly aliases retained alongside the original API fields.
+        "wedding_name": wedding_name,
+        "bride_name": payload.bride_name or "",
+        "groom_name": payload.groom_name or "",
+        "wedding_date": event_date,
+        "venue": payload.venue or "",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -1131,19 +1108,6 @@ async def vendor_update_wedding(
     vendor = await _ensure_vendor_profile(user)
 
     updates = payload.model_dump(exclude_none=True)
-
-    # Keep the legacy backend field names and the Wedding Workspace field names
-    # synchronized so existing wedding records and the new UI can coexist.
-    if "wedding_name" in updates:
-        updates["name"] = updates["wedding_name"]
-    elif "name" in updates:
-        updates["wedding_name"] = updates["name"]
-
-    if "wedding_date" in updates:
-        updates["event_date"] = updates["wedding_date"]
-    elif "event_date" in updates:
-        updates["wedding_date"] = updates["event_date"]
-
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
 
     result = await db.vendor_weddings.update_one(
@@ -1158,109 +1122,7 @@ async def vendor_update_wedding(
         {"id": wedding_id, "vendor_id": vendor["id"]},
         {"_id": 0},
     )
-    return _wedding_for_workspace(wedding)
-
-
-@api_router.get("/vendor/weddings/{wedding_id}/clients")
-async def vendor_get_wedding_clients(
-    wedding_id: str,
-    authorization: str = Header(None),
-):
-    user = await get_vendor_user(authorization)
-    vendor = await _ensure_vendor_profile(user)
-
-    wedding = await db.vendor_weddings.find_one(
-        {"id": wedding_id, "vendor_id": vendor["id"]},
-        {"_id": 0, "id": 1},
-    )
-    if not wedding:
-        raise HTTPException(status_code=404, detail="Wedding not found")
-
-    clients = await db.vendor_wedding_clients.find(
-        {"wedding_id": wedding_id, "vendor_id": vendor["id"]},
-        {"_id": 0},
-    ).sort("created_at", 1).to_list(500)
-
-    return {"clients": clients}
-
-
-@api_router.post("/vendor/weddings/{wedding_id}/clients")
-async def vendor_create_wedding_client(
-    wedding_id: str,
-    payload: WeddingClientCreateIn,
-    authorization: str = Header(None),
-):
-    user = await get_vendor_user(authorization)
-    vendor = await _ensure_vendor_profile(user)
-
-    wedding = await db.vendor_weddings.find_one(
-        {"id": wedding_id, "vendor_id": vendor["id"]},
-        {"_id": 0, "id": 1},
-    )
-    if not wedding:
-        raise HTTPException(status_code=404, detail="Wedding not found")
-
-    name = payload.name.strip()
-    if not name:
-        raise HTTPException(status_code=422, detail="Client name is required.")
-
-    now = datetime.now(timezone.utc).isoformat()
-    client = {
-        "id": str(uuid.uuid4()),
-        "vendor_id": vendor["id"],
-        "wedding_id": wedding_id,
-        "name": name,
-        "phone": payload.phone or "",
-        "email": payload.email or "",
-        "relation": payload.relation or "",
-        "notes": payload.notes or "",
-        "created_at": now,
-        "updated_at": now,
-    }
-
-    await db.vendor_wedding_clients.insert_one(client.copy())
-    return client
-
-
-@api_router.put("/vendor/weddings/{wedding_id}/clients/{client_id}")
-async def vendor_update_wedding_client(
-    wedding_id: str,
-    client_id: str,
-    payload: WeddingClientUpdateIn,
-    authorization: str = Header(None),
-):
-    user = await get_vendor_user(authorization)
-    vendor = await _ensure_vendor_profile(user)
-
-    updates = payload.model_dump(exclude_none=True)
-    if "name" in updates:
-        updates["name"] = updates["name"].strip()
-        if not updates["name"]:
-            raise HTTPException(status_code=422, detail="Client name is required.")
-
-    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
-
-    result = await db.vendor_wedding_clients.update_one(
-        {
-            "id": client_id,
-            "wedding_id": wedding_id,
-            "vendor_id": vendor["id"],
-        },
-        {"$set": updates},
-    )
-
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Client not found")
-
-    client = await db.vendor_wedding_clients.find_one(
-        {
-            "id": client_id,
-            "wedding_id": wedding_id,
-            "vendor_id": vendor["id"],
-        },
-        {"_id": 0},
-    )
-    return client
+    return wedding
 
 
 @api_router.delete("/vendor/weddings/{wedding_id}")
@@ -1297,7 +1159,279 @@ async def vendor_get_wedding(
     if not wedding:
         raise HTTPException(status_code=404, detail="Wedding not found")
 
-    return _wedding_for_workspace(wedding)
+    return wedding
+
+
+
+
+# ================= WEDDING BUDGET & PAYMENTS =================
+async def _get_vendor_wedding(wedding_id: str, vendor_id: str):
+    wedding = await db.vendor_weddings.find_one(
+        {"id": wedding_id, "vendor_id": vendor_id},
+        {"_id": 0},
+    )
+    if not wedding:
+        raise HTTPException(status_code=404, detail="Wedding not found")
+    return wedding
+
+
+async def _wedding_budget_payload(wedding: dict):
+    wedding_id = wedding["id"]
+
+    expenses = await db.vendor_wedding_expenses.find(
+        {"wedding_id": wedding_id},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(500)
+
+    payments = await db.vendor_wedding_payments.find(
+        {"wedding_id": wedding_id},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(500)
+
+    total_budget = float(wedding.get("budget") or 0)
+    total_expenses = round(sum(float(item.get("amount") or 0) for item in expenses), 2)
+    total_payments = round(
+        sum(
+            (-1 if item.get("payment_type") == "refund" else 1)
+            * float(item.get("amount") or 0)
+            for item in payments
+        ),
+        2,
+    )
+
+    return {
+        "budget": {
+            "total_budget": total_budget,
+            "total_expenses": total_expenses,
+            "total_payments": total_payments,
+            "remaining_budget": round(total_budget - total_expenses, 2),
+            "payment_balance": round(total_expenses - total_payments, 2),
+        },
+        "expenses": expenses,
+        "payments": payments,
+    }
+
+
+@api_router.get("/vendor/weddings/{wedding_id}/budget")
+async def vendor_get_wedding_budget(
+    wedding_id: str,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    wedding = await _get_vendor_wedding(wedding_id, vendor["id"])
+    return await _wedding_budget_payload(wedding)
+
+
+@api_router.put("/vendor/weddings/{wedding_id}/budget")
+async def vendor_update_wedding_budget(
+    wedding_id: str,
+    payload: WeddingBudgetUpdateIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    wedding = await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    total_budget = max(float(payload.total_budget or 0), 0)
+    await db.vendor_weddings.update_one(
+        {"id": wedding_id, "vendor_id": vendor["id"]},
+        {
+            "$set": {
+                "budget": total_budget,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+        },
+    )
+
+    wedding["budget"] = total_budget
+    return await _wedding_budget_payload(wedding)
+
+
+@api_router.post("/vendor/weddings/{wedding_id}/expenses")
+async def vendor_add_wedding_expense(
+    wedding_id: str,
+    payload: WeddingExpenseIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    if not payload.title.strip():
+        raise HTTPException(status_code=400, detail="Expense title is required")
+    if float(payload.amount) <= 0:
+        raise HTTPException(status_code=400, detail="Expense amount must be greater than 0")
+
+    expense = {
+        "id": str(uuid.uuid4()),
+        "wedding_id": wedding_id,
+        "vendor_id": vendor["id"],
+        "title": payload.title.strip(),
+        "category": (payload.category or "General").strip() or "General",
+        "amount": round(float(payload.amount), 2),
+        "expense_date": payload.expense_date or "",
+        "notes": payload.notes or "",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    await db.vendor_wedding_expenses.insert_one(expense.copy())
+    return expense
+
+
+@api_router.put("/vendor/weddings/{wedding_id}/expenses/{expense_id}")
+async def vendor_update_wedding_expense(
+    wedding_id: str,
+    expense_id: str,
+    payload: WeddingExpenseIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    if not payload.title.strip():
+        raise HTTPException(status_code=400, detail="Expense title is required")
+    if float(payload.amount) <= 0:
+        raise HTTPException(status_code=400, detail="Expense amount must be greater than 0")
+
+    updates = {
+        "title": payload.title.strip(),
+        "category": (payload.category or "General").strip() or "General",
+        "amount": round(float(payload.amount), 2),
+        "expense_date": payload.expense_date or "",
+        "notes": payload.notes or "",
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    result = await db.vendor_wedding_expenses.update_one(
+        {"id": expense_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"$set": updates},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Expense not found")
+
+    return await db.vendor_wedding_expenses.find_one(
+        {"id": expense_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"_id": 0},
+    )
+
+
+@api_router.delete("/vendor/weddings/{wedding_id}/expenses/{expense_id}")
+async def vendor_delete_wedding_expense(
+    wedding_id: str,
+    expense_id: str,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    result = await db.vendor_wedding_expenses.delete_one(
+        {"id": expense_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]}
+    )
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Expense not found")
+
+    return {"success": True}
+
+
+@api_router.post("/vendor/weddings/{wedding_id}/payments")
+async def vendor_add_wedding_payment(
+    wedding_id: str,
+    payload: WeddingPaymentIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    if not payload.title.strip():
+        raise HTTPException(status_code=400, detail="Payment title is required")
+    if float(payload.amount) <= 0:
+        raise HTTPException(status_code=400, detail="Payment amount must be greater than 0")
+
+    payment_type = (payload.payment_type or "payment").strip().lower()
+    if payment_type not in {"advance", "payment", "refund"}:
+        raise HTTPException(status_code=400, detail="Invalid payment type")
+
+    payment = {
+        "id": str(uuid.uuid4()),
+        "wedding_id": wedding_id,
+        "vendor_id": vendor["id"],
+        "title": payload.title.strip(),
+        "payment_type": payment_type,
+        "amount": round(float(payload.amount), 2),
+        "payment_date": payload.payment_date or "",
+        "notes": payload.notes or "",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    await db.vendor_wedding_payments.insert_one(payment.copy())
+    return payment
+
+
+@api_router.put("/vendor/weddings/{wedding_id}/payments/{payment_id}")
+async def vendor_update_wedding_payment(
+    wedding_id: str,
+    payment_id: str,
+    payload: WeddingPaymentIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    if not payload.title.strip():
+        raise HTTPException(status_code=400, detail="Payment title is required")
+    if float(payload.amount) <= 0:
+        raise HTTPException(status_code=400, detail="Payment amount must be greater than 0")
+
+    payment_type = (payload.payment_type or "payment").strip().lower()
+    if payment_type not in {"advance", "payment", "refund"}:
+        raise HTTPException(status_code=400, detail="Invalid payment type")
+
+    updates = {
+        "title": payload.title.strip(),
+        "payment_type": payment_type,
+        "amount": round(float(payload.amount), 2),
+        "payment_date": payload.payment_date or "",
+        "notes": payload.notes or "",
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    result = await db.vendor_wedding_payments.update_one(
+        {"id": payment_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"$set": updates},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Payment not found")
+
+    return await db.vendor_wedding_payments.find_one(
+        {"id": payment_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"_id": 0},
+    )
+
+
+@api_router.delete("/vendor/weddings/{wedding_id}/payments/{payment_id}")
+async def vendor_delete_wedding_payment(
+    wedding_id: str,
+    payment_id: str,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    result = await db.vendor_wedding_payments.delete_one(
+        {"id": payment_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]}
+    )
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Payment not found")
+
+    return {"success": True}
 
 
 @api_router.post("/vendor/profile/ai-generate")
