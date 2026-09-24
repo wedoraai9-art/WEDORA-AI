@@ -339,13 +339,25 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
                         type="button"
                         onClick={() => {
                           if (!taskTitle.trim()) return;
-                          setTasks([...tasks, { title: taskTitle, completed: false }]);
+                          if (editingTaskIndex !== null) {
+                            setTasks(
+                              tasks.map((item, index) =>
+                                index === editingTaskIndex
+                                  ? { ...item, title: taskTitle }
+                                  : item
+                              )
+                            );
+                            setEditingTaskIndex(null);
+                          } else {
+                            setTasks([...tasks, { title: taskTitle, completed: false }]);
+                          }
                           setTaskTitle("");
                           setShowTaskForm(false);
                         }}
                         className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8]"
                       >
-                        Save Task
+                       >
+                        {editingTaskIndex !== null ? "Update Task" : "Save Task"}
                       </button>
                       <button
                         type="button"
@@ -387,6 +399,17 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
                           <span className={`text-sm ${task.completed ? "text-[#9B91A3] line-through" : "text-[#3F3748]"}`}>
                             {task.title}
                           </span>
+                          <button
+                          type="button"
+                          onClick={() => {
+                            setEditingTaskIndex(index);
+                            setTaskTitle(task.title);
+                            setShowTaskForm(true);
+                          }}
+                          className="ml-auto rounded-lg bg-[#f4eafa] px-3 py-1 text-sm text-[#8B6AA8]"
+                        >
+                          Edit
+                        </button>
                         </div>
                       ))}
                     </div>
