@@ -23,13 +23,10 @@ from urllib.parse import urlparse
 import ipaddress
 import asyncio
 
-from openai import AsyncOpenAI
 from google import genai
 
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
 PEXELS_API_KEY = os.environ.get("PEXELS_API_KEY")
-OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o")
 
 class UserMessage:
     def __init__(self, text: str):
@@ -41,12 +38,10 @@ class TextDelta:
 
 class StreamDone:
     pass
+
 class LlmChat:
     def __init__(self, api_key=None, session_id=None, system_message=None):
-        # Fetch the key from args or environment variables
         raw_key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or ""
-        
-        # Automatically strip any accidental whitespace, double quotes, or single quotes
         resolved_key = raw_key.strip().strip('"').strip("'")
         
         self.client = genai.Client(api_key=resolved_key)
@@ -130,9 +125,6 @@ class BudgetOut(BaseModel):
 # ---------- Chat (SSE streaming) ----------
 @api_router.post("/chat/stream")
 async def chat_stream(payload: ChatMessageIn):
-    if not OPENAI_API_KEY:
-        raise HTTPException(status_code=500, detail="LLM key not configured")
-
     session_id = payload.session_id or str(uuid.uuid4())
     user_doc = ChatMessage(session_id=session_id, role="user", content=payload.message).model_dump()
     await db.chat_messages.insert_one(user_doc)
@@ -142,10 +134,9 @@ async def chat_stream(payload: ChatMessageIn):
     ).sort("timestamp", 1).to_list(200)
 
     chat = LlmChat(
-        api_key=OPENAI_API_KEY,
         session_id=session_id,
         system_message=WEDORA_SYSTEM_PROMPT,
-    ).with_model("openai", OPENAI_MODEL)
+    )
 
     prior = history[:-1] if history and history[-1]["role"] == "user" else history
     context_prefix = ""
@@ -182,9 +173,6 @@ async def chat_stream(payload: ChatMessageIn):
 
 @api_router.post("/chat", response_model=dict)
 async def chat_send(payload: ChatMessageIn):
-    if not OPENAI_API_KEY:
-        raise HTTPException(status_code=500, detail="LLM key not configured")
-
     session_id = payload.session_id or str(uuid.uuid4())
     user_doc = ChatMessage(session_id=session_id, role="user", content=payload.message).model_dump()
     await db.chat_messages.insert_one(user_doc)
@@ -201,10 +189,9 @@ async def chat_send(payload: ChatMessageIn):
         context_prefix = "Prior conversation:\n" + "\n".join(lines) + "\n\nCurrent message:\n"
 
     chat = LlmChat(
-        api_key=OPENAI_API_KEY,
         session_id=session_id,
         system_message=WEDORA_SYSTEM_PROMPT,
-    ).with_model("openai", OPENAI_MODEL)
+    )
 
     try:
         reply = await chat.send_message(UserMessage(text=context_prefix + payload.message))
