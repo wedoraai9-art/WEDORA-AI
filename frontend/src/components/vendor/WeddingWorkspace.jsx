@@ -27,6 +27,7 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
   const [clientNotes, setClientNotes] = useState("");
   const [savingClient, setSavingClient] = useState(false);
   const [editingClientId, setEditingClientId] = useState(null);
+  const [editingTaskIndex, setEditingTaskIndex] = useState(null);
 
   useEffect(() => {
     if (wedding?.id) {
