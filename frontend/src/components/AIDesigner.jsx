@@ -17,7 +17,7 @@ const CATS = [
 ];
 
 export const AIDesigner = () => {
-  const [input, setInput] = useState('Pastel pink and ivory wedding with a modern floral mandap, soft candlelight and luxury garden styling.');
+  const [input, setInput] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
