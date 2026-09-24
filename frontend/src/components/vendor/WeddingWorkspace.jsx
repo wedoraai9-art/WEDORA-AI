@@ -267,6 +267,7 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
 
       <button
         type="button"
+        onClick={() => setShowTaskForm(true)}
         className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadcf5]"
       >
         + Add Task
