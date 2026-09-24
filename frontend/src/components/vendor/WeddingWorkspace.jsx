@@ -250,7 +250,28 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
   ? "Manage and track everything that needs to be done for this wedding."
   : "Wedding overview and important details."}
 </p>
+{activeModule === "Tasks" && (
+  <div className="mb-5 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm text-[#8B8194]">Task Management</p>
+        <h4 className="text-lg font-semibold text-[#3F3748] mt-1">
+          Wedding Tasks
+        </h4>
+        <p className="text-sm text-[#6B6175] mt-1">
+          Create, organize and track tasks for this wedding.
+        </p>
+      </div>
 
+      <button
+        type="button"
+        className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadcf5]"
+      >
+        + Add Task
+      </button>
+    </div>
+  </div>
+)}
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
   <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
     <p className="text-xs text-[#8B8194]">Bride</p>
