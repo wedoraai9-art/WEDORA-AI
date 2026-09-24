@@ -89,12 +89,34 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
   const [notificationPriority, setNotificationPriority] = useState('normal');
   const [notificationReminderDate, setNotificationReminderDate] = useState('');
 
+  const [designData, setDesignData] = useState({
+    theme: '',
+    concept: '',
+    palette: [],
+    mandap: '',
+    stage: '',
+    entrance: '',
+    table_decor: '',
+    lighting: '',
+    florals: '',
+    notes: '',
+    status: 'draft',
+    reference_images: [],
+  });
+  const [designLoading, setDesignLoading] = useState(false);
+  const [designSaving, setDesignSaving] = useState(false);
+  const [designDeleting, setDesignDeleting] = useState(false);
+  const [designReferenceUrl, setDesignReferenceUrl] = useState('');
+
   useEffect(() => {
     if (wedding?.id) {
       loadClients();
       loadBudget();
       loadDocuments();
       loadNotifications();
+      if (isDecorator) {
+        loadDesign();
+      }
     }
   }, [wedding?.id]);
 
@@ -257,6 +279,131 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
       return `${Math.max(1, Math.round(size / 1024))} KB`;
     }
     return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const loadDesign = async () => {
+    if (!wedding?.id || !isDecorator) return;
+    setDesignLoading(true);
+    try {
+      const response = await authAxios.get(`/vendor/weddings/${wedding.id}/design`);
+      const data = response.data?.design || response.data || {};
+      setDesignData({
+        theme: data.theme || '',
+        concept: data.concept || '',
+        palette: Array.isArray(data.palette) ? data.palette : [],
+        mandap: data.mandap || '',
+        stage: data.stage || '',
+        entrance: data.entrance || '',
+        table_decor: data.table_decor || '',
+        lighting: data.lighting || '',
+        florals: data.florals || '',
+        notes: data.notes || '',
+        status: data.status || 'draft',
+        reference_images: Array.isArray(data.reference_images) ? data.reference_images : [],
+      });
+    } catch (error) {
+      console.error("Failed to load wedding design:", error);
+    } finally {
+      setDesignLoading(false);
+    }
+  };
+
+  const saveDesign = async () => {
+    if (!isDecorator || designSaving) return;
+    setDesignSaving(true);
+    try {
+      const payload = {
+        ...designData,
+        theme: designData.theme.trim(),
+        concept: designData.concept.trim(),
+        mandap: designData.mandap.trim(),
+        stage: designData.stage.trim(),
+        entrance: designData.entrance.trim(),
+        table_decor: designData.table_decor.trim(),
+        lighting: designData.lighting.trim(),
+        florals: designData.florals.trim(),
+        notes: designData.notes.trim(),
+        palette: (designData.palette || []).map((item) => String(item).trim()).filter(Boolean).slice(0, 12),
+        reference_images: (designData.reference_images || []).map((item) => String(item).trim()).filter(Boolean).slice(0, 20),
+      };
+      const response = await authAxios.put(`/vendor/weddings/${wedding.id}/design`, payload);
+      const saved = response.data?.design || response.data || payload;
+      setDesignData({
+        ...payload,
+        palette: Array.isArray(saved.palette) ? saved.palette : payload.palette,
+        reference_images: Array.isArray(saved.reference_images) ? saved.reference_images : payload.reference_images,
+        status: saved.status || payload.status || 'draft',
+      });
+    } catch (error) {
+      console.error("Failed to save wedding design:", error);
+      window.alert(error.response?.data?.detail || 'Could not save wedding design.');
+    } finally {
+      setDesignSaving(false);
+    }
+  };
+
+  const deleteDesign = async () => {
+    if (!isDecorator || designDeleting) return;
+    if (!window.confirm('Delete the saved design for this wedding?')) return;
+    setDesignDeleting(true);
+    try {
+      await authAxios.delete(`/vendor/weddings/${wedding.id}/design`);
+      setDesignData({
+        theme: '',
+        concept: '',
+        palette: [],
+        mandap: '',
+        stage: '',
+        entrance: '',
+        table_decor: '',
+        lighting: '',
+        florals: '',
+        notes: '',
+        status: 'draft',
+        reference_images: [],
+      });
+    } catch (error) {
+      console.error("Failed to delete wedding design:", error);
+      window.alert(error.response?.data?.detail || 'Could not delete wedding design.');
+    } finally {
+      setDesignDeleting(false);
+    }
+  };
+
+  const addDesignPaletteColor = () => {
+    if ((designData.palette || []).length >= 12) return;
+    setDesignData((current) => ({ ...current, palette: [...(current.palette || []), '#'] }));
+  };
+
+  const updateDesignPaletteColor = (index, value) => {
+    setDesignData((current) => ({
+      ...current,
+      palette: (current.palette || []).map((item, itemIndex) => itemIndex === index ? value : item),
+    }));
+  };
+
+  const removeDesignPaletteColor = (index) => {
+    setDesignData((current) => ({
+      ...current,
+      palette: (current.palette || []).filter((_, itemIndex) => itemIndex !== index),
+    }));
+  };
+
+  const addDesignReference = () => {
+    const value = designReferenceUrl.trim();
+    if (!value || (designData.reference_images || []).length >= 20) return;
+    setDesignData((current) => ({
+      ...current,
+      reference_images: [...(current.reference_images || []), value],
+    }));
+    setDesignReferenceUrl('');
+  };
+
+  const removeDesignReference = (index) => {
+    setDesignData((current) => ({
+      ...current,
+      reference_images: (current.reference_images || []).filter((_, itemIndex) => itemIndex !== index),
+    }));
   };
 
   const loadNotifications = async () => {
@@ -1429,10 +1576,119 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
             )}
 
             {isDecorator && activeModule === "Design" && (
-              <div className="mt-4 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
-                <p className="text-sm text-[#8B8194]">Design</p>
-                <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding Design</h4>
-                <p className="text-sm text-[#6B6175] mt-1">Design concepts, themes and visual direction for this wedding will be managed here.</p>
+              <div className="mt-4 space-y-5">
+                <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                      <p className="text-sm text-[#8B8194]">Design Management</p>
+                      <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding Design</h4>
+                      <p className="text-sm text-[#6B6175] mt-1">Manage the complete visual direction, theme and decor concept for this wedding.</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <select
+                        value={designData.status}
+                        onChange={(e) => setDesignData({ ...designData, status: e.target.value })}
+                        className="rounded-xl border border-[#eadff2] bg-white px-3 py-2 text-sm text-[#3F3748] outline-none"
+                      >
+                        <option value="draft">Draft</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="approved">Approved</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                      <button type="button" onClick={saveDesign} disabled={designSaving || designLoading} className="rounded-xl bg-[#8B6AA8] px-4 py-2 text-sm font-medium text-white disabled:opacity-60 disabled:cursor-not-allowed">
+                        {designSaving ? 'Saving...' : 'Save Design'}
+                      </button>
+                      <button type="button" onClick={deleteDesign} disabled={designDeleting || designLoading} className="rounded-xl bg-[#fff1f4] px-4 py-2 text-sm font-medium text-red-400 disabled:opacity-60 disabled:cursor-not-allowed">
+                        <Trash2 className="inline w-4 h-4 mr-1" />
+                        {designDeleting ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {designLoading ? (
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-8 text-center text-sm text-[#8B8194]">Loading design...</div>
+                ) : (
+                  <>
+                    <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                      <p className="text-sm text-[#8B8194]">Core Concept</p>
+                      <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Theme & Creative Direction</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <input value={designData.theme} onChange={(e) => setDesignData({ ...designData, theme: e.target.value })} placeholder="Theme name" className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]" />
+                        <input value={designData.concept} onChange={(e) => setDesignData({ ...designData, concept: e.target.value })} placeholder="Design concept / creative direction" className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]" />
+                      </div>
+                      <div className="mt-5">
+                        <div className="flex items-center justify-between gap-3">
+                          <div><p className="text-sm font-medium text-[#3F3748]">Color Palette</p><p className="text-xs text-[#8B8194] mt-1">Add up to 12 colors for the wedding design.</p></div>
+                          <button type="button" onClick={addDesignPaletteColor} disabled={(designData.palette || []).length >= 12} className="rounded-xl bg-[#f4eafa] px-3 py-2 text-sm text-[#8B6AA8] disabled:opacity-50">+ Add Color</button>
+                        </div>
+                        {(designData.palette || []).length > 0 ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                            {designData.palette.map((color, index) => (
+                              <div key={`${index}-${color}`} className="flex items-center gap-2 rounded-lg border border-[#eadff2] bg-white p-2">
+                                <input type="color" value={/^#[0-9A-Fa-f]{6}$/.test(color) ? color : '#8B6AA8'} onChange={(e) => updateDesignPaletteColor(index, e.target.value)} className="w-9 h-9 rounded-md border-0 bg-transparent cursor-pointer" />
+                                <input value={color} onChange={(e) => updateDesignPaletteColor(index, e.target.value)} placeholder="#HEX" className="min-w-0 flex-1 rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
+                                <button type="button" onClick={() => removeDesignPaletteColor(index)} className="rounded-lg bg-[#fff1f4] px-2 py-2 text-red-400" aria-label="Remove color">×</button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="mt-3 text-sm text-[#8B8194]">No colors added yet.</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                      <p className="text-sm text-[#8B8194]">Decor Direction</p>
+                      <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding Design Areas</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        {[["mandap","Mandap Design","Describe the mandap structure, backdrop, florals and styling"],["stage","Stage Design","Describe the stage, backdrop and focal styling"],["entrance","Entrance Design","Describe the entry gate, signage and arrival experience"],["table_decor","Table / Decor Design","Describe tablescape, centerpieces and guest-area decor"],["lighting","Lighting Concept","Describe chandeliers, washes, fairy lights, spotlights and ambience"],["florals","Floral Direction","Describe flowers, arrangements, colors and placement"]].map(([key,label,placeholder]) => (
+                          <div key={key}>
+                            <label className="text-sm font-medium text-[#3F3748]">{label}</label>
+                            <textarea value={designData[key]} onChange={(e) => setDesignData({ ...designData, [key]: e.target.value })} placeholder={placeholder} rows="4" className="mt-2 w-full rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                      <p className="text-sm text-[#8B8194]">Creative Notes</p>
+                      <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Design Notes</h4>
+                      <textarea value={designData.notes} onChange={(e) => setDesignData({ ...designData, notes: e.target.value })} placeholder="Add client preferences, execution notes, do-not-use details, venue restrictions or other creative instructions." rows="5" className="mt-4 w-full rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]" />
+                    </div>
+
+                    <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                      <p className="text-sm text-[#8B8194]">Visual References</p>
+                      <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Reference Images</h4>
+                      <p className="text-sm text-[#6B6175] mt-1">Add image URLs for design references. Up to 20 references can be saved.</p>
+                      <div className="flex flex-col sm:flex-row gap-2 mt-4">
+                        <input value={designReferenceUrl} onChange={(e) => setDesignReferenceUrl(e.target.value)} placeholder="Paste image URL" className="flex-1 rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]" />
+                        <button type="button" onClick={addDesignReference} disabled={!designReferenceUrl.trim() || (designData.reference_images || []).length >= 20} className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] disabled:opacity-50">+ Add Reference</button>
+                      </div>
+                      {(designData.reference_images || []).length > 0 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
+                          {designData.reference_images.map((url, index) => (
+                            <div key={`${index}-${url}`} className="rounded-xl border border-[#eadff2] bg-white overflow-hidden">
+                              <div className="aspect-video bg-[#f6efff]">
+                                <img src={url} alt={`Design reference ${index + 1}`} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                              </div>
+                              <div className="p-3">
+                                <p className="text-xs text-[#8B8194] truncate" title={url}>{url}</p>
+                                <button type="button" onClick={() => removeDesignReference(index)} className="mt-2 rounded-lg bg-[#fff1f4] px-3 py-1 text-sm text-red-400">Remove</button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex justify-end">
+                      <button type="button" onClick={saveDesign} disabled={designSaving} className="rounded-xl bg-[#8B6AA8] px-5 py-2.5 text-sm font-medium text-white disabled:opacity-60">
+                        {designSaving ? 'Saving Design...' : 'Save Design'}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
