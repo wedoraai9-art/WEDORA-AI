@@ -53,7 +53,7 @@ const saveClient = async () => {
   setSavingClient(true);
 
   try {
-    await authAxios.post(
+   const response = await authAxios.post(
       `/vendor/weddings/${wedding.id}/clients`,
       {
         name: clientName.trim(),
@@ -70,7 +70,7 @@ const saveClient = async () => {
     setClientRelation("");
     setClientNotes("");
     setShowClientForm(false);
-    loadClients();
+    setClients((current) => [response.data.client, ...current]);
     } catch (error) {
     console.error("Failed to save client:", error);
   } finally {
