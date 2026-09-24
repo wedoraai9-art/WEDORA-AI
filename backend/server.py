@@ -43,10 +43,10 @@ class StreamDone:
     pass
 class LlmChat:
     def __init__(self, api_key=None, session_id=None, system_message=None):
-        self.client = genai.Client(api_key=GEMINI_API_KEY)
+        self.client = genai.Client(api_key=api_key or GEMINI_API_KEY)
         self.session_id = session_id
         self.system_message = system_message
-           self.model = "gemini-3.5-flash-lite"
+        self.model = "gemini-2.5-flash"  # Ensure model name matches valid SDK endpoints
 
     def with_model(self, provider, model):
         return self
@@ -62,7 +62,7 @@ class LlmChat:
         return response.text or ""
 
     async def stream_message(self, message):
-        response = await self.client.aio.models.generate_content(
+        stream = await self.client.aio.models.generate_content_stream(
             model=self.model,
             contents=message.text,
             config={
@@ -70,8 +70,9 @@ class LlmChat:
             },
         )
 
-        if response.text:
-            yield TextDelta(response.text)
+        async for chunk in stream:
+            if chunk.text:
+                yield TextDelta(chunk.text)
 
         yield StreamDone()
 ROOT_DIR = Path(__file__).parent
