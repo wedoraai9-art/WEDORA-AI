@@ -444,7 +444,49 @@ async def get_current_user(authorization: str = Header(None)):
         raise HTTPException(status_code=401, detail="User not found")
     return user
 
-# Other chat & auth routes here...
+# ================= AUTH ROUTES =================
+
+class AuthLoginIn(BaseModel):
+    email: str
+    password: str
+
+
+@api_router.post("/auth/login")
+async def auth_login(payload: AuthLoginIn):
+    email = payload.email.strip().lower()
+
+    user = await db.users.find_one({"email": email})
+
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password"
+        )
+
+    if not verify_password(
+        payload.password,
+        user.get("password_hash", "")
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password"
+        )
+
+    token = create_token(
+        user["id"],
+        user.get("role", "couple")
+    )
+
+    return {
+        "token": token,
+        "user": {
+            "id": user["id"],
+            "email": email,
+            "name": user.get("name"),
+            "role": user.get("role", "couple")
+        }
+    }
+
 
 # ================= VENUES & VENDORS =================
 @api_router.get("/venues")
