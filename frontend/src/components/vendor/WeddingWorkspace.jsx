@@ -797,6 +797,25 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
     return `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
   };
 
+  // Positive variance = actual cost is below the estimate (saving).
+  // Negative variance = actual cost is above the estimate (overrun).
+  const getElementCostVariance = (estimated, actual) => {
+    return Number((Number(estimated || 0) - Number(actual || 0)).toFixed(2));
+  };
+
+  const formatElementVariance = (estimated, actual) => {
+    const variance = getElementCostVariance(estimated, actual);
+    if (Number(actual || 0) <= 0) return 'Actual cost not entered';
+    if (variance > 0) return `${formatElementCurrency(variance)} saving`;
+    if (variance < 0) return `${formatElementCurrency(Math.abs(variance))} overrun`;
+    return 'On estimate';
+  };
+
+  const elementCostVariance = getElementCostVariance(
+    elementSummary.estimated_cost,
+    elementSummary.actual_cost
+  );
+
   const filteredElements = elements.filter((element) => {
     const query = elementSearch.trim().toLowerCase();
     const matchesSearch = !query || [
@@ -2274,7 +2293,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                 </div>
 
                 {/* ELEMENT SUMMARY */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                   <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
                     <p className="text-xs text-[#8B8194]">Total Elements</p>
                     <p className="text-xl font-semibold text-[#3F3748] mt-1">{elementSummary.total_elements}</p>
@@ -2294,6 +2313,23 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                   <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
                     <p className="text-xs text-[#8B8194]">Actual Cost</p>
                     <p className="text-lg font-semibold text-[#3F3748] mt-1">{formatElementCurrency(elementSummary.actual_cost)}</p>
+                  </div>
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
+                    <p className="text-xs text-[#8B8194]">Cost Variance</p>
+                    <p className="text-lg font-semibold text-[#3F3748] mt-1">
+                      {elementCostVariance > 0
+                        ? `+${formatElementCurrency(elementCostVariance)}`
+                        : formatElementCurrency(elementCostVariance)}
+                    </p>
+                    <p className="text-[11px] text-[#8B8194] mt-1">
+                      {elementSummary.actual_cost > 0
+                        ? elementCostVariance > 0
+                          ? 'Saving vs estimate'
+                          : elementCostVariance < 0
+                            ? 'Over estimate'
+                            : 'On estimate'
+                        : 'Actual cost pending'}
+                    </p>
                   </div>
                 </div>
 
@@ -2568,6 +2604,28 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                           placeholder="Actual Cost (₹) — fill after final supplier price"
                           className="mt-3 w-full rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
                         />
+
+                        <div className="mt-3 rounded-lg border border-[#eadff2] bg-white px-3 py-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm">
+                            <div>
+                              <p className="text-xs text-[#8B8194]">Cost Difference</p>
+                              <p className="font-semibold text-[#3F3748] mt-1">
+                                {formatElementVariance(
+                                  getElementEstimatedCost(elementForm),
+                                  elementForm.actual_cost
+                                )}
+                              </p>
+                            </div>
+                            <div className="text-xs text-[#8B8194] sm:text-right">
+                              <p>
+                                Estimate: {formatElementCurrency(getElementEstimatedCost(elementForm))}
+                              </p>
+                              <p className="mt-1">
+                                Actual: {formatElementCurrency(elementForm.actual_cost)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
                       {/* SUPPLIER */}
@@ -2729,6 +2787,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                                 <p><span className="text-[#8B8194]">Function:</span> {element.function || 'All Functions'}</p>
                                 <p><span className="text-[#8B8194]">Estimated:</span> {formatElementCurrency(element.estimated_cost)}</p>
                                 <p><span className="text-[#8B8194]">Actual:</span> {formatElementCurrency(element.actual_cost)}</p>
+                                <p><span className="text-[#8B8194]">Difference:</span> {formatElementVariance(element.estimated_cost, element.actual_cost)}</p>
                                 <p><span className="text-[#8B8194]">Supplier:</span> {element.supplier || 'Not assigned'}</p>
                                 <p><span className="text-[#8B8194]">Area / Location:</span> {element.area || 'Not specified'}</p>
                               </div>
