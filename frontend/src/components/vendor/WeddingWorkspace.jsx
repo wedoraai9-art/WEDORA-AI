@@ -920,7 +920,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
 
       // Position the edit form so its heading is clearly visible below the
       // sticky site header, matching the intended Element Details view.
-      const topOffset = 24;
+      const topOffset = 110;
       const targetTop = form.getBoundingClientRect().top + window.scrollY - topOffset;
       window.scrollTo({
         top: Math.max(0, targetTop),
