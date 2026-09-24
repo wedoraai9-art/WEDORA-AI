@@ -14,6 +14,7 @@ import {
 
 const WeddingWorkspace = ({ wedding, onBack }) => {
   const [activeModule, setActiveModule] = useState(null);
+  const [tasks, setTasks] = useState([]);
   if (!wedding) {
     return (
       <div className="min-h-screen flex items-center justify-center text-[#2D2638]">
