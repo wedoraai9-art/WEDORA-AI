@@ -373,16 +373,18 @@ const [tasks, setTasks] = useState([]);
       {wedding.guest_count || "Not added"}
     </p>
   </div>
-      <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
-  <p className="text-xs text-[#8B8194]">Budget</p>
-  <p className="text-sm font-medium text-[#3F3748] mt-1">
-    {formatCurrency(wedding.budget)}
-  </p>
- </div>
- </div>
-</div>
+     <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
+        <p className="text-xs text-[#8B8194]">Budget</p>
+        <p className="text-sm font-medium text-[#3F3748] mt-1">
+          {formatCurrency(wedding.budget)}
+        </p>
+      </div>
+    </div>
+  </div>
 )}
-</div>
-</div>
-);
- export default WeddingWorkspace;
+      </div>
+    </div>
+  );
+};
+
+export default WeddingWorkspace;
