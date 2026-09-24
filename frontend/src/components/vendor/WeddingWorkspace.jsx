@@ -915,11 +915,18 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
     });
     setShowElementForm(true);
     setTimeout(() => {
-      document.getElementById('wedding-element-form')?.scrollIntoView({
+      const form = document.getElementById('wedding-element-form');
+      if (!form) return;
+
+      // Position the edit form so its heading is clearly visible below the
+      // sticky site header, matching the intended Element Details view.
+      const topOffset = 24;
+      const targetTop = form.getBoundingClientRect().top + window.scrollY - topOffset;
+      window.scrollTo({
+        top: Math.max(0, targetTop),
         behavior: 'smooth',
-        block: 'start',
       });
-    }, 100);
+    }, 120);
   };
 
   const deleteElement = async (id) => {
