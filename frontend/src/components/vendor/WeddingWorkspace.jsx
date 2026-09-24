@@ -319,17 +319,44 @@ const [tasks, setTasks] = useState([]);
   <div className="mb-5 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
     <p className="text-sm text-[#8B8194]">Your Tasks</p>
 
-    <div className="mt-3 space-y-2">
-      {tasks.map((task, index) => (
-        <div
-          key={index}
-          className="flex items-center justify-between rounded-lg border border-[#eadff2] bg-white px-4 py-3"
-        >
-          <span className="text-sm text-[#3F3748]">
-            {task.title}
-          </span>
-        </div>
-      ))}
+<div className="mt-3 space-y-2">
+  {tasks.map((task, index) => (
+    <div
+      key={index}
+      className="flex items-center gap-3 rounded-lg border border-[#eadff2] bg-white px-4 py-3"
+    >
+      <button
+        type="button"
+        onClick={() => {
+          setTasks(
+            tasks.map((item, i) =>
+              i === index
+                ? { ...item, completed: !item.completed }
+                : item
+            )
+          );
+        }}
+        className={`w-5 h-5 rounded-md border flex items-center justify-center ${
+          task.completed
+            ? "bg-[#8B6AA8] border-[#8B6AA8] text-white"
+            : "border-[#c9b8d8] bg-white"
+        }`}
+      >
+        {task.completed ? "✓" : ""}
+      </button>
+
+      <span
+        className={`text-sm ${
+          task.completed
+            ? "text-[#9B91A3] line-through"
+            : "text-[#3F3748]"
+        }`}
+      >
+        {task.title}
+      </span>
+    </div>
+  ))}
+</div>
     </div>
   </div>
 )}
