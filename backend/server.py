@@ -477,7 +477,7 @@ async def auth_login(payload: AuthLoginIn):
         user.get("role", "couple")
     )
 
-    return {
+       return {
         "token": token,
         "user": {
             "id": user["id"],
@@ -485,6 +485,15 @@ async def auth_login(payload: AuthLoginIn):
             "name": user.get("name"),
             "role": user.get("role", "couple")
         }
+    }
+
+
+@api_router.get("/auth/me")
+async def auth_me(authorization: str = Header(None)):
+    user = await get_current_user(authorization)
+
+    return {
+        "user": user
     }
 
 
