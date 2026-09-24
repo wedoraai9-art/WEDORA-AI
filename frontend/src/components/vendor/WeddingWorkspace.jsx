@@ -78,11 +78,23 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
   const [documentTitle, setDocumentTitle] = useState('');
   const [documentCategory, setDocumentCategory] = useState('General');
 
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsUnreadCount, setNotificationsUnreadCount] = useState(0);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationSaving, setNotificationSaving] = useState(false);
+  const [showNotificationForm, setShowNotificationForm] = useState(false);
+  const [notificationTitle, setNotificationTitle] = useState('');
+  const [notificationMessage, setNotificationMessage] = useState('');
+  const [notificationType, setNotificationType] = useState('reminder');
+  const [notificationPriority, setNotificationPriority] = useState('normal');
+  const [notificationReminderDate, setNotificationReminderDate] = useState('');
+
   useEffect(() => {
     if (wedding?.id) {
       loadClients();
       loadBudget();
       loadDocuments();
+      loadNotifications();
     }
   }, [wedding?.id]);
 
@@ -245,6 +257,111 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
       return `${Math.max(1, Math.round(size / 1024))} KB`;
     }
     return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const loadNotifications = async () => {
+    setNotificationsLoading(true);
+    try {
+      const response = await authAxios.get(
+        `/vendor/weddings/${wedding.id}/notifications`
+      );
+      setNotifications(response.data?.notifications || []);
+      setNotificationsUnreadCount(Number(response.data?.unread_count || 0));
+    } catch (error) {
+      console.error("Failed to load wedding notifications:", error);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
+
+  const resetNotificationForm = () => {
+    setShowNotificationForm(false);
+    setNotificationTitle('');
+    setNotificationMessage('');
+    setNotificationType('reminder');
+    setNotificationPriority('normal');
+    setNotificationReminderDate('');
+  };
+
+  const saveNotification = async () => {
+    if (!notificationTitle.trim() || notificationSaving) return;
+
+    setNotificationSaving(true);
+    try {
+      await authAxios.post(
+        `/vendor/weddings/${wedding.id}/notifications`,
+        {
+          title: notificationTitle.trim(),
+          message: notificationMessage.trim(),
+          notification_type: notificationType,
+          reminder_date: notificationReminderDate,
+          priority: notificationPriority,
+        }
+      );
+
+      resetNotificationForm();
+      await loadNotifications();
+    } catch (error) {
+      console.error("Failed to create notification:", error);
+      window.alert(error.response?.data?.detail || 'Could not create notification.');
+    } finally {
+      setNotificationSaving(false);
+    }
+  };
+
+  const toggleNotificationRead = async (notification) => {
+    try {
+      const response = await authAxios.patch(
+        `/vendor/weddings/${wedding.id}/notifications/${notification.id}`,
+        { read: !notification.read }
+      );
+
+      const updated = response.data;
+      setNotifications((current) =>
+        current.map((item) => item.id === notification.id ? updated : item)
+      );
+      setNotificationsUnreadCount((current) =>
+        updated.read ? Math.max(0, current - 1) : current + 1
+      );
+    } catch (error) {
+      console.error("Failed to update notification:", error);
+      window.alert(error.response?.data?.detail || 'Could not update notification.');
+    }
+  };
+
+  const markAllNotificationsRead = async () => {
+    if (!notificationsUnreadCount) return;
+
+    try {
+      await authAxios.post(
+        `/vendor/weddings/${wedding.id}/notifications/read-all`
+      );
+      setNotifications((current) =>
+        current.map((item) => ({ ...item, read: true }))
+      );
+      setNotificationsUnreadCount(0);
+    } catch (error) {
+      console.error("Failed to mark notifications as read:", error);
+      window.alert(error.response?.data?.detail || 'Could not mark notifications as read.');
+    }
+  };
+
+  const deleteNotification = async (id) => {
+    if (!window.confirm('Delete this notification?')) return;
+
+    try {
+      const notification = notifications.find((item) => item.id === id);
+      await authAxios.delete(
+        `/vendor/weddings/${wedding.id}/notifications/${id}`
+      );
+      setNotifications((current) => current.filter((item) => item.id !== id));
+      if (notification && !notification.read) {
+        setNotificationsUnreadCount((current) => Math.max(0, current - 1));
+      }
+    } catch (error) {
+      console.error("Failed to delete notification:", error);
+      window.alert(error.response?.data?.detail || 'Could not delete notification.');
+    }
   };
 
   const saveClient = async () => {
@@ -1109,7 +1226,187 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
               </div>
             )}
             {activeModule === "Notifications" && (
-              <div className="mt-4 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5"><p className="text-sm text-[#8B8194]">Notifications</p><h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding Notifications</h4><p className="text-sm text-[#6B6175] mt-1">Wedding reminders and updates will be added next.</p></div>
+              <div className="mt-4 space-y-4">
+                <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                      <p className="text-sm text-[#8B8194]">Notifications</p>
+                      <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding Notifications</h4>
+                      <p className="text-sm text-[#6B6175] mt-1">Keep important reminders and wedding updates in one place.</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {notificationsUnreadCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={markAllNotificationsRead}
+                          className="rounded-xl bg-white border border-[#eadff2] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#f4eafa]"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          resetNotificationForm();
+                          setShowNotificationForm(true);
+                        }}
+                        className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadcf5]"
+                      >
+                        <Plus className="inline w-4 h-4 mr-1" />
+                        Add Notification
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {showNotificationForm && (
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                    <p className="text-sm font-medium text-[#3F3748]">New Wedding Notification</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                      <input
+                        value={notificationTitle}
+                        onChange={(e) => setNotificationTitle(e.target.value)}
+                        placeholder="Notification title *"
+                        className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
+                      />
+                      <select
+                        value={notificationType}
+                        onChange={(e) => setNotificationType(e.target.value)}
+                        className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none"
+                      >
+                        <option value="reminder">Reminder</option>
+                        <option value="payment">Payment</option>
+                        <option value="budget">Budget</option>
+                        <option value="document">Document</option>
+                        <option value="update">Update</option>
+                        <option value="system">System</option>
+                      </select>
+                      <select
+                        value={notificationPriority}
+                        onChange={(e) => setNotificationPriority(e.target.value)}
+                        className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none"
+                      >
+                        <option value="low">Low priority</option>
+                        <option value="normal">Normal priority</option>
+                        <option value="high">High priority</option>
+                      </select>
+                      <input
+                        type="date"
+                        value={notificationReminderDate}
+                        onChange={(e) => setNotificationReminderDate(e.target.value)}
+                        className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none"
+                      />
+                      <textarea
+                        value={notificationMessage}
+                        onChange={(e) => setNotificationMessage(e.target.value)}
+                        placeholder="Message"
+                        rows="3"
+                        className="md:col-span-2 rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
+                      />
+                    </div>
+                    <div className="flex gap-2 mt-4">
+                      <button
+                        type="button"
+                        onClick={saveNotification}
+                        disabled={notificationSaving}
+                        className="rounded-xl bg-[#8B6AA8] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+                      >
+                        {notificationSaving ? 'Saving...' : 'Save Notification'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={resetNotificationForm}
+                        className="rounded-xl px-4 py-2 text-sm text-[#8B8194]"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-[#8B8194]">Your Updates</p>
+                      <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding Reminders</h4>
+                    </div>
+                    <span className="text-sm text-[#8B8194]">
+                      {notificationsUnreadCount} unread
+                    </span>
+                  </div>
+
+                  {notificationsLoading ? (
+                    <div className="mt-4 rounded-xl border border-[#eadff2] bg-white p-8 text-center text-sm text-[#8B8194]">
+                      Loading notifications...
+                    </div>
+                  ) : notifications.length > 0 ? (
+                    <div className="mt-4 space-y-3">
+                      {notifications.map((notification) => (
+                        <div
+                          key={notification.id}
+                          className={`rounded-xl border border-[#eadff2] bg-white p-4 ${notification.read ? '' : 'shadow-[0_8px_25px_rgba(190,160,210,0.10)]'}`}
+                        >
+                          <div className="flex flex-col md:flex-row md:items-start gap-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${notification.read ? 'bg-[#f6efff] text-[#9B91A3]' : 'bg-[#f4eafa] text-[#8B6AA8]'}`}>
+                              <Bell className="w-4 h-4" />
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className={`text-sm font-semibold ${notification.read ? 'text-[#6B6175]' : 'text-[#3F3748]'}`}>
+                                  {notification.title}
+                                </p>
+                                {!notification.read && (
+                                  <span className="rounded-full bg-[#f4eafa] px-2 py-0.5 text-[11px] text-[#8B6AA8]">New</span>
+                                )}
+                                <span className="rounded-full bg-[#faf7ff] px-2 py-0.5 text-[11px] text-[#8B8194] capitalize">
+                                  {notification.notification_type || 'reminder'}
+                                </span>
+                                {notification.priority === 'high' && (
+                                  <span className="rounded-full bg-[#fff1f4] px-2 py-0.5 text-[11px] text-red-400">High</span>
+                                )}
+                              </div>
+
+                              {notification.message && (
+                                <p className="text-sm text-[#6B6175] mt-1">{notification.message}</p>
+                              )}
+
+                              <div className="flex flex-wrap gap-3 mt-2 text-xs text-[#8B8194]">
+                                {notification.reminder_date && <span>Reminder: {notification.reminder_date}</span>}
+                                {notification.created_at && <span>Created: {formatDate(notification.created_at)}</span>}
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 md:justify-end">
+                              <button
+                                type="button"
+                                onClick={() => toggleNotificationRead(notification)}
+                                className="rounded-lg bg-[#f4eafa] px-3 py-1 text-sm text-[#8B6AA8]"
+                              >
+                                {notification.read ? 'Mark unread' : 'Mark read'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteNotification(notification.id)}
+                                className="rounded-lg bg-[#fff1f4] px-3 py-1 text-sm text-red-400"
+                              >
+                                <Trash2 className="inline w-3.5 h-3.5 mr-1" />
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-xl border border-[#eadff2] bg-white p-8 text-center">
+                      <Bell className="w-7 h-7 mx-auto text-[#b39bc6]" />
+                      <p className="text-sm font-medium text-[#3F3748] mt-3">No notifications yet</p>
+                      <p className="text-sm text-[#8B8194] mt-1">Important wedding reminders and updates will appear here.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
             {activeModule === "AI Assistant" && (
               <div className="mt-4 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5"><p className="text-sm text-[#8B8194]">AI Assistant</p><h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding AI Assistant</h4><p className="text-sm text-[#6B6175] mt-1">Wedding-specific AI assistance will be added next.</p></div>
