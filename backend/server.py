@@ -634,6 +634,21 @@ class WeddingDocumentUpdateIn(BaseModel):
     title: Optional[str] = None
     category: Optional[str] = None
 
+class WeddingDesignIn(BaseModel):
+    theme: Optional[str] = ""
+    concept: Optional[str] = ""
+    palette: List[str] = Field(default_factory=list)
+    mandap: Optional[str] = ""
+    stage: Optional[str] = ""
+    entrance: Optional[str] = ""
+    table_decor: Optional[str] = ""
+    lighting: Optional[str] = ""
+    florals: Optional[str] = ""
+    notes: Optional[str] = ""
+    status: Optional[str] = "draft"
+    reference_images: List[str] = Field(default_factory=list)
+
+
 
 class WeddingNotificationIn(BaseModel):
     title: str
@@ -1446,6 +1461,180 @@ async def vendor_delete_wedding_payment(
 
     return {"success": True}
 
+
+
+# ================= WEDDING DESIGN (DECORATOR ONLY) =================
+DECORATOR_CATEGORIES = {
+    "wedding decorator",
+    "wedding decor",
+    "decorator",
+    "decor",
+}
+
+
+def _is_decorator_vendor(vendor: dict) -> bool:
+    category = str(vendor.get("category") or "").strip().lower()
+    return category in DECORATOR_CATEGORIES
+
+
+async def _get_decorator_wedding(wedding_id: str, vendor: dict):
+    if not _is_decorator_vendor(vendor):
+        raise HTTPException(
+            status_code=403,
+            detail="Wedding Design is available only to decorator vendors.",
+        )
+
+    return await _get_vendor_wedding(wedding_id, vendor["id"])
+
+
+def _design_response(design: Optional[dict], wedding_id: str, vendor_id: str) -> dict:
+    if not design:
+        return {
+            "id": None,
+            "wedding_id": wedding_id,
+            "vendor_id": vendor_id,
+            "theme": "",
+            "concept": "",
+            "palette": [],
+            "mandap": "",
+            "stage": "",
+            "entrance": "",
+            "table_decor": "",
+            "lighting": "",
+            "florals": "",
+            "notes": "",
+            "status": "draft",
+            "reference_images": [],
+        }
+
+    return {
+        "id": design.get("id"),
+        "wedding_id": design.get("wedding_id"),
+        "vendor_id": design.get("vendor_id"),
+        "theme": design.get("theme") or "",
+        "concept": design.get("concept") or "",
+        "palette": design.get("palette") or [],
+        "mandap": design.get("mandap") or "",
+        "stage": design.get("stage") or "",
+        "entrance": design.get("entrance") or "",
+        "table_decor": design.get("table_decor") or "",
+        "lighting": design.get("lighting") or "",
+        "florals": design.get("florals") or "",
+        "notes": design.get("notes") or "",
+        "status": design.get("status") or "draft",
+        "reference_images": design.get("reference_images") or [],
+        "created_at": design.get("created_at"),
+        "updated_at": design.get("updated_at"),
+    }
+
+
+@api_router.get("/vendor/weddings/{wedding_id}/design")
+async def vendor_get_wedding_design(
+    wedding_id: str,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_decorator_wedding(wedding_id, vendor)
+
+    design = await db.vendor_wedding_designs.find_one(
+        {"wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"_id": 0},
+    )
+
+    return _design_response(design, wedding_id, vendor["id"])
+
+
+@api_router.put("/vendor/weddings/{wedding_id}/design")
+async def vendor_save_wedding_design(
+    wedding_id: str,
+    payload: WeddingDesignIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_decorator_wedding(wedding_id, vendor)
+
+    status = (payload.status or "draft").strip().lower()
+    if status not in {"draft", "in_progress", "approved", "completed"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid design status",
+        )
+
+    palette = []
+    for color in payload.palette or []:
+        value = str(color).strip()
+        if value and value not in palette:
+            palette.append(value[:50])
+
+    reference_images = []
+    for image in payload.reference_images or []:
+        value = str(image).strip()
+        if value and value not in reference_images:
+            reference_images.append(value[:2000])
+
+    now = datetime.now(timezone.utc).isoformat()
+    updates = {
+        "theme": (payload.theme or "").strip(),
+        "concept": (payload.concept or "").strip(),
+        "palette": palette[:12],
+        "mandap": (payload.mandap or "").strip(),
+        "stage": (payload.stage or "").strip(),
+        "entrance": (payload.entrance or "").strip(),
+        "table_decor": (payload.table_decor or "").strip(),
+        "lighting": (payload.lighting or "").strip(),
+        "florals": (payload.florals or "").strip(),
+        "notes": (payload.notes or "").strip(),
+        "status": status,
+        "reference_images": reference_images[:20],
+        "updated_at": now,
+    }
+
+    existing = await db.vendor_wedding_designs.find_one(
+        {"wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"_id": 0},
+    )
+
+    if existing:
+        await db.vendor_wedding_designs.update_one(
+            {"id": existing["id"]},
+            {"$set": updates},
+        )
+        design = await db.vendor_wedding_designs.find_one(
+            {"id": existing["id"]},
+            {"_id": 0},
+        )
+    else:
+        design = {
+            "id": str(uuid.uuid4()),
+            "wedding_id": wedding_id,
+            "vendor_id": vendor["id"],
+            **updates,
+            "created_at": now,
+        }
+        await db.vendor_wedding_designs.insert_one(design.copy())
+
+    return _design_response(design, wedding_id, vendor["id"])
+
+
+@api_router.delete("/vendor/weddings/{wedding_id}/design")
+async def vendor_delete_wedding_design(
+    wedding_id: str,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_decorator_wedding(wedding_id, vendor)
+
+    result = await db.vendor_wedding_designs.delete_one(
+        {"wedding_id": wedding_id, "vendor_id": vendor["id"]}
+    )
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Wedding design not found")
+
+    return {"success": True}
 
 
 # ================= WEDDING DOCUMENTS =================
