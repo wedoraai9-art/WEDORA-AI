@@ -648,6 +648,10 @@ class WeddingDesignIn(BaseModel):
     status: Optional[str] = "draft"
     reference_images: List[str] = Field(default_factory=list)
 
+class WeddingElementCategoryIn(BaseModel):
+    name: str
+
+
 class WeddingElementIn(BaseModel):
     name: str
     category: Optional[str] = "General"
@@ -1657,20 +1661,120 @@ async def vendor_delete_wedding_design(
 
 
 
+# ================= WEDDING ELEMENT CATEGORIES (DECORATOR ONLY) =================
+
+@api_router.get("/vendor/element-categories")
+async def vendor_get_element_categories(
+    authorization: str = Header(None),
+):
+    vendor = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(vendor)
+    if not _is_decorator_vendor(vendor):
+        raise HTTPException(status_code=403, detail="Wedding element categories are available only to decorator vendors")
+
+    cursor = db.vendor_element_categories.find(
+        {"vendor_id": vendor["id"]},
+        {"_id": 0},
+    ).sort("created_at", 1)
+
+    categories = []
+    async for item in cursor:
+        categories.append({
+            "id": item.get("id"),
+            "name": item.get("name", ""),
+            "created_at": item.get("created_at"),
+        })
+    return {"categories": categories}
+
+
+@api_router.post("/vendor/element-categories")
+async def vendor_create_element_category(
+    payload: WeddingElementCategoryIn,
+    authorization: str = Header(None),
+):
+    vendor = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(vendor)
+    if not _is_decorator_vendor(vendor):
+        raise HTTPException(status_code=403, detail="Wedding element categories are available only to decorator vendors")
+
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Category name is required")
+    if len(name) > 60:
+        raise HTTPException(status_code=400, detail="Category name must be 60 characters or fewer")
+
+    existing = await db.vendor_element_categories.find_one({
+        "vendor_id": vendor["id"],
+        "name_lower": name.lower(),
+    })
+    if existing:
+        return {
+            "success": True,
+            "category": {"id": existing.get("id"), "name": existing.get("name", name), "created_at": existing.get("created_at")},
+            "existing": True,
+        }
+
+    count = await db.vendor_element_categories.count_documents({"vendor_id": vendor["id"]})
+    if count >= 30:
+        raise HTTPException(status_code=400, detail="You can save up to 30 custom categories")
+
+    now = datetime.now(timezone.utc).isoformat()
+    category = {
+        "id": str(uuid.uuid4()),
+        "vendor_id": vendor["id"],
+        "name": name,
+        "name_lower": name.lower(),
+        "created_at": now,
+    }
+    await db.vendor_element_categories.insert_one(category.copy())
+    return {
+        "success": True,
+        "category": {"id": category["id"], "name": category["name"], "created_at": now},
+        "existing": False,
+    }
+
+
+@api_router.delete("/vendor/element-categories/{category_id}")
+async def vendor_delete_element_category(
+    category_id: str,
+    authorization: str = Header(None),
+):
+    vendor = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(vendor)
+    if not _is_decorator_vendor(vendor):
+        raise HTTPException(status_code=403, detail="Wedding element categories are available only to decorator vendors")
+
+    result = await db.vendor_element_categories.delete_one({
+        "id": category_id,
+        "vendor_id": vendor["id"],
+    })
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Custom category not found")
+
+    return {"success": True}
+
+
 # ================= WEDDING ELEMENTS (DECORATOR ONLY) =================
 
 ELEMENT_STATUS_VALUES = {"planned", "in_progress", "ready", "completed"}
 ELEMENT_CATEGORIES = {
     "General",
-    "Furniture",
-    "Floral",
-    "Lighting",
     "Mandap",
     "Stage",
     "Entrance",
+    "Furniture",
+    "Flooring & Carpet",
+    "Floral",
+    "Lighting",
+    "Truss",
+    "Sound & AV",
+    "Fabric & Draping",
+    "Decor Props",
     "Table Decor",
-    "Props",
-    "Fabric",
+    "Printing & Branding",
+    "Electrical",
+    "Production",
+    "Transportation",
     "Signage",
     "Other",
 }
