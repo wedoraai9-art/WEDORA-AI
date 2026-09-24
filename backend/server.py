@@ -46,7 +46,7 @@ class LlmChat:
         self.client = genai.Client(api_key=GEMINI_API_KEY)
         self.session_id = session_id
         self.system_message = system_message
-       self.model = "gemini-3.5-flash-lite"
+           self.model = "gemini-3.5-flash-lite"
 
     def with_model(self, provider, model):
         return self
