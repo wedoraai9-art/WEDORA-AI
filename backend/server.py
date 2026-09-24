@@ -62,7 +62,7 @@ class LlmChat:
         )
         return response.text or ""
 
- async def stream_message(self, message):
+    async def stream_message(self, message):
         max_retries = 3
         retry_delays = [2, 4, 8]
 
