@@ -11,6 +11,7 @@ import {
   MapPin,
   Heart,
 } from 'lucide-react';
+import { authAxios } from '../../lib/auth';
 
 const WeddingWorkspace = ({ wedding, onBack }) => {
   const [activeModule, setActiveModule] = useState(null);
