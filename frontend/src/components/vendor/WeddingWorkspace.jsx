@@ -26,6 +26,7 @@ const [clientEmail, setClientEmail] = useState("");
 const [clientRelation, setClientRelation] = useState("");
 const [clientNotes, setClientNotes] = useState("");
   const [savingClient, setSavingClient] = useState(false);
+  const [editingClientId, setEditingClientId] = useState(null);
   useEffect(() => {
   loadClients();
 }, [wedding.id]);
