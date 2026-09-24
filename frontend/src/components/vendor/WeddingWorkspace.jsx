@@ -157,6 +157,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
     category: 'General',
     quantity: '1',
     unit: 'pcs',
+    dimensions: '',
     area: '',
     status: 'planned',
     notes: '',
@@ -587,6 +588,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
         category: finalCategory,
         quantity: Number(elementForm.quantity),
         unit: elementForm.unit.trim() || 'pcs',
+        dimensions: elementForm.dimensions.trim(),
         area: elementForm.area.trim(),
         status: elementForm.status || 'planned',
         notes: elementForm.notes.trim(),
@@ -618,6 +620,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
       category: element.category || 'General',
       quantity: String(element.quantity ?? 1),
       unit: element.unit || 'pcs',
+      dimensions: element.dimensions || '',
       area: element.area || '',
       status: element.status || 'planned',
       notes: element.notes || '',
@@ -2073,6 +2076,15 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                         placeholder="Unit (pcs, ft, set, etc.)"
                         className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
                       />
+                      <div>
+                        <input
+                          value={elementForm.dimensions}
+                          onChange={(e) => setElementForm({ ...elementForm, dimensions: e.target.value })}
+                          placeholder="Dimensions / Size (20 × 12, 8 × 4 × 2...)"
+                          className="w-full rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
+                        />
+                        <p className="mt-1 text-xs text-[#8B8194]">Use ×, x or * for dimensions, e.g. 20 × 12 ft.</p>
+                      </div>
                       <input
                         value={elementForm.area}
                         onChange={(e) => setElementForm({ ...elementForm, area: e.target.value })}
@@ -2140,6 +2152,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                               </div>
                               <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-[#6B6175]">
                                 <p><span className="text-[#8B8194]">Quantity:</span> {element.quantity} {element.unit || 'pcs'}</p>
+                                <p><span className="text-[#8B8194]">Size:</span> {element.dimensions || 'Not specified'}</p>
                                 <p><span className="text-[#8B8194]">Area:</span> {element.area || 'Not specified'}</p>
                                 <p><span className="text-[#8B8194]">Status:</span> {String(element.status || 'planned').replace('_', ' ')}</p>
                               </div>
