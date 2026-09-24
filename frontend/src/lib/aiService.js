@@ -53,10 +53,42 @@ export const sendChatStream = async ({ message, sessionId, onDelta, onDone, onEr
 };
 
 export const estimateBudget = async (payload) => {
-  const { data } = await axios.post(`${API}/budget/estimate`, payload);
-  return data;
-};
+  const total = Number(payload.total_budget) || 0;
+  const guestCount = Math.max(Number(payload.guest_count) || 0, 1);
+  const city = payload.city || 'Jaipur';
+  const functions = Number(payload.functions) || 3;
 
+  const split = [
+    ['Venue', 0.22, 'Halls, palace grounds, resort takeover, décor-inclusive'],
+    ['Food & Catering', 0.22, 'Per-plate multi-cuisine, live counters, bar service'],
+    ['Décor & Florals', 0.15, 'Mandap, stage, entrance, table florals, drapes'],
+    ['Photography & Video', 0.10, 'Candid, cinematic film, pre-wedding shoot'],
+    ['Bridal & Groom Wear', 0.08, 'Lehenga, sherwani, jewellery, accessories'],
+    ['Makeup & Styling', 0.04, 'HD makeup, hair, family styling touch-ups'],
+    ['Entertainment', 0.05, 'DJ, sangeet choreo, live band, dhol'],
+    ['Invitations & Gifting', 0.03, 'Digital + boxed invites, welcome hampers'],
+    ['Transportation & Stay', 0.06, 'Guest transfers, family stay, honeymoon start'],
+    ['Miscellaneous', 0.05, 'Buffer for last-minute magic ✿'],
+  ];
+
+  const categories = split.map(([name, pct, note]) => ({
+    name,
+    percent: Number((pct * 100).toFixed(1)),
+    amount: Math.round(total * pct),
+    note,
+  }));
+
+  const perHead = Math.round((total * 0.22) / guestCount);
+
+  return {
+    total,
+    guest_count: guestCount,
+    city,
+    functions,
+    per_head: perHead,
+    categories,
+  };
+};
 export const generateDesign = async (dream_description) => {
   const { data } = await axios.post(`${API}/designer/generate`, { dream_description });
   return data;
