@@ -19,7 +19,6 @@ import {
   LogOut,
   ExternalLink,
   Crown,
-  Copy,
 } from 'lucide-react';
 
 import ProfileTab from './ProfileTab';
@@ -28,6 +27,7 @@ import LeadsTab from './LeadsTab';
 import SubscriptionTab from './SubscriptionTab';
 import WeddingsTab from './WeddingsTab';
 import WeddingWorkspace from './WeddingWorkspace';
+import SettingsTab from './SettingsTab';
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: LayoutGrid },
@@ -59,7 +59,6 @@ const VendorDashboard = () => {
   const [planDetails, setPlanDetails] = useState(null);
   const [stats, setStats] = useState(null);
   const [busy, setBusy] = useState(true);
-  const [copyingProfileUrl, setCopyingProfileUrl] = useState(false);
 
   useEffect(() => {
     const onGoto = (e) => {
@@ -119,64 +118,6 @@ const VendorDashboard = () => {
     navigate('/for-vendors');
   };
 
-  const getPublicProfilePath = () => {
-    if (!vendor?.slug) return null;
-    return `/vendor/${vendor.slug}`;
-  };
-
-  const getPublicProfileUrl = () => {
-    const path = getPublicProfilePath();
-
-    if (!path) return null;
-
-    return `${window.location.origin}${path}`;
-  };
-
-  const openPublicProfile = () => {
-    const path = getPublicProfilePath();
-
-    if (!path) {
-      toast.error('Public profile is not available yet.');
-      return;
-    }
-
-    window.open(path, '_blank', 'noopener,noreferrer');
-  };
-
-  const copyPublicProfile = async () => {
-    const url = getPublicProfileUrl();
-
-    if (!url || copyingProfileUrl) {
-      if (!url) {
-        toast.error('Public profile is not available yet.');
-      }
-      return;
-    }
-
-    setCopyingProfileUrl(true);
-
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url);
-      } else {
-        const textarea = document.createElement('textarea');
-        textarea.value = url;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        textarea.remove();
-      }
-
-      toast.success('Public profile link copied');
-    } catch {
-      toast.error('Could not copy profile link');
-    } finally {
-      setCopyingProfileUrl(false);
-    }
-  };
-
   if (loading || !user) {
     return null;
   }
@@ -197,8 +138,6 @@ const VendorDashboard = () => {
       />
     );
   }
-
-  const publicProfilePath = getPublicProfilePath();
 
   return (
     <div
@@ -470,68 +409,11 @@ const VendorDashboard = () => {
 
         {/* Settings */}
         {tab === 'settings' && vendor && (
-          <div
-            className="pearl-card p-6 md:p-8"
-            data-testid="settings-tab"
-          >
-            <h3 className="font-heading font-semibold text-lg text-[#2D2638] mb-2">
-              Settings
-            </h3>
-
-            <p className="text-sm text-[#6B617A]">
-              Account:{' '}
-              <b>{user?.email || 'Not available'}</b>
-            </p>
-
-            <p className="text-sm text-[#6B617A] mt-1">
-              Public profile URL:{' '}
-              {publicProfilePath ? (
-                <a
-                  className="underline decoration-pink-300"
-                  href={publicProfilePath}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {publicProfilePath}
-                </a>
-              ) : (
-                <span className="text-[#988FA6]">
-                  Not available yet
-                </span>
-              )}
-            </p>
-
-            <div className="flex flex-wrap gap-2 mt-6">
-              <button
-                data-testid="settings-copy-profile"
-                onClick={copyPublicProfile}
-                disabled={!publicProfilePath || copyingProfileUrl}
-                className="chip !text-sm inline-flex items-center gap-2 disabled:opacity-50"
-              >
-                <Copy className="w-4 h-4" />
-                {copyingProfileUrl ? 'Copying…' : 'Copy profile link'}
-              </button>
-
-              <button
-                data-testid="settings-open-profile"
-                onClick={openPublicProfile}
-                disabled={!publicProfilePath}
-                className="glow-btn !py-2 !px-4 !text-sm inline-flex items-center gap-2 disabled:opacity-50"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Open profile
-              </button>
-            </div>
-
-            <button
-              data-testid="settings-logout"
-              onClick={logout}
-              className="chip !text-sm mt-6 inline-flex items-center gap-2"
-            >
-              <LogOut className="w-4 h-4" />
-              Sign out
-            </button>
-          </div>
+          <SettingsTab
+            vendor={vendor}
+            user={user}
+            onLogout={logout}
+          />
         )}
       </div>
     </div>
