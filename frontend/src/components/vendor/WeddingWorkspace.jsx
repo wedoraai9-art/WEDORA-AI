@@ -2679,7 +2679,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                       <option>Manual</option>
                     </select>
 
-                    <div className="md:col-span-3 flex items-center justify-between gap-3">
+                    <div className="md:col-span-2 flex items-center justify-between gap-3">
                       <p className="text-xs text-[#8B8194]">
                         {hasActiveElementFilters
                           ? `${filteredElements.length} matching element${filteredElements.length === 1 ? '' : 's'}`
