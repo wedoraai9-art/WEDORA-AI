@@ -33,6 +33,50 @@ const emptyPayment = {
   notes: '',
 };
 
+const DECORATOR_ELEMENT_CATEGORIES = [
+  'General',
+  'Mandap',
+  'Stage',
+  'Entrance',
+  'Furniture',
+  'Flooring & Carpet',
+  'Floral',
+  'Lighting',
+  'Truss',
+  'Sound & AV',
+  'Fabric & Draping',
+  'Decor Props',
+  'Table Decor',
+  'Printing & Branding',
+  'Electrical',
+  'Production',
+  'Transportation',
+  'Signage',
+  'Other',
+  'Custom',
+];
+
+const COMMON_DECOR_ITEMS = [
+  'Platform',
+  'Carpet',
+  'Decor Truss',
+  'Sound Truss',
+  'Flex',
+  'Backdrop',
+  'Riser',
+  'Podium',
+  'Stall',
+  'Panel',
+  'Table',
+  'Chair',
+  'Sofa',
+  'Backdrop Fabric',
+  'Fairy Lights',
+  'Chandelier',
+  'Signage',
+  'Props',
+];
+
 const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
   const [activeModule, setActiveModule] = useState(null);
   const [showTaskForm, setShowTaskForm] = useState(false);
@@ -124,6 +168,11 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
   const [showElementForm, setShowElementForm] = useState(false);
   const [editingElementId, setEditingElementId] = useState(null);
   const [elementForm, setElementForm] = useState(emptyElement);
+  const [customElementCategories, setCustomElementCategories] = useState([]);
+  const [elementCategoriesLoading, setElementCategoriesLoading] = useState(false);
+  const [customCategoryName, setCustomCategoryName] = useState('');
+  const [saveCustomCategory, setSaveCustomCategory] = useState(true);
+  const [customCategorySaving, setCustomCategorySaving] = useState(false);
 
   useEffect(() => {
     if (wedding?.id) {
@@ -134,6 +183,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
       if (isDecorator) {
         loadDesign();
         loadElements();
+        loadElementCategories();
       }
     }
   }, [wedding?.id]);
@@ -424,6 +474,68 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
     }));
   };
 
+  const loadElementCategories = async () => {
+    if (!isDecorator) return;
+    setElementCategoriesLoading(true);
+    try {
+      const response = await authAxios.get('/vendor/element-categories');
+      setCustomElementCategories(response.data?.categories || []);
+    } catch (error) {
+      console.error("Failed to load element categories:", error);
+    } finally {
+      setElementCategoriesLoading(false);
+    }
+  };
+
+  const saveElementCategory = async () => {
+    const name = customCategoryName.trim();
+    if (!name || customCategorySaving) return;
+
+    if (DECORATOR_ELEMENT_CATEGORIES.some((item) => item.toLowerCase() === name.toLowerCase())) {
+      window.alert('This is already a standard category.');
+      return;
+    }
+
+    setCustomCategorySaving(true);
+    try {
+      const response = await authAxios.post('/vendor/element-categories', { name });
+      const saved = response.data?.category;
+      if (saved?.name) {
+        setCustomElementCategories((current) => {
+          const exists = current.some((item) => String(item.name).toLowerCase() === saved.name.toLowerCase());
+          return exists ? current : [...current, saved];
+        });
+        setElementForm((current) => ({ ...current, category: saved.name }));
+        setCustomCategoryName('');
+        setElementForm((current) => ({ ...current, category: saved.name }));
+      }
+    } catch (error) {
+      console.error("Failed to save custom category:", error);
+      window.alert(error.response?.data?.detail || 'Could not save custom category.');
+    } finally {
+      setCustomCategorySaving(false);
+    }
+  };
+
+  const deleteElementCategory = async (categoryId, categoryName) => {
+    if (!window.confirm(`Remove the saved category \"${categoryName}\"? Existing elements will not be deleted.`)) return;
+    try {
+      await authAxios.delete(`/vendor/element-categories/${categoryId}`);
+      setCustomElementCategories((current) => current.filter((item) => item.id !== categoryId));
+      if (elementForm.category === categoryName) {
+        setElementForm((current) => ({ ...current, category: 'General' }));
+      }
+    } catch (error) {
+      console.error("Failed to delete custom category:", error);
+      window.alert(error.response?.data?.detail || 'Could not delete custom category.');
+    }
+  };
+
+  const selectCommonElement = (name) => {
+    if (!name) return;
+    setElementForm((current) => ({ ...current, name }));
+  };
+
   const loadElements = async () => {
     if (!wedding?.id || !isDecorator) return;
     setElementsLoading(true);
@@ -440,6 +552,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
   const resetElementForm = () => {
     setElementForm(emptyElement);
     setEditingElementId(null);
+    setCustomCategoryName('');
     setShowElementForm(false);
   };
 
@@ -448,9 +561,30 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
 
     setElementSaving(true);
     try {
+      let finalCategory = elementForm.category || 'General';
+      if (finalCategory === 'Custom') {
+        finalCategory = customCategoryName.trim();
+        if (!finalCategory) {
+          window.alert('Enter a custom category name first.');
+          setElementSaving(false);
+          return;
+        }
+        if (saveCustomCategory) {
+          const response = await authAxios.post('/vendor/element-categories', { name: finalCategory });
+          const saved = response.data?.category;
+          if (saved?.name) {
+            finalCategory = saved.name;
+            setCustomElementCategories((current) => {
+              const exists = current.some((item) => String(item.name).toLowerCase() === saved.name.toLowerCase());
+              return exists ? current : [...current, saved];
+            });
+          }
+        }
+      }
+
       const payload = {
         name: elementForm.name.trim(),
-        category: elementForm.category || 'General',
+        category: finalCategory,
         quantity: Number(elementForm.quantity),
         unit: elementForm.unit.trim() || 'pcs',
         area: elementForm.area.trim(),
@@ -1828,22 +1962,102 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                       />
                       <select
                         value={elementForm.category}
-                        onChange={(e) => setElementForm({ ...elementForm, category: e.target.value })}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setElementForm({ ...elementForm, category: value });
+                          if (value !== 'Custom') setCustomCategoryName('');
+                        }}
                         className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none bg-white"
                       >
-                        <option>General</option>
-                        <option>Furniture</option>
-                        <option>Floral</option>
-                        <option>Lighting</option>
-                        <option>Mandap</option>
-                        <option>Stage</option>
-                        <option>Entrance</option>
-                        <option>Table Decor</option>
-                        <option>Props</option>
-                        <option>Fabric</option>
-                        <option>Signage</option>
-                        <option>Other</option>
+                        {DECORATOR_ELEMENT_CATEGORIES.map((category) => (
+                          <option key={category} value={category}>{category}</option>
+                        ))}
+                        {customElementCategories.map((category) => (
+                          <option key={category.id} value={category.name}>{category.name}</option>
+                        ))}
+                        {elementForm.category &&
+                          !DECORATOR_ELEMENT_CATEGORIES.includes(elementForm.category) &&
+                          !customElementCategories.some((category) => category.name === elementForm.category) && (
+                            <option value={elementForm.category}>{elementForm.category}</option>
+                          )}
                       </select>
+                      {elementForm.category === 'General' && (
+                        <div className="md:col-span-2 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-medium text-[#3F3748]">Common Decor Items</p>
+                              <p className="text-xs text-[#8B8194] mt-1">Quickly select a commonly used item or type your own below.</p>
+                            </div>
+                          </div>
+                          <select
+                            defaultValue=""
+                            onChange={(e) => { selectCommonElement(e.target.value); e.target.value = ''; }}
+                            className="mt-3 w-full rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
+                          >
+                            <option value="">Select a common item...</option>
+                            {COMMON_DECOR_ITEMS.map((item) => <option key={item} value={item}>{item}</option>)}
+                          </select>
+                        </div>
+                      )}
+
+                      {elementForm.category === 'Custom' && (
+                        <div className="md:col-span-2 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
+                          <p className="text-sm font-medium text-[#3F3748]">Custom Category</p>
+                          <p className="text-xs text-[#8B8194] mt-1">Create your own category for the way you manage decor.</p>
+                          <div className="flex flex-col md:flex-row gap-2 mt-3">
+                            <input
+                              value={customCategoryName}
+                              onChange={(e) => setCustomCategoryName(e.target.value)}
+                              placeholder="e.g. Wooden Structures"
+                              className="flex-1 rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
+                            />
+                            <button
+                              type="button"
+                              onClick={saveElementCategory}
+                              disabled={!customCategoryName.trim() || customCategorySaving}
+                              className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] disabled:opacity-50"
+                            >
+                              {customCategorySaving ? 'Saving...' : 'Save Category'}
+                            </button>
+                          </div>
+                          <label className="flex items-center gap-2 mt-3 text-sm text-[#6B6175]">
+                            <input
+                              type="checkbox"
+                              checked={saveCustomCategory}
+                              onChange={(e) => setSaveCustomCategory(e.target.checked)}
+                              className="rounded border-[#c9b8d8]"
+                            />
+                            Save this category for future weddings
+                          </label>
+                          {customElementCategories.length > 0 && (
+                            <div className="mt-4">
+                              <p className="text-xs text-[#8B8194]">Your saved custom categories</p>
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {customElementCategories.map((category) => (
+                                  <div key={category.id} className="inline-flex items-center gap-1 rounded-full bg-white border border-[#eadff2] pl-3 pr-1 py-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => setElementForm((current) => ({ ...current, category: category.name }))}
+                                      className="text-xs text-[#8B6AA8]"
+                                    >
+                                      {category.name}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => deleteElementCategory(category.id, category.name)}
+                                      className="w-5 h-5 rounded-full text-[#9B91A3] hover:text-red-400"
+                                      aria-label={`Delete ${category.name}`}
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       <input
                         type="number"
                         min="0.01"
