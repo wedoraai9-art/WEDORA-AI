@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Request, UploadFile, File, Header, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Request, UploadFile, File, Header, Query, Form
 from fastapi.responses import StreamingResponse, Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -628,6 +628,11 @@ class WeddingPaymentIn(BaseModel):
     amount: float = 0
     payment_date: Optional[str] = ""
     notes: Optional[str] = ""
+
+
+class WeddingDocumentUpdateIn(BaseModel):
+    title: Optional[str] = None
+    category: Optional[str] = None
 
 
 async def get_vendor_user(authorization: str = Header(None)):
@@ -1430,6 +1435,199 @@ async def vendor_delete_wedding_payment(
     )
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Payment not found")
+
+    return {"success": True}
+
+
+
+# ================= WEDDING DOCUMENTS =================
+WEDDING_DOCUMENT_MAX_BYTES = 10 * 1024 * 1024
+WEDDING_DOCUMENT_ALLOWED_EXTENSIONS = {
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".csv",
+    ".txt",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".webp",
+}
+
+def _document_extension(filename: str) -> str:
+    return Path(filename or "").suffix.lower()
+
+def _document_response(document: dict) -> dict:
+    # Keep the API shape simple for the frontend while retaining compatibility
+    # with common names used by document cards/download buttons.
+    return {
+        "id": document.get("id"),
+        "wedding_id": document.get("wedding_id"),
+        "vendor_id": document.get("vendor_id"),
+        "title": document.get("title") or document.get("file_name") or "Document",
+        "category": document.get("category") or "General",
+        "file_name": document.get("file_name") or "document",
+        "filename": document.get("file_name") or "document",
+        "file_type": document.get("file_type") or "application/octet-stream",
+        "content_type": document.get("file_type") or "application/octet-stream",
+        "file_size": int(document.get("file_size") or 0),
+        "size": int(document.get("file_size") or 0),
+        "url": document.get("data_url"),
+        "data_url": document.get("data_url"),
+        "uploaded_at": document.get("uploaded_at") or document.get("created_at"),
+        "created_at": document.get("created_at"),
+        "updated_at": document.get("updated_at"),
+    }
+
+
+@api_router.get("/vendor/weddings/{wedding_id}/documents")
+async def vendor_get_wedding_documents(
+    wedding_id: str,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    documents = await db.vendor_wedding_documents.find(
+        {"wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(200)
+
+    return {"documents": [_document_response(document) for document in documents]}
+
+
+@api_router.post("/vendor/weddings/{wedding_id}/documents")
+async def vendor_upload_wedding_document(
+    wedding_id: str,
+    file: UploadFile = File(...),
+    title: str = Form(""),
+    category: str = Form("General"),
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    filename = (file.filename or "").strip()
+    if not filename:
+        raise HTTPException(status_code=400, detail="Please select a document")
+
+    extension = _document_extension(filename)
+    if extension not in WEDDING_DOCUMENT_ALLOWED_EXTENSIONS:
+        allowed = ", ".join(sorted(WEDDING_DOCUMENT_ALLOWED_EXTENSIONS))
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported document type. Allowed: {allowed}",
+        )
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="The selected document is empty")
+
+    if len(content) > WEDDING_DOCUMENT_MAX_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail="Document must be 10 MB or smaller",
+        )
+
+    import base64
+
+    content_type = file.content_type or "application/octet-stream"
+    data_url = f"data:{content_type};base64,{base64.b64encode(content).decode('ascii')}"
+    now = datetime.now(timezone.utc).isoformat()
+
+    clean_title = (title or "").strip()
+    if not clean_title:
+        clean_title = Path(filename).stem or "Document"
+
+    clean_category = (category or "General").strip() or "General"
+
+    document = {
+        "id": str(uuid.uuid4()),
+        "wedding_id": wedding_id,
+        "vendor_id": vendor["id"],
+        "title": clean_title,
+        "category": clean_category,
+        "file_name": filename,
+        "file_type": content_type,
+        "file_size": len(content),
+        "data_url": data_url,
+        "uploaded_at": now,
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    await db.vendor_wedding_documents.insert_one(document.copy())
+    return _document_response(document)
+
+
+@api_router.put("/vendor/weddings/{wedding_id}/documents/{document_id}")
+async def vendor_update_wedding_document(
+    wedding_id: str,
+    document_id: str,
+    payload: WeddingDocumentUpdateIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    updates = {}
+
+    if payload.title is not None:
+        title = payload.title.strip()
+        if not title:
+            raise HTTPException(status_code=400, detail="Document title cannot be empty")
+        updates["title"] = title
+
+    if payload.category is not None:
+        updates["category"] = payload.category.strip() or "General"
+
+    if not updates:
+        document = await db.vendor_wedding_documents.find_one(
+            {"id": document_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
+            {"_id": 0},
+        )
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+        return _document_response(document)
+
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    result = await db.vendor_wedding_documents.update_one(
+        {"id": document_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"$set": updates},
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    document = await db.vendor_wedding_documents.find_one(
+        {"id": document_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"_id": 0},
+    )
+    return _document_response(document)
+
+
+@api_router.delete("/vendor/weddings/{wedding_id}/documents/{document_id}")
+async def vendor_delete_wedding_document(
+    wedding_id: str,
+    document_id: str,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    result = await db.vendor_wedding_documents.delete_one(
+        {"id": document_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]}
+    )
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Document not found")
 
     return {"success": True}
 
