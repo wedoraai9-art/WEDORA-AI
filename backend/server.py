@@ -1240,7 +1240,13 @@ async def create_wedding_client(
         "notes": payload.notes or "",
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
+    await db.clients.insert_one(client)
+    client.pop("_id", None)
 
+    return {
+        "ok": True,
+        "client": client,
+    }
 
 
 
