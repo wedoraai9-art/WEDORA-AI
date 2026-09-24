@@ -648,6 +648,25 @@ class WeddingDesignIn(BaseModel):
     status: Optional[str] = "draft"
     reference_images: List[str] = Field(default_factory=list)
 
+class WeddingElementIn(BaseModel):
+    name: str
+    category: Optional[str] = "General"
+    quantity: float = 1
+    unit: Optional[str] = "pcs"
+    area: Optional[str] = ""
+    status: Optional[str] = "planned"
+    notes: Optional[str] = ""
+
+
+class WeddingElementUpdateIn(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+    quantity: Optional[float] = None
+    unit: Optional[str] = None
+    area: Optional[str] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None
+
 
 
 class WeddingNotificationIn(BaseModel):
@@ -1633,6 +1652,192 @@ async def vendor_delete_wedding_design(
 
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Wedding design not found")
+
+    return {"success": True}
+
+
+
+# ================= WEDDING ELEMENTS (DECORATOR ONLY) =================
+
+ELEMENT_STATUS_VALUES = {"planned", "in_progress", "ready", "completed"}
+ELEMENT_CATEGORIES = {
+    "General",
+    "Furniture",
+    "Floral",
+    "Lighting",
+    "Mandap",
+    "Stage",
+    "Entrance",
+    "Table Decor",
+    "Props",
+    "Fabric",
+    "Signage",
+    "Other",
+}
+
+
+def _element_response(element: dict, wedding_id: str, vendor_id: str) -> dict:
+    return {
+        "id": element.get("id"),
+        "wedding_id": wedding_id,
+        "vendor_id": vendor_id,
+        "name": element.get("name", ""),
+        "category": element.get("category", "General"),
+        "quantity": element.get("quantity", 1),
+        "unit": element.get("unit", "pcs"),
+        "area": element.get("area", ""),
+        "status": element.get("status", "planned"),
+        "notes": element.get("notes", ""),
+        "created_at": element.get("created_at"),
+        "updated_at": element.get("updated_at"),
+    }
+
+
+@api_router.get("/vendor/weddings/{wedding_id}/elements")
+async def vendor_get_wedding_elements(
+    wedding_id: str,
+    authorization: str = Header(None),
+):
+    vendor = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(vendor)
+    await _get_decorator_wedding(wedding_id, vendor)
+
+    cursor = db.vendor_wedding_elements.find(
+        {"wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"_id": 0},
+    ).sort("created_at", -1)
+
+    elements = [_element_response(item, wedding_id, vendor["id"]) async for item in cursor]
+    return {"elements": elements}
+
+
+@api_router.post("/vendor/weddings/{wedding_id}/elements")
+async def vendor_create_wedding_element(
+    wedding_id: str,
+    payload: WeddingElementIn,
+    authorization: str = Header(None),
+):
+    vendor = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(vendor)
+    await _get_decorator_wedding(wedding_id, vendor)
+
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Element name is required")
+
+    quantity = float(payload.quantity)
+    if quantity <= 0:
+        raise HTTPException(status_code=400, detail="Quantity must be greater than 0")
+
+    status = (payload.status or "planned").strip().lower()
+    if status not in ELEMENT_STATUS_VALUES:
+        raise HTTPException(status_code=400, detail="Invalid element status")
+
+    category = (payload.category or "General").strip() or "General"
+    unit = (payload.unit or "pcs").strip() or "pcs"
+    area = (payload.area or "").strip()
+    notes = (payload.notes or "").strip()
+    now = datetime.now(timezone.utc).isoformat()
+
+    element = {
+        "id": str(uuid.uuid4()),
+        "wedding_id": wedding_id,
+        "vendor_id": vendor["id"],
+        "name": name,
+        "category": category,
+        "quantity": quantity,
+        "unit": unit,
+        "area": area,
+        "status": status,
+        "notes": notes,
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    await db.vendor_wedding_elements.insert_one(element.copy())
+    return {"success": True, "element": _element_response(element, wedding_id, vendor["id"])}
+
+
+@api_router.put("/vendor/weddings/{wedding_id}/elements/{element_id}")
+async def vendor_update_wedding_element(
+    wedding_id: str,
+    element_id: str,
+    payload: WeddingElementUpdateIn,
+    authorization: str = Header(None),
+):
+    vendor = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(vendor)
+    await _get_decorator_wedding(wedding_id, vendor)
+
+    existing = await db.vendor_wedding_elements.find_one(
+        {"id": element_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"_id": 0},
+    )
+    if not existing:
+        raise HTTPException(status_code=404, detail="Element not found")
+
+    updates = {}
+    data = payload.model_dump(exclude_unset=True)
+
+    if "name" in data:
+        name = (data["name"] or "").strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="Element name is required")
+        updates["name"] = name
+
+    if "category" in data:
+        updates["category"] = (data["category"] or "General").strip() or "General"
+
+    if "quantity" in data:
+        quantity = float(data["quantity"])
+        if quantity <= 0:
+            raise HTTPException(status_code=400, detail="Quantity must be greater than 0")
+        updates["quantity"] = quantity
+
+    if "unit" in data:
+        updates["unit"] = (data["unit"] or "pcs").strip() or "pcs"
+
+    if "area" in data:
+        updates["area"] = (data["area"] or "").strip()
+
+    if "status" in data:
+        status = (data["status"] or "planned").strip().lower()
+        if status not in ELEMENT_STATUS_VALUES:
+            raise HTTPException(status_code=400, detail="Invalid element status")
+        updates["status"] = status
+
+    if "notes" in data:
+        updates["notes"] = (data["notes"] or "").strip()
+
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    await db.vendor_wedding_elements.update_one(
+        {"id": element_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"$set": updates},
+    )
+
+    updated = await db.vendor_wedding_elements.find_one(
+        {"id": element_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"_id": 0},
+    )
+    return {"success": True, "element": _element_response(updated, wedding_id, vendor["id"])}
+
+
+@api_router.delete("/vendor/weddings/{wedding_id}/elements/{element_id}")
+async def vendor_delete_wedding_element(
+    wedding_id: str,
+    element_id: str,
+    authorization: str = Header(None),
+):
+    vendor = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(vendor)
+    await _get_decorator_wedding(wedding_id, vendor)
+
+    result = await db.vendor_wedding_elements.delete_one(
+        {"id": element_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]}
+    )
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Element not found")
 
     return {"success": True}
 
