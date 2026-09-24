@@ -17,6 +17,16 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [taskTitle, setTaskTitle] = useState("");
   const [tasks, setTasks] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [showClientForm, setShowClientForm] = useState(false);
+const [clientName, setClientName] = useState("");
+const [clientPhone, setClientPhone] = useState("");
+const [clientEmail, setClientEmail] = useState("");
+const [clientRelation, setClientRelation] = useState("");
+const [clientNotes, setClientNotes] = useState("");
+  useEffect(() => {
+  loadClients();
+}, [wedding.id]);
 
   if (!wedding) {
     return (
@@ -25,7 +35,42 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
       </div>
     );
   }
+const loadClients = async () => {
+  try {
+    const response = await authAxios.get(
+      `/vendor/weddings/${wedding.id}/clients`
+    );
+    setClients(response.data.clients || []);
+  } catch (error) {
+    console.error("Failed to load clients:", error);
+  }
+};
+const saveClient = async () => {
+  if (!clientName.trim()) return;
 
+  try {
+    await authAxios.post(
+      `/vendor/weddings/${wedding.id}/clients`,
+      {
+        name: clientName.trim(),
+        phone: clientPhone,
+        email: clientEmail,
+        relation: clientRelation,
+        notes: clientNotes,
+      }
+    );
+
+    setClientName("");
+    setClientPhone("");
+    setClientEmail("");
+    setClientRelation("");
+    setClientNotes("");
+    setShowClientForm(false);
+    loadClients();
+  } catch (error) {
+    console.error("Failed to save client:", error);
+  }
+};
   const formatDate = (date) => {
     if (!date) return 'Date not set';
 
@@ -352,6 +397,111 @@ const WeddingWorkspace = ({ wedding, onBack }) => {
               </div>
             )}
 
+            {activeModule === "Clients" && (
+  <div className="mb-5 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm text-[#8B8194]">Client Management</p>
+        <h4 className="text-lg font-semibold text-[#3F3748] mt-1">
+          Wedding Clients
+        </h4>
+        <p className="text-sm text-[#6B6175] mt-1">
+          Manage client details and communication for this wedding.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setShowClientForm(true)}
+        className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadff5]"
+      >
+        + Add Client
+      </button>
+    </div>
+
+    {showClientForm && (
+      <div className="mt-5 rounded-xl border border-[#eadff2] bg-white p-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input
+            value={clientName}
+            onChange={(e) => setClientName(e.target.value)}
+            placeholder="Client Name *"
+            className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none"
+          />
+
+          <input
+            value={clientPhone}
+            onChange={(e) => setClientPhone(e.target.value)}
+            placeholder="Phone"
+            className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none"
+          />
+
+          <input
+            value={clientEmail}
+            onChange={(e) => setClientEmail(e.target.value)}
+            placeholder="Email"
+            className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none"
+          />
+
+          <input
+            value={clientRelation}
+            onChange={(e) => setClientRelation(e.target.value)}
+            placeholder="Relation (Bride / Groom / Family)"
+            className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none"
+          />
+
+          <textarea
+            value={clientNotes}
+            onChange={(e) => setClientNotes(e.target.value)}
+            placeholder="Notes"
+            rows="3"
+            className="md:col-span-2 rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none"
+          />
+        </div>
+
+        <div className="flex gap-2 mt-4">
+          <button
+            type="button"
+            onClick={saveClient}
+            className="rounded-xl bg-[#8B6AA8] px-4 py-2 text-sm font-medium text-white"
+          >
+            Save Client
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowClientForm(false)}
+            className="rounded-xl px-4 py-2 text-sm text-[#8B8194]"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    )}
+
+    {clients.length > 0 && (
+      <div className="mt-4 space-y-3">
+        {clients.map((client) => (
+          <div
+            key={client.id}
+            className="rounded-xl border border-[#eadff2] bg-white p-4"
+          >
+            <p className="font-medium text-[#3F3748]">
+              {client.name}
+            </p>
+
+            <div className="mt-1 text-sm text-[#6B6175] space-y-1">
+              {client.phone && <p>Phone: {client.phone}</p>}
+              {client.email && <p>Email: {client.email}</p>}
+              {client.relation && <p>Relation: {client.relation}</p>}
+              {client.notes && <p>Notes: {client.notes}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
               <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
                 <p className="text-xs text-[#8B8194]">Bride</p>
