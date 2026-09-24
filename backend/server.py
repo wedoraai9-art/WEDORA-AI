@@ -43,11 +43,12 @@ class StreamDone:
     pass
 class LlmChat:
     def __init__(self, api_key=None, session_id=None, system_message=None):
-        self.client = genai.Client(api_key=api_key or GEMINI_API_KEY)
+        # Fallback to check both possible environment variable names
+        resolved_key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        self.client = genai.Client(api_key=resolved_key)
         self.session_id = session_id
         self.system_message = system_message
-        self.model = "gemini-2.5-flash"  # Ensure model name matches valid SDK endpoints
-
+        self.model = "gemini-2.5-flash"
     def with_model(self, provider, model):
         return self
 
@@ -61,7 +62,7 @@ class LlmChat:
         )
         return response.text or ""
 
-    async def stream_message(self, message):
+ async def stream_message(self, message):
         stream = await self.client.aio.models.generate_content_stream(
             model=self.model,
             contents=message.text,
