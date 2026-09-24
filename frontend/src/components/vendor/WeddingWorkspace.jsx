@@ -466,13 +466,7 @@ const saveClient = async () => {
         </div>
 
         <div className="flex gap-2 mt-4">
-          <button
-            type="button"
-            onClick={saveClient}
-            className="rounded-xl bg-[#8B6AA8] px-4 py-2 text-sm font-medium text-white"
-          >
-            Save Client
-          </button>
+          
 
          <button
             type="button"
