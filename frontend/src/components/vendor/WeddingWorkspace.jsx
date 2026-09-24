@@ -914,6 +914,12 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
       notes: element.notes || '',
     });
     setShowElementForm(true);
+    setTimeout(() => {
+      document.getElementById('wedding-element-form')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }, 100);
   };
 
   const deleteElement = async (id) => {
@@ -2263,7 +2269,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                 </div>
 
                 {showElementForm && (
-                  <div className="rounded-xl border border-[#eadff2] bg-white p-5">
+                  <div id="wedding-element-form" className="rounded-xl border border-[#eadff2] bg-white p-5">
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <p className="text-sm text-[#8B8194]">{editingElementId ? 'Edit Element' : 'New Element'}</p>
