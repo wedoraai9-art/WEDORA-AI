@@ -371,9 +371,9 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
   const [elementFilterFunction, setElementFilterFunction] = useState('All Functions');
   const [elementFilterStatus, setElementFilterStatus] = useState('All Status');
   const [elementFilterPricing, setElementFilterPricing] = useState('All Pricing');
+  const [elementFilterSupplier, setElementFilterSupplier] = useState('All Suppliers');
   const [elementSaving, setElementSaving] = useState(false);
   const [elementDeletingId, setElementDeletingId] = useState(null);
-  const [elementStatusUpdatingId, setElementStatusUpdatingId] = useState(null);
   const [showElementForm, setShowElementForm] = useState(false);
   const [editingElementId, setEditingElementId] = useState(null);
   const [elementForm, setElementForm] = useState(emptyElement);
@@ -817,6 +817,14 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
     elementSummary.actual_cost
   );
 
+  const elementSupplierOptions = Array.from(
+    new Set(
+      elements
+        .map((element) => String(element.supplier || '').trim())
+        .filter(Boolean)
+    )
+  ).sort((a, b) => a.localeCompare(b));
+
   const filteredElements = elements.filter((element) => {
     const query = elementSearch.trim().toLowerCase();
     const matchesSearch = !query || [
@@ -846,7 +854,11 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
       (elementFilterPricing === 'Per Unit' && String(element.pricing_type || 'manual') === 'per_unit') ||
       (elementFilterPricing === 'Manual' && String(element.pricing_type || 'manual') === 'manual');
 
-    return matchesSearch && matchesCategory && matchesFunction && matchesStatus && matchesPricing;
+    const matchesSupplier =
+      elementFilterSupplier === 'All Suppliers' ||
+      String(element.supplier || '').trim() === elementFilterSupplier;
+
+    return matchesSearch && matchesCategory && matchesFunction && matchesStatus && matchesPricing && matchesSupplier;
   });
 
   const clearElementFilters = () => {
@@ -855,6 +867,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
     setElementFilterFunction('All Functions');
     setElementFilterStatus('All Status');
     setElementFilterPricing('All Pricing');
+    setElementFilterSupplier('All Suppliers');
   };
 
   const hasActiveElementFilters =
@@ -862,7 +875,8 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
     elementFilterCategory !== 'All Categories' ||
     elementFilterFunction !== 'All Functions' ||
     elementFilterStatus !== 'All Status' ||
-    elementFilterPricing !== 'All Pricing';
+    elementFilterPricing !== 'All Pricing' ||
+    elementFilterSupplier !== 'All Suppliers';
 
   const resetElementForm = () => {
     setElementForm(emptyElement);
@@ -969,24 +983,6 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
         behavior: 'smooth',
       });
     }, 120);
-  };
-
-  const updateElementStatus = async (element, nextStatus) => {
-    if (!element?.id || !nextStatus || nextStatus === element.status || elementStatusUpdatingId) return;
-
-    setElementStatusUpdatingId(element.id);
-    try {
-      await authAxios.put(
-        `/vendor/weddings/${wedding.id}/elements/${element.id}`,
-        { status: nextStatus }
-      );
-      await loadElements();
-    } catch (error) {
-      console.error("Failed to update wedding element status:", error);
-      window.alert(error.response?.data?.detail || 'Could not update element status.');
-    } finally {
-      setElementStatusUpdatingId(null);
-    }
   };
 
   const deleteElement = async (id) => {
@@ -2756,6 +2752,17 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                       <option>Manual</option>
                     </select>
 
+                    <select
+                      value={elementFilterSupplier}
+                      onChange={(e) => setElementFilterSupplier(e.target.value)}
+                      className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none"
+                    >
+                      <option>All Suppliers</option>
+                      {elementSupplierOptions.map((supplier) => (
+                        <option key={supplier}>{supplier}</option>
+                      ))}
+                    </select>
+
                     <div className="md:col-span-2 flex items-center justify-between gap-3">
                       <p className="text-xs text-[#8B8194]">
                         {hasActiveElementFilters
@@ -2796,22 +2803,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                               <div className="flex flex-wrap items-center gap-2">
                                 <p className="font-medium text-[#3F3748]">{element.name}</p>
                                 <span className="rounded-full bg-[#f4eafa] px-2.5 py-1 text-xs text-[#8B6AA8]">{element.category}</span>
-                                <select
-                                  value={element.status || 'planned'}
-                                  onChange={(e) => updateElementStatus(element, e.target.value)}
-                                  disabled={elementStatusUpdatingId === element.id}
-                                  className="rounded-full bg-[#faf7ff] border border-[#eadff2] px-2.5 py-1 text-xs text-[#8B8194] capitalize outline-none disabled:opacity-60"
-                                  aria-label={`Update status for ${element.name}`}
-                                >
-                                  <option value="planned">Planned</option>
-                                  <option value="quotation">Quotation</option>
-                                  <option value="ordered">Ordered</option>
-                                  <option value="received">Received</option>
-                                  <option value="installed">Installed</option>
-                                  <option value="in_progress">In Progress</option>
-                                  <option value="ready">Ready</option>
-                                  <option value="completed">Completed</option>
-                                </select>
+                                <span className="rounded-full bg-[#faf7ff] border border-[#eadff2] px-2.5 py-1 text-xs text-[#8B8194] capitalize">{String(element.status || 'planned').replace('_', ' ')}</span>
                               </div>
 
                               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs text-[#6B6175]">
@@ -2822,7 +2814,32 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                                 <p><span className="text-[#8B8194]">Estimated:</span> {formatElementCurrency(element.estimated_cost)}</p>
                                 <p><span className="text-[#8B8194]">Actual:</span> {formatElementCurrency(element.actual_cost)}</p>
                                 <p><span className="text-[#8B8194]">Difference:</span> {formatElementVariance(element.estimated_cost, element.actual_cost)}</p>
-                                <p><span className="text-[#8B8194]">Supplier:</span> {element.supplier || 'Not assigned'}</p>
+                                <p>
+                                  <span className="text-[#8B8194]">Supplier:</span>{' '}
+                                  {element.supplier || 'Not assigned'}
+                                  {element.supplier_contact && (
+                                    <>
+                                      {' · '}
+                                      <a
+                                        href={`tel:${String(element.supplier_contact).replace(/[^+\d]/g, '')}`}
+                                        className="text-[#8B6AA8] hover:underline"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        Call
+                                      </a>
+                                      {' · '}
+                                      <a
+                                        href={`https://wa.me/${String(element.supplier_contact).replace(/\D/g, '')}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-[#8B6AA8] hover:underline"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        WhatsApp
+                                      </a>
+                                    </>
+                                  )}
+                                </p>
                                 <p><span className="text-[#8B8194]">Area / Location:</span> {element.area || 'Not specified'}</p>
                               </div>
 
