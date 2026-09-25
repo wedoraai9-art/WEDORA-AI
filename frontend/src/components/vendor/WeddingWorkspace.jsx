@@ -878,6 +878,34 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
     elementFilterPricing !== 'All Pricing' ||
     elementFilterSupplier !== 'All Suppliers';
 
+  const supplierOverview = Array.from(
+    elements.reduce((map, element) => {
+      const supplier = String(element.supplier || '').trim();
+      if (!supplier) return map;
+
+      const current = map.get(supplier) || {
+        supplier,
+        elements: 0,
+        ordered: 0,
+        pending: 0,
+        estimated: 0,
+        actual: 0,
+      };
+
+      const status = String(element.status || 'planned');
+      const isOrdered = ['ordered', 'received', 'installed', 'completed'].includes(status);
+
+      current.elements += 1;
+      current.ordered += isOrdered ? 1 : 0;
+      current.pending += isOrdered ? 0 : 1;
+      current.estimated += Number(element.estimated_cost || 0);
+      current.actual += Number(element.actual_cost || 0);
+
+      map.set(supplier, current);
+      return map;
+    }, new Map()).values()
+  ).sort((a, b) => b.estimated - a.estimated);
+
   const resetElementForm = () => {
     setElementForm(emptyElement);
     setEditingElementId(null);
@@ -2782,6 +2810,54 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                     </div>
                   </div>
                 </div>
+
+                {supplierOverview.length > 0 && (
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm text-[#8B8194]">Supplier Management</p>
+                        <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Supplier Overview</h4>
+                      </div>
+                      <p className="text-sm text-[#8B8194]">
+                        {supplierOverview.length} supplier{supplierOverview.length === 1 ? '' : 's'}
+                      </p>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                      {supplierOverview.map((supplier) => (
+                        <button
+                          key={supplier.supplier}
+                          type="button"
+                          onClick={() => setElementFilterSupplier(supplier.supplier)}
+                          className="text-left rounded-xl border border-[#eadff2] bg-white p-4 hover:bg-[#faf7ff] transition"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-medium text-[#3F3748] truncate">{supplier.supplier}</p>
+                              <p className="text-xs text-[#8B8194] mt-1">
+                                {supplier.elements} element{supplier.elements === 1 ? '' : 's'}
+                              </p>
+                            </div>
+                            <span className="rounded-full bg-[#f4eafa] px-2.5 py-1 text-xs text-[#8B6AA8]">
+                              View
+                            </span>
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-[#6B6175]">
+                            <p><span className="text-[#8B8194]">Ordered:</span> {supplier.ordered}</p>
+                            <p><span className="text-[#8B8194]">Pending:</span> {supplier.pending}</p>
+                            <p><span className="text-[#8B8194]">Estimated:</span> {formatElementCurrency(supplier.estimated)}</p>
+                            <p><span className="text-[#8B8194]">Actual:</span> {formatElementCurrency(supplier.actual)}</p>
+                          </div>
+
+                          <p className="mt-3 text-xs text-[#8B8194]">
+                            {formatElementVariance(supplier.estimated, supplier.actual)}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {elementsLoading ? (
                   <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-8 text-center text-sm text-[#8B8194]">Loading elements...</div>
