@@ -131,14 +131,14 @@ export const LeadsTab = ({ vendor }) => {
           </p>
 
           <p className="mt-2 max-w-md mx-auto text-sm leading-6 text-[#6B617A]">
-            Upgrade to PRO to receive enquiries from couples,
-            manage your leads, contact clients, and grow your
-            wedding business through WEDORA.
+            Client enquiries and lead management are available to
+            PRO vendors after payment is verified. Your FREE public
+            profile and portfolio remain available.
           </p>
 
           <div className="mt-6 inline-flex items-center gap-2 chip !text-xs">
             <Sparkles className="w-3.5 h-3.5" />
-            PRO required for lead access
+            PRO access starts after verified payment
           </div>
         </div>
       ) : (
