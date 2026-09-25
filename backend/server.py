@@ -836,6 +836,35 @@ class WeddingTaskUpdateIn(BaseModel):
     completed: Optional[bool] = None
 
 
+class VendorClientCreateIn(BaseModel):
+    name: str
+    phone: Optional[str] = ""
+    whatsapp: Optional[str] = ""
+    email: Optional[str] = ""
+    relation: Optional[str] = ""
+    notes: Optional[str] = ""
+    status: Optional[str] = "Lead"
+    follow_up_date: Optional[str] = ""
+    wedding_ids: List[str] = Field(default_factory=list)
+
+
+class VendorClientUpdateIn(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    whatsapp: Optional[str] = None
+    email: Optional[str] = None
+    relation: Optional[str] = None
+    notes: Optional[str] = None
+    status: Optional[str] = None
+    follow_up_date: Optional[str] = None
+    wedding_ids: Optional[List[str]] = None
+
+
+class VendorClientCommunicationIn(BaseModel):
+    channel: str = "Note"
+    message: str
+
+
 class WeddingDocumentUpdateIn(BaseModel):
     title: Optional[str] = None
     category: Optional[str] = None
@@ -1475,6 +1504,338 @@ async def _get_vendor_wedding(wedding_id: str, vendor_id: str):
     if not wedding:
         raise HTTPException(status_code=404, detail="Wedding not found")
     return wedding
+
+
+VENDOR_CLIENT_STATUSES = {"Lead", "Discussion", "Confirmed", "Completed"}
+
+
+def _normalise_client_status(value: Optional[str]) -> str:
+    requested = (value or "Lead").strip().lower()
+    statuses = {status.lower(): status for status in VENDOR_CLIENT_STATUSES}
+    if requested not in statuses:
+        raise HTTPException(
+            status_code=400,
+            detail="Client status must be Lead, Discussion, Confirmed, or Completed.",
+        )
+    return statuses[requested]
+
+
+def _clean_wedding_ids(values: Optional[List[str]]) -> List[str]:
+    cleaned = []
+    for value in values or []:
+        wedding_id = str(value or "").strip()
+        if wedding_id and wedding_id not in cleaned:
+            cleaned.append(wedding_id)
+    return cleaned
+
+
+async def _validate_client_weddings(wedding_ids: List[str], vendor_id: str):
+    if not wedding_ids:
+        return
+    count = await db.vendor_weddings.count_documents(
+        {"id": {"$in": wedding_ids}, "vendor_id": vendor_id}
+    )
+    if count != len(wedding_ids):
+        raise HTTPException(
+            status_code=400,
+            detail="One or more selected weddings are not available for this vendor.",
+        )
+
+
+async def _vendor_client_response(client_doc: dict, vendor_id: str):
+    client = {key: value for key, value in client_doc.items() if key != "_id"}
+    wedding_ids = _clean_wedding_ids(client.get("wedding_ids"))
+    weddings = await db.vendor_weddings.find(
+        {"id": {"$in": wedding_ids}, "vendor_id": vendor_id},
+        {
+            "_id": 0,
+            "id": 1,
+            "wedding_name": 1,
+            "name": 1,
+            "wedding_date": 1,
+            "event_date": 1,
+            "venue": 1,
+            "city": 1,
+            "status": 1,
+        },
+    ).to_list(100)
+    client["wedding_ids"] = wedding_ids
+    client["weddings"] = [
+        {
+            **item,
+            "wedding_name": item.get("wedding_name") or item.get("name") or "Wedding",
+            "wedding_date": item.get("wedding_date") or item.get("event_date") or "",
+        }
+        for item in weddings
+    ]
+    client["communications"] = client.get("communications") or []
+    return client
+
+
+def _client_fields(payload, *, exclude_unset=False):
+    updates = payload.model_dump(exclude_unset=exclude_unset)
+    if "name" in updates:
+        updates["name"] = (updates.get("name") or "").strip()
+        if not updates["name"]:
+            raise HTTPException(status_code=400, detail="Client name is required.")
+    if "status" in updates:
+        updates["status"] = _normalise_client_status(updates["status"])
+    for field in ("phone", "whatsapp", "email", "relation", "notes", "follow_up_date"):
+        if field in updates:
+            updates[field] = (updates[field] or "").strip()
+    if "email" in updates:
+        updates["email"] = updates["email"].lower()
+    if "wedding_ids" in updates:
+        updates["wedding_ids"] = _clean_wedding_ids(updates["wedding_ids"])
+    return updates
+
+
+async def _create_vendor_client(vendor_id: str, payload: VendorClientCreateIn):
+    fields = _client_fields(payload)
+    wedding_ids = fields.get("wedding_ids", [])
+    await _validate_client_weddings(wedding_ids, vendor_id)
+    now = datetime.now(timezone.utc).isoformat()
+    client_doc = {
+        "id": str(uuid.uuid4()),
+        "vendor_id": vendor_id,
+        **fields,
+        "communications": [],
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.vendor_clients.insert_one(client_doc.copy())
+    return await _vendor_client_response(client_doc, vendor_id)
+
+
+async def _update_vendor_client(client_id: str, vendor_id: str, payload: VendorClientUpdateIn):
+    updates = _client_fields(payload, exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="No client updates provided.")
+    if "wedding_ids" in updates:
+        await _validate_client_weddings(updates["wedding_ids"], vendor_id)
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    result = await db.vendor_clients.update_one(
+        {"id": client_id, "vendor_id": vendor_id},
+        {"$set": updates},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Client not found.")
+    client_doc = await db.vendor_clients.find_one(
+        {"id": client_id, "vendor_id": vendor_id}, {"_id": 0}
+    )
+    return await _vendor_client_response(client_doc, vendor_id)
+
+
+@api_router.get("/vendor/clients")
+async def vendor_get_clients(authorization: str = Header(None)):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    client_docs = await db.vendor_clients.find(
+        {"vendor_id": vendor["id"]}, {"_id": 0}
+    ).sort([("updated_at", -1), ("created_at", -1)]).to_list(500)
+    return {
+        "clients": [
+            await _vendor_client_response(item, vendor["id"])
+            for item in client_docs
+        ]
+    }
+
+
+@api_router.post("/vendor/clients")
+async def vendor_create_client(
+    payload: VendorClientCreateIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    return await _create_vendor_client(vendor["id"], payload)
+
+
+@api_router.put("/vendor/clients/{client_id}")
+async def vendor_update_client(
+    client_id: str,
+    payload: VendorClientUpdateIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    return await _update_vendor_client(client_id, vendor["id"], payload)
+
+
+@api_router.delete("/vendor/clients/{client_id}")
+async def vendor_delete_client(client_id: str, authorization: str = Header(None)):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    result = await db.vendor_clients.delete_one(
+        {"id": client_id, "vendor_id": vendor["id"]}
+    )
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Client not found.")
+    return {"success": True}
+
+
+@api_router.post("/vendor/clients/{client_id}/communications")
+async def vendor_add_client_communication(
+    client_id: str,
+    payload: VendorClientCommunicationIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    message = payload.message.strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Communication note is required.")
+    channel = payload.channel.strip() or "Note"
+    if channel.lower() not in {"phone", "whatsapp", "email", "meeting", "note", "other"}:
+        raise HTTPException(status_code=400, detail="Choose a valid communication channel.")
+    entry = {
+        "id": str(uuid.uuid4()),
+        "channel": channel.title(),
+        "message": message,
+        "logged_at": datetime.now(timezone.utc).isoformat(),
+    }
+    result = await db.vendor_clients.update_one(
+        {"id": client_id, "vendor_id": vendor["id"]},
+        {
+            "$push": {"communications": {"$each": [entry], "$position": 0, "$slice": 100}},
+            "$set": {"updated_at": entry["logged_at"]},
+        },
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Client not found.")
+    return entry
+
+
+@api_router.get("/vendor/clients/{client_id}/history")
+async def vendor_get_client_history(client_id: str, authorization: str = Header(None)):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    client_doc = await db.vendor_clients.find_one(
+        {"id": client_id, "vendor_id": vendor["id"]}, {"_id": 0}
+    )
+    if not client_doc:
+        raise HTTPException(status_code=404, detail="Client not found.")
+
+    wedding_ids = _clean_wedding_ids(client_doc.get("wedding_ids"))
+    if not wedding_ids:
+        return {"documents": [], "payments": []}
+
+    weddings = await db.vendor_weddings.find(
+        {"id": {"$in": wedding_ids}, "vendor_id": vendor["id"]},
+        {"_id": 0, "id": 1, "wedding_name": 1, "name": 1},
+    ).to_list(100)
+    wedding_names = {
+        item["id"]: item.get("wedding_name") or item.get("name") or "Wedding"
+        for item in weddings
+    }
+    documents = await db.vendor_wedding_documents.find(
+        {"wedding_id": {"$in": wedding_ids}, "vendor_id": vendor["id"]},
+        {
+            "_id": 0,
+            "id": 1,
+            "wedding_id": 1,
+            "title": 1,
+            "category": 1,
+            "file_name": 1,
+            "file_type": 1,
+            "file_size": 1,
+            "uploaded_at": 1,
+        },
+    ).sort("created_at", -1).to_list(200)
+    payments = await db.vendor_wedding_payments.find(
+        {"wedding_id": {"$in": wedding_ids}, "vendor_id": vendor["id"]},
+        {
+            "_id": 0,
+            "id": 1,
+            "wedding_id": 1,
+            "title": 1,
+            "payment_type": 1,
+            "amount": 1,
+            "payment_date": 1,
+            "notes": 1,
+        },
+    ).sort("created_at", -1).to_list(500)
+    for item in documents:
+        item["wedding_name"] = wedding_names.get(item.get("wedding_id"), "Wedding")
+    for item in payments:
+        item["wedding_name"] = wedding_names.get(item.get("wedding_id"), "Wedding")
+    return {"documents": documents, "payments": payments}
+
+
+@api_router.get("/vendor/weddings/{wedding_id}/clients")
+async def vendor_get_wedding_clients(wedding_id: str, authorization: str = Header(None)):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+    client_docs = await db.vendor_clients.find(
+        {"vendor_id": vendor["id"], "wedding_ids": wedding_id}, {"_id": 0}
+    ).sort([("updated_at", -1), ("created_at", -1)]).to_list(500)
+    return {
+        "clients": [
+            await _vendor_client_response(item, vendor["id"])
+            for item in client_docs
+        ]
+    }
+
+
+@api_router.post("/vendor/weddings/{wedding_id}/clients")
+async def vendor_create_wedding_client(
+    wedding_id: str,
+    payload: VendorClientCreateIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+    wedding_ids = _clean_wedding_ids([wedding_id, *(payload.wedding_ids or [])])
+    payload_data = payload.model_dump()
+    payload_data["wedding_ids"] = wedding_ids
+    return await _create_vendor_client(vendor["id"], VendorClientCreateIn(**payload_data))
+
+
+@api_router.put("/vendor/weddings/{wedding_id}/clients/{client_id}")
+async def vendor_update_wedding_client(
+    wedding_id: str,
+    client_id: str,
+    payload: VendorClientUpdateIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+    client_doc = await db.vendor_clients.find_one(
+        {"id": client_id, "vendor_id": vendor["id"], "wedding_ids": wedding_id},
+        {"_id": 0},
+    )
+    if not client_doc:
+        raise HTTPException(status_code=404, detail="Client not found for this wedding.")
+    return await _update_vendor_client(client_id, vendor["id"], payload)
+
+
+@api_router.delete("/vendor/weddings/{wedding_id}/clients/{client_id}")
+async def vendor_unlink_wedding_client(
+    wedding_id: str,
+    client_id: str,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+    client_doc = await db.vendor_clients.find_one(
+        {"id": client_id, "vendor_id": vendor["id"], "wedding_ids": wedding_id},
+        {"_id": 0},
+    )
+    if not client_doc:
+        raise HTTPException(status_code=404, detail="Client not found for this wedding.")
+    remaining_ids = [item for item in _clean_wedding_ids(client_doc.get("wedding_ids")) if item != wedding_id]
+    if remaining_ids:
+        await db.vendor_clients.update_one(
+            {"id": client_id, "vendor_id": vendor["id"]},
+            {"$set": {"wedding_ids": remaining_ids, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        )
+    else:
+        await db.vendor_clients.delete_one({"id": client_id, "vendor_id": vendor["id"]})
+    return {"success": True}
 
 
 @api_router.get("/vendor/weddings/{wedding_id}/tasks")
