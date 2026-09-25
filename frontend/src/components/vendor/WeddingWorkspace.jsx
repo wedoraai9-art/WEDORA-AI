@@ -3063,6 +3063,147 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                 )}
 
 
+
+                {procurementSummary.length > 0 && (
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div>
+                        <p className="text-sm text-[#8B8194]">Material Planning</p>
+                        <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Material Requirement Summary</h4>
+                        <p className="text-sm text-[#6B6175] mt-1">
+                          See the total material quantity and area required across your wedding elements.
+                        </p>
+                      </div>
+                      <div className="rounded-lg bg-white px-3 py-2 text-xs text-[#8B8194] border border-[#eadff2]">
+                        {(() => {
+                          const categories = new Set(procurementSummary.map((item) => item.category || 'General'));
+                          return `${categories.size} categor${categories.size === 1 ? 'y' : 'ies'}`;
+                        })()}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="rounded-xl border border-[#eadff2] bg-white p-4">
+                        <p className="text-xs text-[#8B8194]">Categories</p>
+                        <p className="text-xl font-semibold text-[#3F3748] mt-1">
+                          {new Set(procurementSummary.map((item) => item.category || 'General')).size}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-[#eadff2] bg-white p-4">
+                        <p className="text-xs text-[#8B8194]">Material Lines</p>
+                        <p className="text-xl font-semibold text-[#3F3748] mt-1">
+                          {procurementSummary.length}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-[#eadff2] bg-white p-4">
+                        <p className="text-xs text-[#8B8194]">Total Area</p>
+                        <p className="text-lg font-semibold text-[#3F3748] mt-1">
+                          {procurementSummary
+                            .reduce((sum, item) => sum + (Number(item.area_sqft) || 0), 0)
+                            .toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-[#eadff2] bg-white p-4">
+                        <p className="text-xs text-[#8B8194]">Estimated Value</p>
+                        <p className="text-lg font-semibold text-[#3F3748] mt-1">
+                          {formatElementCurrency(
+                            procurementSummary.reduce((sum, item) => sum + (Number(item.estimated) || 0), 0)
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 overflow-x-auto rounded-xl border border-[#eadff2] bg-white">
+                      <table className="w-full min-w-[900px] text-left">
+                        <thead>
+                          <tr className="border-b border-[#eadff2] bg-[#faf7ff] text-xs text-[#8B8194]">
+                            <th className="px-4 py-3 font-medium">Category</th>
+                            <th className="px-4 py-3 font-medium">Required Quantity</th>
+                            <th className="px-4 py-3 font-medium">Area</th>
+                            <th className="px-4 py-3 font-medium">Material Lines</th>
+                            <th className="px-4 py-3 font-medium">Pending</th>
+                            <th className="px-4 py-3 font-medium">Estimated</th>
+                            <th className="px-4 py-3 font-medium">Actual</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Array.from(
+                            procurementSummary.reduce((map, item) => {
+                              const category = item.category || 'General';
+                              const current = map.get(category) || {
+                                category,
+                                lines: 0,
+                                pending: 0,
+                                area: 0,
+                                estimated: 0,
+                                actual: 0,
+                                quantities: {},
+                              };
+
+                              current.lines += 1;
+                              current.pending += Number(item.pending) || 0;
+                              current.area += Number(item.area_sqft) || 0;
+                              current.estimated += Number(item.estimated) || 0;
+                              current.actual += Number(item.actual) || 0;
+
+                              const unit = item.unit || 'pcs';
+                              current.quantities[unit] =
+                                (current.quantities[unit] || 0) + (Number(item.quantity) || 0);
+
+                              map.set(category, current);
+                              return map;
+                            }, new Map())
+                          )
+                            .sort((a, b) => b[1].estimated - a[1].estimated)
+                            .map(([category, item]) => (
+                              <tr
+                                key={category}
+                                className="border-b border-[#f0e8f5] last:border-b-0"
+                              >
+                                <td className="px-4 py-3">
+                                  <p className="font-medium text-[#3F3748]">{item.category}</p>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {Object.entries(item.quantities).map(([unit, quantity]) => (
+                                      <span
+                                        key={unit}
+                                        className="inline-flex items-center rounded-full bg-[#faf7ff] border border-[#eadff2] px-2.5 py-1 text-xs text-[#6B6175]"
+                                      >
+                                        {quantity.toLocaleString('en-IN', { maximumFractionDigits: 2 })} {unit}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-[#6B6175]">
+                                  {item.area > 0
+                                    ? `${item.area.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft`
+                                    : '—'}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-[#6B6175]">{item.lines}</td>
+                                <td className="px-4 py-3">
+                                  <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs ${
+                                    item.pending > 0
+                                      ? 'bg-[#fff5df] text-[#ad7616]'
+                                      : 'bg-[#edf8f2] text-[#4c9670]'
+                                  }`}>
+                                    {item.pending > 0 ? `${item.pending} pending` : 'Ordered'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-sm font-medium text-[#3F3748]">
+                                  {formatElementCurrency(item.estimated)}
+                                </td>
+                                <td className="px-4 py-3 text-sm font-medium text-[#3F3748]">
+                                  {formatElementCurrency(item.actual)}
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
                 {procurementSummary.length > 0 && (
                   <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
