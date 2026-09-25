@@ -889,6 +889,22 @@ def _vendor_plan_details(plan: str):
     return VENDOR_PLANS.get(plan, VENDOR_PLANS["free"])
 
 
+def _vendor_plan_name(vendor: dict) -> str:
+    """Return a supported vendor plan, defaulting unknown legacy values to FREE."""
+    plan = (vendor.get("plan") or "free").strip().lower()
+    return plan if plan in VENDOR_PLANS else "free"
+
+
+def _require_vendor_lead_access(vendor: dict):
+    """Enforce lead access from the vendor's persisted plan on every lead route."""
+    plan = _vendor_plan_name(vendor)
+    if not VENDOR_PLANS[plan]["lead_access"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Client enquiries are available to WEDORA PRO vendors only.",
+        )
+
+
 async def _ensure_vendor_profile(user: dict):
     vendor = await db.vendors.find_one({"user_id": user["id"]}, {"_id": 0})
 
@@ -1077,10 +1093,15 @@ async def vendor_stats(authorization: str = Header(None)):
     slug = vendor.get("slug")
 
     weddings = await db.vendor_weddings.count_documents({"vendor_id": vendor_id})
-    leads = await db.vendor_leads.count_documents({"vendor_id": vendor_id})
-    new_leads = await db.vendor_leads.count_documents(
-        {"vendor_id": vendor_id, "status": {"$in": ["new", "pending"]}}
-    )
+    plan = _vendor_plan_name(vendor)
+    if VENDOR_PLANS[plan]["lead_access"]:
+        leads = await db.vendor_leads.count_documents({"vendor_id": vendor_id})
+        new_leads = await db.vendor_leads.count_documents(
+            {"vendor_id": vendor_id, "status": {"$in": ["new", "pending"]}}
+        )
+    else:
+        leads = 0
+        new_leads = 0
     portfolio_views = await db.vendor_events.count_documents(
         {"vendor_id": vendor_id, "event": "portfolio_view"}
     )
@@ -1129,6 +1150,15 @@ async def vendor_switch_plan(payload: VendorPlanIn, authorization: str = Header(
     if plan not in VENDOR_PLANS:
         raise HTTPException(status_code=400, detail="Invalid vendor plan")
 
+    # There is no verified payment provider/webhook in this backend. Never let
+    # a client grant itself PRO access by posting {"plan": "pro"}; PRO activation
+    # must be added only alongside server-verified payment confirmation.
+    if plan == "pro":
+        raise HTTPException(
+            status_code=403,
+            detail="PRO access can only be activated after verified payment.",
+        )
+
     vendor = await _ensure_vendor_profile(user)
 
     await db.vendors.update_one(
@@ -1157,6 +1187,7 @@ async def vendor_switch_plan(payload: VendorPlanIn, authorization: str = Header(
 async def vendor_leads(authorization: str = Header(None)):
     user = await get_vendor_user(authorization)
     vendor = await _ensure_vendor_profile(user)
+    _require_vendor_lead_access(vendor)
 
     docs = await db.vendor_leads.find(
         {"vendor_id": vendor["id"]},
@@ -1174,6 +1205,7 @@ async def vendor_update_lead(
 ):
     user = await get_vendor_user(authorization)
     vendor = await _ensure_vendor_profile(user)
+    _require_vendor_lead_access(vendor)
 
     result = await db.vendor_leads.update_one(
         {"id": lead_id, "vendor_id": vendor["id"]},
@@ -2720,6 +2752,11 @@ async def marketplace_create_lead(payload: dict):
 
     if not vendor_id:
         raise HTTPException(status_code=400, detail="Vendor is required")
+
+    vendor = await db.vendors.find_one({"id": vendor_id}, {"_id": 0})
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor profile not found")
+    _require_vendor_lead_access(vendor)
 
     lead = {
         "id": str(uuid.uuid4()),
