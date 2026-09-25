@@ -1661,7 +1661,7 @@ ${message}`;
   const budget = budgetData.budget || {};
 
   return (
-    <div className="min-h-screen bg-[#fcf9ff] px-4 py-6 md:px-8 text-[#2D2638]">
+    <div className="min-h-screen bg-[#fcf9ff] px-4 pt-28 pb-6 md:px-8 md:pt-32 text-[#2D2638]">
       <div className="max-w-7xl mx-auto">
         <button
           onClick={onBack}
