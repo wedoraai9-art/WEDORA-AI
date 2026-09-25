@@ -162,7 +162,12 @@ export const VendorPublicProfile = () => {
 
   useEffect(() => {
     (async () => {
-      try { const r = await apiVendorProfile(slug); setVendor(r.vendor); }
+      try {
+        const r = await apiVendorProfile(slug);
+        // The API currently returns the vendor document directly. Accept the
+        // wrapped form too, so this profile works with either response shape.
+        setVendor(r?.vendor || r || null);
+      }
       catch { setNotFound(true); }
     })();
   }, [slug]);
