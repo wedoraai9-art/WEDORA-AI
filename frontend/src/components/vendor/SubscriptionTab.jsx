@@ -85,6 +85,11 @@ const SubscriptionTab = ({ vendor, planDetails, onSaved }) => {
   const switchPlan = async (planId) => {
     if (savingPlan || planId === currentPlan) return;
 
+    if (planId === 'pro') {
+      toast.info('PRO activation will be available after secure payment is set up.');
+      return;
+    }
+
     setSavingPlan(planId);
 
     try {
@@ -304,11 +309,13 @@ const SubscriptionTab = ({ vendor, planDetails, onSaved }) => {
                     <button
                       type="button"
                       onClick={() => switchPlan(plan.id)}
-                      disabled={savingPlan !== null}
+                      disabled={savingPlan !== null || plan.id === 'pro'}
                       className={`w-full glow-btn flex items-center justify-center gap-2 ${
                         savingPlan === plan.id
                           ? 'opacity-70 cursor-wait'
-                          : ''
+                          : plan.id === 'pro'
+                            ? 'opacity-70 cursor-not-allowed'
+                            : ''
                       }`}
                       data-testid={`choose-plan-${plan.id}`}
                     >
@@ -317,9 +324,9 @@ const SubscriptionTab = ({ vendor, planDetails, onSaved }) => {
                       ) : (
                         <>
                           {plan.id === 'pro'
-                            ? 'Upgrade to PRO'
+                            ? 'PRO payment setup coming soon'
                             : 'Switch to FREE'}
-                          <ArrowRight className="w-4 h-4" />
+                          {plan.id !== 'pro' && <ArrowRight className="w-4 h-4" />}
                         </>
                       )}
                     </button>
@@ -435,9 +442,9 @@ const SubscriptionTab = ({ vendor, planDetails, onSaved }) => {
             </p>
 
             <p className="text-xs text-[#6B617A] mt-1 leading-5">
-              Plan switching is currently in demo mode. No payment is
-              collected from this screen. A real payment gateway can be
-              connected later without changing the subscription UI.
+              PRO access activates only after payment is verified. Secure
+              payment is not available from this screen yet, so your current
+              plan remains active until PRO checkout is ready.
             </p>
           </div>
         </div>
