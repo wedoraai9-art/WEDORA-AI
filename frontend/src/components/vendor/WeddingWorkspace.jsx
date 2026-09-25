@@ -885,12 +885,17 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
 
       const current = map.get(supplier) || {
         supplier,
+        contact: String(element.supplier_contact || '').trim(),
         elements: 0,
         ordered: 0,
         pending: 0,
         estimated: 0,
         actual: 0,
       };
+
+      if (!current.contact && String(element.supplier_contact || '').trim()) {
+        current.contact = String(element.supplier_contact || '').trim();
+      }
 
       const status = String(element.status || 'planned');
       const isOrdered = ['ordered', 'received', 'installed', 'completed'].includes(status);
@@ -2684,7 +2689,8 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                           <input
                             value={elementForm.supplier_contact}
                             onChange={(e) => setElementForm({ ...elementForm, supplier_contact: e.target.value })}
-                            placeholder="Supplier contact"
+                            placeholder="Supplier contact / WhatsApp number"
+                            inputMode="tel"
                             className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
                           />
                         </div>
@@ -2853,6 +2859,26 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                           <p className="mt-3 text-xs text-[#8B8194]">
                             {formatElementVariance(supplier.estimated, supplier.actual)}
                           </p>
+
+                          {supplier.contact && (
+                            <div className="mt-3 flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                              <span className="text-xs text-[#8B8194]">{supplier.contact}</span>
+                              <a
+                                href={`tel:${String(supplier.contact).replace(/[^+\d]/g, '')}`}
+                                className="rounded-lg bg-[#f4eafa] px-2.5 py-1 text-xs text-[#8B6AA8] hover:underline"
+                              >
+                                Call
+                              </a>
+                              <a
+                                href={`https://wa.me/${String(supplier.contact).replace(/\D/g, '')}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-lg bg-[#f4eafa] px-2.5 py-1 text-xs text-[#8B6AA8] hover:underline"
+                              >
+                                WhatsApp
+                              </a>
+                            </div>
+                          )}
                         </button>
                       ))}
                     </div>
