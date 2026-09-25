@@ -290,7 +290,17 @@ const getWeddingCountdown = (weddingDate) => {
 const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
   const weddingCountdown = getWeddingCountdown(wedding?.wedding_date);
 
+  const vendorPlan = String(vendor?.plan || 'free').trim().toLowerCase();
+  const hasPaidAI = vendorPlan === 'pro' || vendorPlan === 'premium';
+  const vendorCategory = String(vendor?.category || 'Wedding Vendor').trim();
+  const vendorBusinessName = String(vendor?.business_name || vendor?.name || 'Your Business').trim();
+
   const [activeModule, setActiveModule] = useState(null);
+  const [aiMessages, setAiMessages] = useState([]);
+  const [aiInput, setAiInput] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
+
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [taskTitle, setTaskTitle] = useState("");
   const [tasks, setTasks] = useState([]);
@@ -408,6 +418,115 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
   const [customCategoryName, setCustomCategoryName] = useState('');
   const [saveCustomCategory, setSaveCustomCategory] = useState(true);
   const [customCategorySaving, setCustomCategorySaving] = useState(false);
+
+
+  const getWeddingAiSessionId = () =>
+    `wedding-ai-${wedding?.id || wedding?._id || 'workspace'}`;
+
+  const getWeddingAiContext = () => {
+    const weddingDetails = [
+      `Wedding name: ${wedding?.wedding_name || "Not set"}`,
+      `Bride: ${wedding?.bride_name || "Not set"}`,
+      `Groom: ${wedding?.groom_name || "Not set"}`,
+      `Wedding date: ${wedding?.wedding_date || "Not set"}`,
+      `City: ${wedding?.city || "Not set"}`,
+      `Venue: ${wedding?.venue || "Not set"}`,
+      `Guest count: ${wedding?.guest_count || "Not set"}`,
+      `Wedding budget: ${wedding?.budget || "Not set"}`,
+      `Status: ${wedding?.status || "Not set"}`,
+    ].join("\n");
+
+    return `You are WEDORA Wedding AI Assistant for a ${vendorCategory} vendor.
+Business: ${vendorBusinessName}
+Vendor category: ${vendorCategory}
+
+Adapt your answer to this vendor category. Do not assume the vendor is a decorator.
+You can help with wedding planning, timelines, tasks, client communication, budgeting, vendor coordination, sourcing, operations, documents, guest planning and category-specific work.
+Use the wedding information below as context.
+Do not invent facts. If information is missing, say what is missing.
+
+CURRENT WEDDING:
+${weddingDetails}`;
+  };
+
+  useEffect(() => {
+    if (activeModule !== "AI Assistant") return;
+
+    if (!hasPaidAI) {
+      setAiMessages([]);
+      setAiError("");
+      return;
+    }
+
+    let cancelled = false;
+    const sessionId = getWeddingAiSessionId();
+
+    const loadAiHistory = async () => {
+      setAiError("");
+      try {
+        const res = await authAxios.get(`/vendor/wedding-ai/history/${sessionId}`);
+        if (cancelled) return;
+        const messages = Array.isArray(res.data?.messages) ? res.data.messages : [];
+        setAiMessages(messages.map((message) => ({
+          role: message.role,
+          content: message.content,
+        })));
+      } catch (error) {
+        if (!cancelled) {
+          setAiMessages([]);
+          setAiError("Couldn't load the wedding AI conversation.");
+        }
+      }
+    };
+
+    loadAiHistory();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeModule, wedding?.id, wedding?._id, hasPaidAI]);
+
+  const sendWeddingAiMessage = async () => {
+    if (!hasPaidAI) {
+      setAiError("Wedding AI Assistant is available only on WEDORA PRO and PREMIUM plans.");
+      return;
+    }
+
+    const message = aiInput.trim();
+    if (!message || aiLoading) return;
+
+    const sessionId = getWeddingAiSessionId();
+    const userMessage = { role: "user", content: message };
+
+    setAiMessages((prev) => [...prev, userMessage]);
+    setAiInput("");
+    setAiLoading(true);
+    setAiError("");
+
+    try {
+      const prompt = `${getWeddingAiContext()}
+
+USER QUESTION:
+${message}`;
+
+      const res = await authAxios.post("/vendor/wedding-ai", {
+        session_id: sessionId,
+        message: prompt,
+      });
+
+      const reply = res.data?.reply || "I couldn't generate a response right now.";
+      setAiMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+    } catch (error) {
+      setAiError(
+        error?.response?.data?.detail ||
+        "WEDORA AI couldn't respond right now. Please try again."
+      );
+      setAiMessages((prev) => prev.filter((item) => item !== userMessage));
+      setAiInput(message);
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (wedding?.id) {
@@ -2419,7 +2538,126 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
               </div>
             )}
             {activeModule === "AI Assistant" && (
-              <div className="mt-4 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5"><p className="text-sm text-[#8B8194]">AI Assistant</p><h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding AI Assistant</h4><p className="text-sm text-[#6B6175] mt-1">Wedding-specific AI assistance will be added next.</p></div>
+              !hasPaidAI ? (
+                <div className="mt-4 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-6">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+                    <div>
+                      <p className="text-sm text-[#8B8194]">Premium Wedding Intelligence</p>
+                      <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding AI Assistant</h4>
+                      <p className="text-sm text-[#6B6175] mt-2 max-w-2xl">
+                        AI assistance is available for subscribed WEDORA vendors. Upgrade to PRO or PREMIUM to use category-specific wedding intelligence for your business.
+                      </p>
+                    </div>
+                    <div className="shrink-0 rounded-xl bg-[#f4eafa] px-4 py-3 text-sm font-medium text-[#8B6AA8]">
+                      PRO / PREMIUM
+                    </div>
+                  </div>
+                </div>
+              ) : (
+              <div className="mt-4 space-y-4">
+                <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#f4eafa] flex items-center justify-center shrink-0">
+                      <Sparkles className="w-5 h-5 text-[#8B6AA8]" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-[#8B8194]">Wedding Intelligence</p>
+                      <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding AI Assistant</h4>
+                      <p className="text-sm text-[#6B6175] mt-1">
+                        Ask WEDORA about planning, timelines, budget ideas, decor, sourcing, vendors or this wedding.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-[#eadff2] bg-white overflow-hidden">
+                  <div className="max-h-[420px] overflow-y-auto p-4 space-y-3">
+                    {aiMessages.length === 0 ? (
+                      <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                        <p className="text-sm font-medium text-[#3F3748]">What can I help with?</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
+                          {[
+                            "Create a wedding planning timeline",
+                            "Help me control the wedding budget",
+                            "Suggest ideas relevant to my vendor category",
+                            "What should I discuss with my client next?",
+                          ].map((suggestion) => (
+                            <button
+                              key={suggestion}
+                              type="button"
+                              onClick={() => setAiInput(suggestion)}
+                              className="text-left rounded-xl border border-[#eadff2] bg-white px-3 py-3 text-sm text-[#6B6175] hover:bg-[#faf7ff] hover:border-[#d9c7e6] transition-colors"
+                            >
+                              {suggestion}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      aiMessages.map((message, index) => (
+                        <div
+                          key={`${message.role}-${index}`}
+                          className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                        >
+                          <div
+                            className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                              message.role === "user"
+                                ? "bg-[#8B6AA8] text-white"
+                                : "bg-[#faf7ff] border border-[#eadff2] text-[#3F3748]"
+                            }`}
+                          >
+                            {message.content}
+                          </div>
+                        </div>
+                      ))
+                    )}
+
+                    {aiLoading && (
+                      <div className="flex justify-start">
+                        <div className="rounded-2xl bg-[#faf7ff] border border-[#eadff2] px-4 py-3 text-sm text-[#8B8194]">
+                          WEDORA is thinking...
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {aiError && (
+                    <div className="px-4 pb-2 text-sm text-red-400">
+                      {aiError}
+                    </div>
+                  )}
+
+                  <div className="border-t border-[#eadff2] p-4 bg-[#faf7ff]">
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <textarea
+                        value={aiInput}
+                        onChange={(e) => setAiInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            sendWeddingAiMessage();
+                          }
+                        }}
+                        rows="3"
+                        placeholder="Ask WEDORA anything about this wedding..."
+                        className="flex-1 rounded-xl border border-[#eadff2] bg-white px-3 py-3 text-sm text-[#3F3748] outline-none focus:border-[#c9a9df] resize-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={sendWeddingAiMessage}
+                        disabled={!aiInput.trim() || aiLoading}
+                        className="sm:self-end rounded-xl bg-[#8B6AA8] px-5 py-3 text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {aiLoading ? "Thinking..." : "Ask WEDORA"}
+                      </button>
+                    </div>
+                    <p className="text-xs text-[#8B8194] mt-2">
+                      Enter to send · Shift + Enter for a new line
+                    </p>
+                  </div>
+                </div>
+              </div>
+              )
             )}
 
             {isDecorator && activeModule === "Design" && (
