@@ -19,6 +19,7 @@ export const ProfileTab = ({ vendor, planDetails, onSaved }) => {
   const [busy, setBusy] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiDraft, setAiDraft] = useState('');
+  const [aiSuggestions, setAiSuggestions] = useState(null);
   const logoRef = useRef(null);
 
   useEffect(() => {
@@ -66,10 +67,14 @@ export const ProfileTab = ({ vendor, planDetails, onSaved }) => {
         notes: aiDraft,
       });
       setForm((f) => ({ ...f, description: r.description }));
-      toast.success('AI draft ready — edit it below and save when you love it');
+      setAiSuggestions({
+        category: r.suggested_category || '',
+        services: Array.isArray(r.suggested_services) ? r.suggested_services : [],
+      });
+      toast.success('AI business suggestions are ready to review');
     } catch (err) {
       const d = err.response?.data?.detail;
-      if (d === 'AI_PROFILE_PREMIUM_ONLY') toast.error('This feature is available on PRO.');
+      if (d === 'AI_PROFILE_PRO_ONLY' || d === 'AI_PROFILE_PREMIUM_ONLY') toast.error('This feature is available on PRO.');
       else toast.error(fmtApiError(d, 'AI generation failed'));
     }
     setAiBusy(false);
@@ -121,12 +126,42 @@ export const ProfileTab = ({ vendor, planDetails, onSaved }) => {
         {/* AI generator */}
         <div className="sm:col-span-2 rounded-2xl border border-white/80 bg-gradient-to-br from-[#C9B8FF]/15 to-[#F7B7D8]/15 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
-            <p className="text-sm font-medium text-[#2D2638] flex items-center gap-2"><Sparkles className="w-4 h-4 text-[#C9B8FF]" /> Generate Profile With AI <span className="text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-white/70 border border-white/80 text-[#988FA6]">PRO</span></p>
+            <p className="text-sm font-medium text-[#2D2638] flex items-center gap-2"><Sparkles className="w-4 h-4 text-[#C9B8FF]" /> PRO AI Business &amp; Category Assistant <span className="text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-white/70 border border-white/80 text-[#988FA6]">PRO</span></p>
             <button type="button" data-testid="ai-generate-profile-btn" onClick={genAI} disabled={aiBusy || !isPro} className="glow-btn !py-2 !px-4 !text-sm disabled:opacity-60">
               {aiBusy ? 'Writing…' : 'Generate'}
             </button>
           </div>
           <textarea data-testid="ai-notes" rows={2} className={inputCls + ' resize-none'} placeholder="Optional: add notes for the AI (style, specialties, awards)…" value={aiDraft} onChange={(e) => setAiDraft(e.target.value)} />
+          <p className="text-xs text-[#988FA6] mt-2">Gemini drafts your description and suggests a matching category and services. Review everything before saving.</p>
+          {aiSuggestions && (
+            <div className="mt-3 rounded-2xl border border-white/80 bg-white/60 p-4" data-testid="ai-business-suggestions">
+              <p className="text-xs uppercase tracking-widest text-[#988FA6]">Suggested category</p>
+              <p className="text-sm text-[#2D2638] mt-1">{aiSuggestions.category || 'Keep your current category'}</p>
+              {aiSuggestions.services.length > 0 && (
+                <>
+                  <p className="text-xs uppercase tracking-widest text-[#988FA6] mt-3">Suggested services</p>
+                  <p className="text-sm text-[#6B617A] mt-1">{aiSuggestions.services.join(' · ')}</p>
+                </>
+              )}
+              <button
+                type="button"
+                data-testid="ai-apply-suggestions"
+                onClick={() => {
+                  if (aiSuggestions.category && CATEGORIES.includes(aiSuggestions.category)) {
+                    setForm((f) => ({ ...f, category: aiSuggestions.category }));
+                  }
+                  if (aiSuggestions.services.length > 0) {
+                    setServicesText(aiSuggestions.services.join(', '));
+                  }
+                  setAiSuggestions(null);
+                  toast.success('Suggestions added to your profile draft. Review and save when ready.');
+                }}
+                className="chip !text-xs mt-3"
+              >
+                Apply category &amp; services
+              </button>
+            </div>
+          )}
           {!isPro && <p className="text-xs text-[#988FA6] mt-2">The AI profile assistant is available on PRO. <a href="#" onClick={(e) => { e.preventDefault(); window.dispatchEvent(new CustomEvent('wedora:goto-tab', { detail: 'subscription' })); }} className="underline decoration-pink-300">View plans</a></p>}
         </div>
 
