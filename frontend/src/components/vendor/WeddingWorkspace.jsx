@@ -350,7 +350,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
     function: 'All Functions',
     status: 'planned',
     pricing_type: 'manual',
-    sourcing_type: 'rent',
+    sourcing_type: 'unspecified',
     rate: '',
     estimated_cost: '',
     actual_cost: '',
@@ -931,7 +931,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
       const unit = String(element.unit || 'pcs').trim();
       const functionName = String(element.function || 'All Functions').trim();
       const supplier = String(element.supplier || '').trim();
-      const sourcingType = String(element.sourcing_type || 'rent').trim();
+      const sourcingType = String(element.sourcing_type || 'unspecified').trim();
 
       const key = [
         name.toLowerCase(),
@@ -1024,7 +1024,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
         function: elementForm.function || 'All Functions',
         status: elementForm.status || 'planned',
         pricing_type: elementForm.pricing_type || 'manual',
-        sourcing_type: elementForm.sourcing_type || 'rent',
+        sourcing_type: elementForm.sourcing_type || 'unspecified',
         rate: Number(elementForm.rate || 0),
         estimated_cost: getElementEstimatedCost(elementForm),
         actual_cost: Number(elementForm.actual_cost || 0),
@@ -1065,7 +1065,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
       function: element.function || 'All Functions',
       status: element.status || 'planned',
       pricing_type: element.pricing_type || 'manual',
-      sourcing_type: element.sourcing_type || 'rent',
+      sourcing_type: element.sourcing_type || 'unspecified',
       rate: element.rate != null ? String(element.rate) : '',
       estimated_cost: element.estimated_cost != null ? String(element.estimated_cost) : '',
       actual_cost: element.actual_cost != null ? String(element.actual_cost) : '',
@@ -1100,7 +1100,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
       AreaSqFt: element.area_sqft ?? '',
       Function: element.function || '',
       Status: element.status || '',
-      SourcingType: element.sourcing_type || 'rent',
+      SourcingType: element.sourcing_type || 'unspecified',
       PricingType: element.pricing_type || '',
       Rate: element.rate ?? '',
       EstimatedCost: element.estimated_cost ?? '',
@@ -2747,6 +2747,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                           onChange={(e) => setElementForm({ ...elementForm, sourcing_type: e.target.value })}
                           className="mt-3 w-full rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none"
                         >
+                          <option value="unspecified">Not Specified</option>
                           <option value="rent">Rent / Rental Vendor</option>
                           <option value="purchase">Purchase / Buy</option>
                           <option value="own_inventory">Own Inventory</option>
@@ -3111,6 +3112,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
 
                     <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3">
                       {[
+                        ['Not Specified', 'unspecified'],
                         ['Rent', 'rent'],
                         ['Purchase', 'purchase'],
                         ['Own Inventory', 'own_inventory'],
@@ -3196,14 +3198,19 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                       </div>
 
                       <div className="space-y-3">
-                        {['rent', 'purchase'].map((type) => {
+                        {['rent', 'purchase', 'unspecified'].map((type) => {
                           const items = procurementSummary.filter((item) => item.sourcing_type === type);
                           if (!items.length) return null;
+                          const sectionTitle = {
+                            rent: 'Rental Requirements',
+                            purchase: 'Purchase Requirements',
+                            unspecified: 'Sourcing Not Specified',
+                          }[type];
                           return (
                             <div key={type} className="rounded-xl border border-[#eadff2] bg-white overflow-hidden">
                               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-3 bg-[#faf7ff] border-b border-[#eadff2]">
                                 <div>
-                                  <p className="text-sm font-medium text-[#3F3748]">{type === 'rent' ? 'Rental Requirements' : 'Purchase Requirements'}</p>
+                                  <p className="text-sm font-medium text-[#3F3748]">{sectionTitle}</p>
                                   <p className="text-xs text-[#8B8194]">{items.length} line{items.length === 1 ? '' : 's'} · grouped by supplier</p>
                                 </div>
                                 <p className="text-sm font-semibold text-[#3F3748]">
@@ -3285,7 +3292,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                                   own_inventory: 'Own Inventory',
                                   client_provided: 'Client Provided',
                                   vendor_included: 'Vendor Included',
-                                }[element.sourcing_type || 'rent'] || 'Rent'}</span>
+                                }[element.sourcing_type || 'unspecified'] || 'Rent'}</span>
                                 <span className="rounded-full bg-[#faf7ff] border border-[#eadff2] px-2.5 py-1 text-xs text-[#8B8194] capitalize">{String(element.status || 'planned').replace('_', ' ')}</span>
                               </div>
 
@@ -3300,7 +3307,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                                   own_inventory: 'Own Inventory',
                                   client_provided: 'Client Provided',
                                   vendor_included: 'Vendor Included',
-                                }[element.sourcing_type || 'rent'] || 'Rent'}</p>
+                                }[element.sourcing_type || 'unspecified'] || 'Rent'}</p>
                                 <p><span className="text-[#8B8194]">Estimated:</span> {formatElementCurrency(element.estimated_cost)}</p>
                                 <p><span className="text-[#8B8194]">Actual:</span> {formatElementCurrency(element.actual_cost)}</p>
                                 <p><span className="text-[#8B8194]">Difference:</span> {formatElementVariance(element.estimated_cost, element.actual_cost)}</p>
