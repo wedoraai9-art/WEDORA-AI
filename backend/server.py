@@ -824,6 +824,18 @@ class WeddingPaymentIn(BaseModel):
     notes: Optional[str] = ""
 
 
+class WeddingTaskIn(BaseModel):
+    title: str
+    due_date: Optional[str] = ""
+    completed: bool = False
+
+
+class WeddingTaskUpdateIn(BaseModel):
+    title: Optional[str] = None
+    due_date: Optional[str] = None
+    completed: Optional[bool] = None
+
+
 class WeddingDocumentUpdateIn(BaseModel):
     title: Optional[str] = None
     category: Optional[str] = None
@@ -1463,6 +1475,104 @@ async def _get_vendor_wedding(wedding_id: str, vendor_id: str):
     if not wedding:
         raise HTTPException(status_code=404, detail="Wedding not found")
     return wedding
+
+
+@api_router.get("/vendor/weddings/{wedding_id}/tasks")
+async def vendor_get_wedding_tasks(
+    wedding_id: str,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    tasks = await db.vendor_wedding_tasks.find(
+        {"wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"_id": 0},
+    ).sort([("due_date", 1), ("created_at", -1)]).to_list(500)
+    return {"tasks": tasks}
+
+
+@api_router.post("/vendor/weddings/{wedding_id}/tasks")
+async def vendor_create_wedding_task(
+    wedding_id: str,
+    payload: WeddingTaskIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    title = payload.title.strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Task title is required")
+
+    now = datetime.now(timezone.utc).isoformat()
+    task = {
+        "id": str(uuid.uuid4()),
+        "wedding_id": wedding_id,
+        "vendor_id": vendor["id"],
+        "title": title,
+        "due_date": (payload.due_date or "").strip(),
+        "completed": bool(payload.completed),
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.vendor_wedding_tasks.insert_one(task.copy())
+    return task
+
+
+@api_router.patch("/vendor/weddings/{wedding_id}/tasks/{task_id}")
+async def vendor_update_wedding_task(
+    wedding_id: str,
+    task_id: str,
+    payload: WeddingTaskUpdateIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    updates = payload.model_dump(exclude_unset=True)
+    if "title" in updates:
+        updates["title"] = (updates["title"] or "").strip()
+        if not updates["title"]:
+            raise HTTPException(status_code=400, detail="Task title is required")
+    if "due_date" in updates:
+        updates["due_date"] = (updates["due_date"] or "").strip()
+    if not updates:
+        raise HTTPException(status_code=400, detail="No task updates provided")
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    result = await db.vendor_wedding_tasks.update_one(
+        {"id": task_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"$set": updates},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    return await db.vendor_wedding_tasks.find_one(
+        {"id": task_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"_id": 0},
+    )
+
+
+@api_router.delete("/vendor/weddings/{wedding_id}/tasks/{task_id}")
+async def vendor_delete_wedding_task(
+    wedding_id: str,
+    task_id: str,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    result = await db.vendor_wedding_tasks.delete_one(
+        {"id": task_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]}
+    )
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return {"success": True}
 
 
 async def _wedding_budget_payload(wedding: dict):
