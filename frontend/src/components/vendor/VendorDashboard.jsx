@@ -59,6 +59,9 @@ const VendorDashboard = () => {
   const [planDetails, setPlanDetails] = useState(null);
   const [stats, setStats] = useState(null);
   const [busy, setBusy] = useState(true);
+  const hasProAccess =
+    planDetails?.lead_access === true ||
+    String(vendor?.plan || '').toLowerCase() === 'pro';
 
   useEffect(() => {
     const onGoto = (e) => {
@@ -168,10 +171,10 @@ const VendorDashboard = () => {
               <h1 className="font-display text-2xl sm:text-3xl text-[#2D2638] flex items-center gap-2">
                 {vendor?.business_name || 'Vendor Dashboard'}
 
-                {vendor?.plan === 'premium' && (
+                {vendor?.plan === 'pro' && (
                   <Crown
                     className="w-5 h-5 text-[#F58D91]"
-                    data-testid="premium-crown"
+                    data-testid="pro-crown"
                   />
                 )}
               </h1>
@@ -345,7 +348,7 @@ const VendorDashboard = () => {
               Analytics
             </h3>
 
-            {planDetails?.ai_profile || vendor.plan === 'pro' ? (
+            {hasProAccess ? (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <StatCard
                   icon={Eye}
@@ -384,7 +387,7 @@ const VendorDashboard = () => {
             ) : (
               <div className="rounded-3xl border border-dashed border-[#C9B8FF]/60 bg-white/50 p-10 text-center">
                 <p className="text-[#6B617A] mb-4">
-                  This feature is available on PRO/PREMIUM.
+                  Analytics are available to PRO vendors after payment is verified.
                 </p>
 
                 <button
@@ -392,7 +395,7 @@ const VendorDashboard = () => {
                   onClick={() => setTab('subscription')}
                   className="glow-btn !py-2 !px-6 !text-sm"
                 >
-                  Upgrade Plan
+                  View PRO Plan
                 </button>
               </div>
             )}
