@@ -507,11 +507,8 @@ FRONTEND_URL = (
     .strip()
     .rstrip("/")
 )
-SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
-SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "").strip()
-SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
-EMAIL_FROM = (os.environ.get("EMAIL_FROM") or SMTP_USERNAME).strip()
+BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "").strip()
+EMAIL_FROM = (os.environ.get("EMAIL_FROM") or "").strip()
 
 
 class ForgotPasswordIn(BaseModel):
@@ -527,24 +524,26 @@ def _hash_reset_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-def _smtp_configured() -> bool:
-    return bool(SMTP_HOST and SMTP_USERNAME and SMTP_PASSWORD and EMAIL_FROM)
+def _brevo_configured() -> bool:
+    return bool(BREVO_API_KEY and EMAIL_FROM)
 
 
 def _send_password_reset_email_sync(to_email: str, reset_url: str) -> None:
-    message = EmailMessage()
-    message["Subject"] = "Reset your WEDORA AI password"
-    message["From"] = EMAIL_FROM
-    message["To"] = to_email
-    message.set_content(
-        "WEDORA AI password reset\n\n"
-        "We received a request to reset your WEDORA AI password.\n\n"
-        f"Use this link within {PASSWORD_RESET_TTL_MINUTES} minutes:\n{reset_url}\n\n"
-        "If you did not request this, you can safely ignore this email.\n"
-        "This link can only be used once."
-    )
-    message.add_alternative(
-        f"""
+    payload = {
+        "sender": {
+            "email": EMAIL_FROM,
+            "name": "WEDORA AI",
+        },
+        "to": [{"email": to_email}],
+        "subject": "Reset your WEDORA AI password",
+        "textContent": (
+            "WEDORA AI password reset\n\n"
+            "We received a request to reset your WEDORA AI password.\n\n"
+            f"Use this link within {PASSWORD_RESET_TTL_MINUTES} minutes:\n{reset_url}\n\n"
+            "If you did not request this, you can safely ignore this email.\n"
+            "This link can only be used once."
+        ),
+        "htmlContent": f"""
         <html>
           <body style=\"font-family:Arial,sans-serif;color:#2D2638;line-height:1.6;\">
             <h2 style=\"margin-bottom:8px;\">Reset your WEDORA AI password</h2>
@@ -561,15 +560,24 @@ def _send_password_reset_email_sync(to_email: str, reset_url: str) -> None:
           </body>
         </html>
         """,
-        subtype="html",
+    }
+
+    response = http_requests.post(
+        "https://api.brevo.com/v3/smtp/email",
+        headers={
+            "accept": "application/json",
+            "api-key": BREVO_API_KEY,
+            "content-type": "application/json",
+        },
+        json=payload,
+        timeout=20,
     )
 
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as smtp:
-        smtp.ehlo()
-        smtp.starttls()
-        smtp.ehlo()
-        smtp.login(SMTP_USERNAME, SMTP_PASSWORD)
-        smtp.send_message(message)
+    if response.status_code >= 400:
+        raise RuntimeError(
+            f"Brevo email API returned HTTP {response.status_code}: {response.text[:500]}"
+        )
+
 
 
 @api_router.post("/auth/forgot-password")
@@ -613,10 +621,10 @@ async def auth_forgot_password(payload: ForgotPasswordIn):
 
     reset_url = f"{FRONTEND_URL}/vendor/auth?mode=reset&token={raw_token}"
 
-    if not _smtp_configured():
+    if not _brevo_configured():
         logging.warning(
-            "Password reset token created for %s, but SMTP is not configured. "
-            "Set SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD and EMAIL_FROM.",
+            "Password reset token created for %s, but Brevo email delivery is not configured. "
+            "Set BREVO_API_KEY and EMAIL_FROM.",
             email,
         )
         return generic_response
@@ -711,8 +719,8 @@ VENDOR_PLANS = {
     },
     "pro": {
         "label": "WEDORA PRO",
-        "price_monthly": 399,
-        "price_yearly": 4599,
+        "price_monthly": 599,
+        "price_yearly": 5999,
         "wedding_limit": None,
         "export_enabled": True,
         "lead_access": True,
