@@ -1132,6 +1132,48 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
     URL.revokeObjectURL(url);
   };
 
+  const exportProcurementCsv = () => {
+    if (!procurementSummary.length) {
+      window.alert('There is no procurement data to export.');
+      return;
+    }
+
+    const rows = procurementSummary.map((item) => ({
+      Item: item.name || '',
+      Category: item.category || '',
+      Quantity: item.quantity ?? '',
+      Unit: item.unit || '',
+      AreaSqFt: item.area_sqft ?? '',
+      Function: item.function || '',
+      Supplier: item.supplier || '',
+      Status: item.pending > 0 ? 'Pending' : 'Ordered',
+      EstimatedCost: item.estimated ?? '',
+      ActualCost: item.actual ?? '',
+      Variance: Number(item.actual || 0) - Number(item.estimated || 0),
+    }));
+
+    const headers = Object.keys(rows[0]);
+    const escapeCsv = (value) => {
+      const stringValue = String(value ?? '');
+      return `"${stringValue.replace(/"/g, '""')}"`;
+    };
+
+    const csv = [
+      headers.map(escapeCsv).join(','),
+      ...rows.map((row) => headers.map((header) => escapeCsv(row[header])).join(',')),
+    ].join('\\r\\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${String(wedding?.wedding_name || wedding?.name || 'wedding').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'wedding'}-procurement-summary.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const deleteElement = async (id) => {
     if (!window.confirm('Delete this wedding element?')) return;
     setElementDeletingId(id);
@@ -3020,6 +3062,139 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                   </div>
                 )}
 
+
+                {procurementSummary.length > 0 && (
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div>
+                        <p className="text-sm text-[#8B8194]">Purchasing</p>
+                        <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Purchase Planning</h4>
+                        <p className="text-sm text-[#6B6175] mt-1">
+                          Pending requirements are organized into a simple purchase list for material planning.
+                        </p>
+                      </div>
+                      <div className="rounded-lg bg-white px-3 py-2 text-xs text-[#8B8194] border border-[#eadff2]">
+                        {procurementSummary.filter((item) => item.pending > 0).length} pending line{procurementSummary.filter((item) => item.pending > 0).length === 1 ? '' : 's'}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="rounded-xl border border-[#eadff2] bg-white p-4">
+                        <p className="text-xs text-[#8B8194]">To Purchase</p>
+                        <p className="text-xl font-semibold text-[#3F3748] mt-1">
+                          {procurementSummary.filter((item) => item.pending > 0).length}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-[#eadff2] bg-white p-4">
+                        <p className="text-xs text-[#8B8194]">Pending Estimated</p>
+                        <p className="text-lg font-semibold text-[#3F3748] mt-1">
+                          {formatElementCurrency(
+                            procurementSummary
+                              .filter((item) => item.pending > 0)
+                              .reduce((sum, item) => sum + item.estimated, 0)
+                          )}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-[#eadff2] bg-white p-4">
+                        <p className="text-xs text-[#8B8194]">Ordered Value</p>
+                        <p className="text-lg font-semibold text-[#3F3748] mt-1">
+                          {formatElementCurrency(
+                            procurementSummary
+                              .filter((item) => item.pending === 0)
+                              .reduce((sum, item) => sum + item.estimated, 0)
+                          )}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-[#eadff2] bg-white p-4">
+                        <p className="text-xs text-[#8B8194]">Suppliers</p>
+                        <p className="text-xl font-semibold text-[#3F3748] mt-1">
+                          {new Set(
+                            procurementSummary
+                              .filter((item) => item.pending > 0)
+                              .map((item) => item.supplier || 'Not Assigned')
+                          ).size}
+                        </p>
+                      </div>
+                    </div>
+
+                    {procurementSummary.filter((item) => item.pending > 0).length > 0 ? (
+                      <div className="mt-4 space-y-3">
+                        {Array.from(
+                          procurementSummary
+                            .filter((item) => item.pending > 0)
+                            .reduce((map, item) => {
+                              const supplier = item.supplier || 'Not Assigned';
+                              const current = map.get(supplier) || [];
+                              current.push(item);
+                              map.set(supplier, current);
+                              return map;
+                            }, new Map())
+                        ).map(([supplier, items]) => (
+                          <div key={supplier} className="rounded-xl border border-[#eadff2] bg-white overflow-hidden">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-3 bg-[#faf7ff] border-b border-[#eadff2]">
+                              <div>
+                                <p className="text-sm font-medium text-[#3F3748]">{supplier}</p>
+                                <p className="text-xs text-[#8B8194]">
+                                  {items.length} purchase line{items.length === 1 ? '' : 's'}
+                                </p>
+                              </div>
+                              <p className="text-sm font-semibold text-[#3F3748]">
+                                {formatElementCurrency(items.reduce((sum, item) => sum + item.estimated, 0))}
+                              </p>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                              <table className="w-full min-w-[760px] text-left">
+                                <thead>
+                                  <tr className="border-b border-[#f0e8f5] text-xs text-[#8B8194]">
+                                    <th className="px-4 py-3 font-medium">Item</th>
+                                    <th className="px-4 py-3 font-medium">Category</th>
+                                    <th className="px-4 py-3 font-medium">Qty</th>
+                                    <th className="px-4 py-3 font-medium">Area</th>
+                                    <th className="px-4 py-3 font-medium">Function</th>
+                                    <th className="px-4 py-3 font-medium">Estimated</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {items.map((item, index) => (
+                                    <tr
+                                      key={`${supplier}-${item.name}-${item.category}-${item.function}-${index}`}
+                                      className="border-b border-[#f0e8f5] last:border-b-0"
+                                    >
+                                      <td className="px-4 py-3">
+                                        <p className="font-medium text-[#3F3748]">{item.name}</p>
+                                        <p className="text-xs text-[#8B8194] mt-0.5">Unit: {item.unit}</p>
+                                      </td>
+                                      <td className="px-4 py-3 text-sm text-[#6B6175]">{item.category}</td>
+                                      <td className="px-4 py-3 text-sm font-medium text-[#3F3748]">
+                                        {item.quantity.toLocaleString('en-IN', { maximumFractionDigits: 2 })} {item.unit}
+                                      </td>
+                                      <td className="px-4 py-3 text-sm text-[#6B6175]">
+                                        {item.area_sqft > 0
+                                          ? `${item.area_sqft.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft`
+                                          : '—'}
+                                      </td>
+                                      <td className="px-4 py-3 text-sm text-[#6B6175]">{item.function}</td>
+                                      <td className="px-4 py-3 text-sm font-medium text-[#3F3748]">
+                                        {formatElementCurrency(item.estimated)}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="mt-4 rounded-xl border border-[#eadff2] bg-white p-6 text-center">
+                        <p className="text-sm font-medium text-[#3F3748]">Everything is ordered</p>
+                        <p className="text-xs text-[#8B8194] mt-1">There are no pending procurement lines right now.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {procurementSummary.length > 0 && (
                   <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -3030,8 +3205,18 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                           Repeated elements are grouped automatically for easier material planning and purchasing.
                         </p>
                       </div>
-                      <div className="rounded-lg bg-white px-3 py-2 text-xs text-[#8B8194] border border-[#eadff2]">
-                        {procurementSummary.length} procurement line{procurementSummary.length === 1 ? '' : 's'}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={exportProcurementCsv}
+                          className="inline-flex items-center gap-2 rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-xs font-medium text-[#6B6175] hover:bg-[#faf7ff] transition-colors"
+                        >
+                          <Download size={14} />
+                          Export Procurement
+                        </button>
+                        <div className="rounded-lg bg-white px-3 py-2 text-xs text-[#8B8194] border border-[#eadff2]">
+                          {procurementSummary.length} procurement line{procurementSummary.length === 1 ? '' : 's'}
+                        </div>
                       </div>
                     </div>
 
