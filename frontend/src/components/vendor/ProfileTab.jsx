@@ -41,6 +41,7 @@ export const ProfileTab = ({ vendor, planDetails, onSaved }) => {
       const r = await apiVendorUpdate(payload);
       toast.success('Profile saved');
       onSaved && onSaved(r.vendor);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) { toast.error(fmtApiError(err.response?.data?.detail, 'Save failed')); }
     setBusy(false);
   };
