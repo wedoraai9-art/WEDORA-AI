@@ -264,7 +264,32 @@ const CATEGORY_DECOR_ITEMS = {
   ],
 };
 
+
+const getWeddingCountdown = (weddingDate) => {
+  if (!weddingDate) return null;
+
+  const dateText = String(weddingDate).slice(0, 10);
+  const [year, month, day] = dateText.split('-').map(Number);
+
+  if (!year || !month || !day) return null;
+
+  const target = new Date(year, month - 1, day);
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+  const diffMs = target.getTime() - todayStart.getTime();
+  const days = Math.round(diffMs / 86400000);
+
+  return {
+    days,
+    isToday: days === 0,
+    isPast: days < 0,
+  };
+};
+
 const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
+  const weddingCountdown = getWeddingCountdown(wedding?.wedding_date);
+
   const [activeModule, setActiveModule] = useState(null);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [taskTitle, setTaskTitle] = useState("");
@@ -1876,6 +1901,39 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
             {/* OVERVIEW MODULE */}
             {activeModule === "Overview" && (
               <div className="mt-4 space-y-4">
+                <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                      <p className="text-sm text-[#8B8194]">Wedding Countdown</p>
+                      <h4 className="text-lg font-semibold text-[#3F3748] mt-1">
+                        {weddingCountdown?.isToday
+                          ? "The Wedding Day is Today"
+                          : weddingCountdown?.isPast
+                          ? "Wedding Day Has Passed"
+                          : `${weddingCountdown?.days ?? "—"} Days To Go`}
+                      </h4>
+                      <p className="text-sm text-[#6B6175] mt-1">
+                        {wedding?.wedding_date
+                          ? `Counting down to ${formatDate(wedding.wedding_date)}`
+                          : "Add a wedding date to start the countdown."}
+                      </p>
+                    </div>
+
+                    <div className="min-w-[150px] rounded-xl border border-[#eadff2] bg-white px-5 py-4 text-center">
+                      <p className="text-3xl font-semibold text-[#8B6AA8]">
+                        {weddingCountdown ? Math.abs(weddingCountdown.days) : "—"}
+                      </p>
+                      <p className="text-xs text-[#8B8194] mt-1">
+                        {weddingCountdown?.isToday
+                          ? "Today"
+                          : weddingCountdown?.isPast
+                          ? "Days since"
+                          : "Days remaining"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4"><p className="text-xs text-[#8B8194]">Bride</p><p className="text-sm font-medium text-[#3F3748] mt-1">{wedding.bride_name || "Not added"}</p></div>
                   <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4"><p className="text-xs text-[#8B8194]">Groom</p><p className="text-sm font-medium text-[#3F3748] mt-1">{wedding.groom_name || "Not added"}</p></div>
