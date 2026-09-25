@@ -15,19 +15,28 @@ const CATEGORIES = [
 
 export const ProfileTab = ({ vendor, planDetails, onSaved }) => {
   const [form, setForm] = useState({ ...vendor, years_experience: vendor.years_experience || '', starting_price: vendor.starting_price || '' });
+  const [servicesText, setServicesText] = useState(Array.isArray(vendor.services) ? vendor.services.join(', ') : (vendor.services || ''));
   const [busy, setBusy] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiDraft, setAiDraft] = useState('');
   const logoRef = useRef(null);
 
-  useEffect(() => { setForm({ ...vendor }); }, [vendor]);
+  useEffect(() => {
+    setForm({ ...vendor, years_experience: vendor.years_experience ?? '', starting_price: vendor.starting_price ?? '' });
+    setServicesText(Array.isArray(vendor.services) ? vendor.services.join(', ') : (vendor.services || ''));
+  }, [vendor]);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const save = async (e) => {
     e.preventDefault();
     setBusy(true);
     try {
-      const payload = { ...form, years_experience: Number(form.years_experience) || 0, starting_price: Number(form.starting_price) || 0 };
+      const payload = {
+        ...form,
+        years_experience: Number(form.years_experience) || 0,
+        starting_price: Number(form.starting_price) || 0,
+        services: servicesText.split(/[\n,]/).map((service) => service.trim()).filter(Boolean),
+      };
       delete payload.id; delete payload.slug; delete payload.plan; delete payload.email; delete payload.plan_badge; delete payload.plan_label; delete payload.is_featured; delete payload.created_at; delete payload.portfolio; delete payload.logo;
       const r = await apiVendorUpdate(payload);
       toast.success('Profile saved');
@@ -51,7 +60,7 @@ export const ProfileTab = ({ vendor, planDetails, onSaved }) => {
     try {
       const r = await apiAIGenerateProfile({
         business_name: form.business_name, category: form.category, location: form.city,
-        experience: `${form.years_experience} years`, services: form.category,
+        experience: `${form.years_experience} years`, services: servicesText || form.category,
         price_range: form.starting_price ? `from ₹${Number(form.starting_price).toLocaleString('en-IN')}` : 'flexible',
         notes: aiDraft,
       });
@@ -59,13 +68,13 @@ export const ProfileTab = ({ vendor, planDetails, onSaved }) => {
       toast.success('AI draft ready — edit it below and save when you love it');
     } catch (err) {
       const d = err.response?.data?.detail;
-      if (d === 'AI_PROFILE_PREMIUM_ONLY') toast.error('This feature is available on PREMIUM.');
+      if (d === 'AI_PROFILE_PREMIUM_ONLY') toast.error('This feature is available on PRO.');
       else toast.error(fmtApiError(d, 'AI generation failed'));
     }
     setAiBusy(false);
   };
 
-  const isPremium = planDetails?.ai_profile;
+  const isPro = planDetails?.ai_profile === true || vendor.plan === 'pro';
 
   return (
     <form onSubmit={save} className="pearl-card p-6 md:p-8" data-testid="profile-tab">
@@ -101,19 +110,23 @@ export const ProfileTab = ({ vendor, planDetails, onSaved }) => {
         <label className="block"><span className={labelCls}>Address</span><input data-testid="profile-address" className={inputCls} value={form.address || ''} onChange={set('address')} /></label>
         <label className="block"><span className={labelCls}>Years of Experience</span><input data-testid="profile-experience" type="number" min="0" className={inputCls} value={form.years_experience} onChange={set('years_experience')} /></label>
         <label className="block"><span className={labelCls}>Starting Price (₹)</span><input data-testid="profile-price" type="number" min="0" className={inputCls} value={form.starting_price} onChange={set('starting_price')} /></label>
+        <label className="block sm:col-span-2"><span className={labelCls}>Services</span>
+          <textarea data-testid="profile-services" rows={2} className={inputCls + ' resize-y'} placeholder="For example: Wedding décor, floral design, lighting" value={servicesText} onChange={(e) => setServicesText(e.target.value)} />
+          <span className="text-xs text-[#988FA6]">Separate services with commas or put each on a new line.</span>
+        </label>
         <label className="block"><span className={labelCls}>Instagram</span><input data-testid="profile-instagram" className={inputCls} value={form.instagram || ''} onChange={set('instagram')} /></label>
         <label className="block sm:col-span-2"><span className={labelCls}>Website</span><input data-testid="profile-website" className={inputCls} value={form.website || ''} onChange={set('website')} /></label>
 
         {/* AI generator */}
         <div className="sm:col-span-2 rounded-2xl border border-white/80 bg-gradient-to-br from-[#C9B8FF]/15 to-[#F7B7D8]/15 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
-            <p className="text-sm font-medium text-[#2D2638] flex items-center gap-2"><Sparkles className="w-4 h-4 text-[#C9B8FF]" /> Generate Profile With AI <span className="text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-white/70 border border-white/80 text-[#988FA6]">Premium</span></p>
-            <button type="button" data-testid="ai-generate-profile-btn" onClick={genAI} disabled={aiBusy} className="glow-btn !py-2 !px-4 !text-sm disabled:opacity-60">
+            <p className="text-sm font-medium text-[#2D2638] flex items-center gap-2"><Sparkles className="w-4 h-4 text-[#C9B8FF]" /> Generate Profile With AI <span className="text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-white/70 border border-white/80 text-[#988FA6]">PRO</span></p>
+            <button type="button" data-testid="ai-generate-profile-btn" onClick={genAI} disabled={aiBusy || !isPro} className="glow-btn !py-2 !px-4 !text-sm disabled:opacity-60">
               {aiBusy ? 'Writing…' : 'Generate'}
             </button>
           </div>
           <textarea data-testid="ai-notes" rows={2} className={inputCls + ' resize-none'} placeholder="Optional: add notes for the AI (style, specialties, awards)…" value={aiDraft} onChange={(e) => setAiDraft(e.target.value)} />
-          {!isPremium && <p className="text-xs text-[#988FA6] mt-2">This feature is available on PREMIUM. <a href="#" onClick={(e) => { e.preventDefault(); window.dispatchEvent(new CustomEvent('wedora:goto-tab', { detail: 'subscription' })); }} className="underline decoration-pink-300">Upgrade Plan</a></p>}
+          {!isPro && <p className="text-xs text-[#988FA6] mt-2">The AI profile assistant is available on PRO. <a href="#" onClick={(e) => { e.preventDefault(); window.dispatchEvent(new CustomEvent('wedora:goto-tab', { detail: 'subscription' })); }} className="underline decoration-pink-300">View plans</a></p>}
         </div>
 
         <label className="block sm:col-span-2"><span className={labelCls}>Business Description</span>
