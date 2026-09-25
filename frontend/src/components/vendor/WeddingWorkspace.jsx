@@ -920,6 +920,62 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
     }, new Map()).values()
   ).sort((a, b) => b.estimated - a.estimated);
 
+  // Procurement Summary:
+  // Group identical elements so repeated requirements become one procurement line.
+  // Quantity, area, estimated cost and actual cost are summed automatically.
+  const procurementSummary = Array.from(
+    elements.reduce((map, element) => {
+      const name = String(element.name || 'Unnamed Element').trim();
+      const category = String(element.category || 'General').trim();
+      const unit = String(element.unit || 'pcs').trim();
+      const functionName = String(element.function || 'All Functions').trim();
+      const supplier = String(element.supplier || '').trim();
+
+      const key = [
+        name.toLowerCase(),
+        category.toLowerCase(),
+        unit.toLowerCase(),
+        functionName.toLowerCase(),
+        supplier.toLowerCase(),
+      ].join('|||');
+
+      const current = map.get(key) || {
+        name,
+        category,
+        unit,
+        function: functionName,
+        supplier,
+        quantity: 0,
+        area_sqft: 0,
+        estimated: 0,
+        actual: 0,
+        ordered: 0,
+        pending: 0,
+      };
+
+      const status = String(element.status || 'planned');
+      const isOrdered = ['ordered', 'received', 'installed', 'completed'].includes(status);
+
+      current.quantity += Number(element.quantity || 0);
+      current.area_sqft += Number(
+        element.area_sqft || parseElementAreaSqft(element.dimensions, element.dimension_unit)
+      );
+      current.estimated += Number(element.estimated_cost || 0);
+      current.actual += Number(element.actual_cost || 0);
+      current.ordered += isOrdered ? 1 : 0;
+      current.pending += isOrdered ? 0 : 1;
+
+      map.set(key, current);
+      return map;
+    }, new Map()).values()
+  ).map((item) => ({
+    ...item,
+    quantity: Number(item.quantity.toFixed(2)),
+    area_sqft: Number(item.area_sqft.toFixed(2)),
+    estimated: Number(item.estimated.toFixed(2)),
+    actual: Number(item.actual.toFixed(2)),
+  })).sort((a, b) => b.estimated - a.estimated);
+
   const resetElementForm = () => {
     setElementForm(emptyElement);
     setEditingElementId(null);
@@ -2960,6 +3016,102 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                           )}
                         </button>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {procurementSummary.length > 0 && (
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div>
+                        <p className="text-sm text-[#8B8194]">Procurement Management</p>
+                        <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Procurement Summary</h4>
+                        <p className="text-sm text-[#6B6175] mt-1">
+                          Repeated elements are grouped automatically for easier material planning and purchasing.
+                        </p>
+                      </div>
+                      <div className="rounded-lg bg-white px-3 py-2 text-xs text-[#8B8194] border border-[#eadff2]">
+                        {procurementSummary.length} procurement line{procurementSummary.length === 1 ? '' : 's'}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="rounded-xl border border-[#eadff2] bg-white p-4">
+                        <p className="text-xs text-[#8B8194]">Procurement Lines</p>
+                        <p className="text-xl font-semibold text-[#3F3748] mt-1">{procurementSummary.length}</p>
+                      </div>
+                      <div className="rounded-xl border border-[#eadff2] bg-white p-4">
+                        <p className="text-xs text-[#8B8194]">Pending Lines</p>
+                        <p className="text-xl font-semibold text-[#3F3748] mt-1">
+                          {procurementSummary.filter((item) => item.pending > 0).length}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-[#eadff2] bg-white p-4">
+                        <p className="text-xs text-[#8B8194]">Estimated</p>
+                        <p className="text-lg font-semibold text-[#3F3748] mt-1">
+                          {formatElementCurrency(procurementSummary.reduce((sum, item) => sum + item.estimated, 0))}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-[#eadff2] bg-white p-4">
+                        <p className="text-xs text-[#8B8194]">Actual</p>
+                        <p className="text-lg font-semibold text-[#3F3748] mt-1">
+                          {formatElementCurrency(procurementSummary.reduce((sum, item) => sum + item.actual, 0))}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 overflow-x-auto rounded-xl border border-[#eadff2] bg-white">
+                      <table className="w-full min-w-[900px] text-left">
+                        <thead>
+                          <tr className="border-b border-[#eadff2] bg-[#faf7ff] text-xs text-[#8B8194]">
+                            <th className="px-4 py-3 font-medium">Item</th>
+                            <th className="px-4 py-3 font-medium">Category</th>
+                            <th className="px-4 py-3 font-medium">Qty</th>
+                            <th className="px-4 py-3 font-medium">Area</th>
+                            <th className="px-4 py-3 font-medium">Function</th>
+                            <th className="px-4 py-3 font-medium">Supplier</th>
+                            <th className="px-4 py-3 font-medium">Status</th>
+                            <th className="px-4 py-3 font-medium">Estimated</th>
+                            <th className="px-4 py-3 font-medium">Actual</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {procurementSummary.map((item, index) => (
+                            <tr key={`${item.name}-${item.category}-${item.unit}-${item.function}-${item.supplier}-${index}`} className="border-b border-[#f0e8f5] last:border-b-0">
+                              <td className="px-4 py-3">
+                                <p className="font-medium text-[#3F3748]">{item.name}</p>
+                                <p className="text-xs text-[#8B8194] mt-0.5">Unit: {item.unit}</p>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-[#6B6175]">{item.category}</td>
+                              <td className="px-4 py-3 text-sm font-medium text-[#3F3748]">
+                                {item.quantity.toLocaleString('en-IN', { maximumFractionDigits: 2 })} {item.unit}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-[#6B6175]">
+                                {item.area_sqft > 0
+                                  ? `${item.area_sqft.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft`
+                                  : '—'}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-[#6B6175]">{item.function}</td>
+                              <td className="px-4 py-3 text-sm text-[#6B6175]">{item.supplier || '—'}</td>
+                              <td className="px-4 py-3">
+                                <span className={`rounded-full px-2.5 py-1 text-xs ${
+                                  item.pending > 0
+                                    ? 'bg-[#fff7e8] text-[#a97928]'
+                                    : 'bg-[#eefaf3] text-[#4d8a68]'
+                                }`}>
+                                  {item.pending > 0 ? 'Pending' : 'Ordered'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-sm font-medium text-[#3F3748]">
+                                {formatElementCurrency(item.estimated)}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-[#6B6175]">
+                                {formatElementCurrency(item.actual)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 )}
