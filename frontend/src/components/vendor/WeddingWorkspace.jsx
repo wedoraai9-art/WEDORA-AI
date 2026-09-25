@@ -264,42 +264,8 @@ const CATEGORY_DECOR_ITEMS = {
   ],
 };
 
-
-const getWeddingCountdown = (weddingDate) => {
-  if (!weddingDate) return null;
-
-  const dateText = String(weddingDate).slice(0, 10);
-  const [year, month, day] = dateText.split('-').map(Number);
-
-  if (!year || !month || !day) return null;
-
-  const target = new Date(year, month - 1, day);
-  const today = new Date();
-  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-
-  const diffMs = target.getTime() - todayStart.getTime();
-  const days = Math.round(diffMs / 86400000);
-
-  return {
-    days,
-    isToday: days === 0,
-    isPast: days < 0,
-  };
-};
-
 const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
-  const weddingCountdown = getWeddingCountdown(wedding?.wedding_date);
-
-  const vendorPlan = String(vendor?.plan || 'free').trim().toLowerCase();
-  const hasPaidAI = vendorPlan === 'pro';
-  const vendorBusinessName = String(vendor?.business_name || vendor?.name || 'Your Business').trim();
-
   const [activeModule, setActiveModule] = useState(null);
-  const [aiMessages, setAiMessages] = useState([]);
-  const [aiInput, setAiInput] = useState("");
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState("");
-
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [taskTitle, setTaskTitle] = useState("");
   const [tasks, setTasks] = useState([]);
@@ -384,7 +350,6 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
     function: 'All Functions',
     status: 'planned',
     pricing_type: 'manual',
-    sourcing_type: 'unspecified',
     rate: '',
     estimated_cost: '',
     actual_cost: '',
@@ -406,7 +371,6 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
   const [elementFilterFunction, setElementFilterFunction] = useState('All Functions');
   const [elementFilterStatus, setElementFilterStatus] = useState('All Status');
   const [elementFilterPricing, setElementFilterPricing] = useState('All Pricing');
-  const [elementFilterSupplier, setElementFilterSupplier] = useState('All Suppliers');
   const [elementSaving, setElementSaving] = useState(false);
   const [elementDeletingId, setElementDeletingId] = useState(null);
   const [showElementForm, setShowElementForm] = useState(false);
@@ -417,115 +381,6 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
   const [customCategoryName, setCustomCategoryName] = useState('');
   const [saveCustomCategory, setSaveCustomCategory] = useState(true);
   const [customCategorySaving, setCustomCategorySaving] = useState(false);
-
-
-  const getWeddingAiSessionId = () =>
-    `wedding-ai-${wedding?.id || wedding?._id || 'workspace'}`;
-
-  const getWeddingAiContext = () => {
-    const weddingDetails = [
-      `Wedding name: ${wedding?.wedding_name || "Not set"}`,
-      `Bride: ${wedding?.bride_name || "Not set"}`,
-      `Groom: ${wedding?.groom_name || "Not set"}`,
-      `Wedding date: ${wedding?.wedding_date || "Not set"}`,
-      `City: ${wedding?.city || "Not set"}`,
-      `Venue: ${wedding?.venue || "Not set"}`,
-      `Guest count: ${wedding?.guest_count || "Not set"}`,
-      `Wedding budget: ${wedding?.budget || "Not set"}`,
-      `Status: ${wedding?.status || "Not set"}`,
-    ].join("\n");
-
-    return `You are WEDORA Wedding AI Assistant for a ${vendorCategory} vendor.
-Business: ${vendorBusinessName}
-Vendor category: ${vendorCategory}
-
-Adapt your answer to this vendor category. Do not assume the vendor is a decorator.
-You can help with wedding planning, timelines, tasks, client communication, budgeting, vendor coordination, sourcing, operations, documents, guest planning and category-specific work.
-Use the wedding information below as context.
-Do not invent facts. If information is missing, say what is missing.
-
-CURRENT WEDDING:
-${weddingDetails}`;
-  };
-
-  useEffect(() => {
-    if (activeModule !== "AI Assistant") return;
-
-    if (!hasPaidAI) {
-      setAiMessages([]);
-      setAiError("");
-      return;
-    }
-
-    let cancelled = false;
-    const sessionId = getWeddingAiSessionId();
-
-    const loadAiHistory = async () => {
-      setAiError("");
-      try {
-        const res = await authAxios.get(`/vendor/wedding-ai/history/${sessionId}`);
-        if (cancelled) return;
-        const messages = Array.isArray(res.data?.messages) ? res.data.messages : [];
-        setAiMessages(messages.map((message) => ({
-          role: message.role,
-          content: message.content,
-        })));
-      } catch (error) {
-        if (!cancelled) {
-          setAiMessages([]);
-          setAiError("Couldn't load the wedding AI conversation.");
-        }
-      }
-    };
-
-    loadAiHistory();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeModule, wedding?.id, wedding?._id, hasPaidAI]);
-
-  const sendWeddingAiMessage = async () => {
-    if (!hasPaidAI) {
-      setAiError("Wedding AI Assistant is available only on WEDORA PRO plans.");
-      return;
-    }
-
-    const message = aiInput.trim();
-    if (!message || aiLoading) return;
-
-    const sessionId = getWeddingAiSessionId();
-    const userMessage = { role: "user", content: message };
-
-    setAiMessages((prev) => [...prev, userMessage]);
-    setAiInput("");
-    setAiLoading(true);
-    setAiError("");
-
-    try {
-      const prompt = `${getWeddingAiContext()}
-
-USER QUESTION:
-${message}`;
-
-      const res = await authAxios.post("/vendor/wedding-ai", {
-        session_id: sessionId,
-        message: prompt,
-      });
-
-      const reply = res.data?.reply || "I couldn't generate a response right now.";
-      setAiMessages((prev) => [...prev, { role: "assistant", content: reply }]);
-    } catch (error) {
-      setAiError(
-        error?.response?.data?.detail ||
-        "WEDORA AI couldn't respond right now. Please try again."
-      );
-      setAiMessages((prev) => prev.filter((item) => item !== userMessage));
-      setAiInput(message);
-    } finally {
-      setAiLoading(false);
-    }
-  };
 
   useEffect(() => {
     if (wedding?.id) {
@@ -961,14 +816,6 @@ ${message}`;
     elementSummary.actual_cost
   );
 
-  const elementSupplierOptions = Array.from(
-    new Set(
-      elements
-        .map((element) => String(element.supplier || '').trim())
-        .filter(Boolean)
-    )
-  ).sort((a, b) => a.localeCompare(b));
-
   const filteredElements = elements.filter((element) => {
     const query = elementSearch.trim().toLowerCase();
     const matchesSearch = !query || [
@@ -998,11 +845,7 @@ ${message}`;
       (elementFilterPricing === 'Per Unit' && String(element.pricing_type || 'manual') === 'per_unit') ||
       (elementFilterPricing === 'Manual' && String(element.pricing_type || 'manual') === 'manual');
 
-    const matchesSupplier =
-      elementFilterSupplier === 'All Suppliers' ||
-      String(element.supplier || '').trim() === elementFilterSupplier;
-
-    return matchesSearch && matchesCategory && matchesFunction && matchesStatus && matchesPricing && matchesSupplier;
+    return matchesSearch && matchesCategory && matchesFunction && matchesStatus && matchesPricing;
   });
 
   const clearElementFilters = () => {
@@ -1011,7 +854,6 @@ ${message}`;
     setElementFilterFunction('All Functions');
     setElementFilterStatus('All Status');
     setElementFilterPricing('All Pricing');
-    setElementFilterSupplier('All Suppliers');
   };
 
   const hasActiveElementFilters =
@@ -1019,109 +861,7 @@ ${message}`;
     elementFilterCategory !== 'All Categories' ||
     elementFilterFunction !== 'All Functions' ||
     elementFilterStatus !== 'All Status' ||
-    elementFilterPricing !== 'All Pricing' ||
-    elementFilterSupplier !== 'All Suppliers';
-
-  const supplierContactMap = elements.reduce((map, element) => {
-    const supplier = String(element.supplier || '').trim();
-    const contact = String(element.supplier_contact || '').trim();
-    if (supplier && contact && !map.has(supplier)) {
-      map.set(supplier, contact);
-    }
-    return map;
-  }, new Map());
-
-  const supplierOverview = Array.from(
-    elements.reduce((map, element) => {
-      const supplier = String(element.supplier || '').trim();
-      if (!supplier) return map;
-
-      const current = map.get(supplier) || {
-        supplier,
-        contact: String(element.supplier_contact || '').trim(),
-        elements: 0,
-        ordered: 0,
-        pending: 0,
-        estimated: 0,
-        actual: 0,
-      };
-
-      if (!current.contact && String(element.supplier_contact || '').trim()) {
-        current.contact = String(element.supplier_contact || '').trim();
-      }
-
-      const status = String(element.status || 'planned');
-      const isOrdered = ['ordered', 'received', 'installed', 'completed'].includes(status);
-
-      current.elements += 1;
-      current.ordered += isOrdered ? 1 : 0;
-      current.pending += isOrdered ? 0 : 1;
-      current.estimated += Number(element.estimated_cost || 0);
-      current.actual += Number(element.actual_cost || 0);
-
-      map.set(supplier, current);
-      return map;
-    }, new Map()).values()
-  ).sort((a, b) => b.estimated - a.estimated);
-
-  // Procurement Summary:
-  // Group identical elements so repeated requirements become one procurement line.
-  // Quantity, area, estimated cost and actual cost are summed automatically.
-  const procurementSummary = Array.from(
-    elements.reduce((map, element) => {
-      const name = String(element.name || 'Unnamed Element').trim();
-      const category = String(element.category || 'General').trim();
-      const unit = String(element.unit || 'pcs').trim();
-      const functionName = String(element.function || 'All Functions').trim();
-      const supplier = String(element.supplier || '').trim();
-      const sourcingType = String(element.sourcing_type || 'unspecified').trim();
-
-      const key = [
-        name.toLowerCase(),
-        category.toLowerCase(),
-        unit.toLowerCase(),
-        functionName.toLowerCase(),
-        supplier.toLowerCase(),
-        sourcingType.toLowerCase(),
-      ].join('|||');
-
-      const current = map.get(key) || {
-        name,
-        category,
-        unit,
-        function: functionName,
-        supplier,
-        sourcing_type: sourcingType,
-        quantity: 0,
-        area_sqft: 0,
-        estimated: 0,
-        actual: 0,
-        ordered: 0,
-        pending: 0,
-      };
-
-      const status = String(element.status || 'planned');
-      const isOrdered = ['ordered', 'received', 'installed', 'completed'].includes(status);
-
-      current.quantity += Number(element.quantity || 0);
-      current.area_sqft += Number(
-        element.area_sqft || parseElementAreaSqft(element.dimensions, element.dimension_unit)
-      );
-      current.estimated += Number(element.estimated_cost || 0);
-      current.actual += Number(element.actual_cost || 0);
-      current.ordered += isOrdered ? 1 : 0;
-      current.pending += isOrdered ? 0 : 1;
-
-      map.set(key, current);
-      return map;
-    }, new Map()).values()
-  ).map((item) => ({
-    ...item,
-    quantity: Number(item.quantity.toFixed(2)),
-    area_sqft: Number(item.area_sqft.toFixed(2)),
-    estimated: Number(item.estimated.toFixed(2)),
-    actual: Number(item.actual.toFixed(2)),
-  })).sort((a, b) => b.estimated - a.estimated);
+    elementFilterPricing !== 'All Pricing';
 
   const resetElementForm = () => {
     setElementForm(emptyElement);
@@ -1167,7 +907,6 @@ ${message}`;
         function: elementForm.function || 'All Functions',
         status: elementForm.status || 'planned',
         pricing_type: elementForm.pricing_type || 'manual',
-        sourcing_type: elementForm.sourcing_type || 'unspecified',
         rate: Number(elementForm.rate || 0),
         estimated_cost: getElementEstimatedCost(elementForm),
         actual_cost: Number(elementForm.actual_cost || 0),
@@ -1208,7 +947,6 @@ ${message}`;
       function: element.function || 'All Functions',
       status: element.status || 'planned',
       pricing_type: element.pricing_type || 'manual',
-      sourcing_type: element.sourcing_type || 'unspecified',
       rate: element.rate != null ? String(element.rate) : '',
       estimated_cost: element.estimated_cost != null ? String(element.estimated_cost) : '',
       actual_cost: element.actual_cost != null ? String(element.actual_cost) : '',
@@ -1230,98 +968,6 @@ ${message}`;
         behavior: 'smooth',
       });
     }, 120);
-  };
-
-  const exportElementsCsv = () => {
-    const rows = filteredElements.map((element) => ({
-      Element: element.name || '',
-      Category: element.category || '',
-      Quantity: element.quantity ?? '',
-      Unit: element.unit || '',
-      Dimensions: element.dimensions || '',
-      DimensionUnit: element.dimension_unit || '',
-      AreaSqFt: element.area_sqft ?? '',
-      Function: element.function || '',
-      Status: element.status || '',
-      SourcingType: element.sourcing_type || 'unspecified',
-      PricingType: element.pricing_type || '',
-      Rate: element.rate ?? '',
-      EstimatedCost: element.estimated_cost ?? '',
-      ActualCost: element.actual_cost ?? '',
-      Variance: Number(element.actual_cost || 0) - Number(element.estimated_cost || 0),
-      Supplier: element.supplier || '',
-      SupplierContact: element.supplier_contact || '',
-      AreaLocation: element.area || '',
-      Notes: element.notes || '',
-    }));
-
-    if (!rows.length) {
-      window.alert('There are no matching elements to export.');
-      return;
-    }
-
-    const headers = Object.keys(rows[0]);
-    const escapeCsv = (value) => {
-      const stringValue = String(value ?? '');
-      return `"${stringValue.replace(/"/g, '""')}"`;
-    };
-
-    const csv = [
-      headers.map(escapeCsv).join(','),
-      ...rows.map((row) => headers.map((header) => escapeCsv(row[header])).join(',')),
-    ].join('\r\n');
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${String(wedding?.wedding_name || wedding?.name || 'wedding').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'wedding'}-elements.csv`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-  };
-
-  const exportProcurementCsv = () => {
-    if (!procurementSummary.length) {
-      window.alert('There is no procurement data to export.');
-      return;
-    }
-
-    const rows = procurementSummary.map((item) => ({
-      Item: item.name || '',
-      Category: item.category || '',
-      Quantity: item.quantity ?? '',
-      Unit: item.unit || '',
-      AreaSqFt: item.area_sqft ?? '',
-      Function: item.function || '',
-      Supplier: item.supplier || '',
-      Status: item.pending > 0 ? 'Pending' : 'Ordered',
-      EstimatedCost: item.estimated ?? '',
-      ActualCost: item.actual ?? '',
-      Variance: Number(item.actual || 0) - Number(item.estimated || 0),
-    }));
-
-    const headers = Object.keys(rows[0]);
-    const escapeCsv = (value) => {
-      const stringValue = String(value ?? '');
-      return `"${stringValue.replace(/"/g, '""')}"`;
-    };
-
-    const csv = [
-      headers.map(escapeCsv).join(','),
-      ...rows.map((row) => headers.map((header) => escapeCsv(row[header])).join(',')),
-    ].join('\\r\\n');
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${String(wedding?.wedding_name || wedding?.name || 'wedding').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'wedding'}-procurement-summary.csv`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
   };
 
   const deleteElement = async (id) => {
@@ -1666,7 +1312,7 @@ ${message}`;
         <button
           onClick={onBack}
           type="button"
-          className="flex items-center gap-2 text-[#8B8194] hover:text-[#2D2638] transition mb-6"
+          className="relative z-30 flex items-center gap-2 text-[#8B8194] hover:text-[#2D2638] transition mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Weddings
@@ -2019,39 +1665,6 @@ ${message}`;
             {/* OVERVIEW MODULE */}
             {activeModule === "Overview" && (
               <div className="mt-4 space-y-4">
-                <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div>
-                      <p className="text-sm text-[#8B8194]">Wedding Countdown</p>
-                      <h4 className="text-lg font-semibold text-[#3F3748] mt-1">
-                        {weddingCountdown?.isToday
-                          ? "The Wedding Day is Today"
-                          : weddingCountdown?.isPast
-                          ? "Wedding Day Has Passed"
-                          : `${weddingCountdown?.days ?? "—"} Days To Go`}
-                      </h4>
-                      <p className="text-sm text-[#6B6175] mt-1">
-                        {wedding?.wedding_date
-                          ? `Counting down to ${formatDate(wedding.wedding_date)}`
-                          : "Add a wedding date to start the countdown."}
-                      </p>
-                    </div>
-
-                    <div className="min-w-[150px] rounded-xl border border-[#eadff2] bg-white px-5 py-4 text-center">
-                      <p className="text-3xl font-semibold text-[#8B6AA8]">
-                        {weddingCountdown ? Math.abs(weddingCountdown.days) : "—"}
-                      </p>
-                      <p className="text-xs text-[#8B8194] mt-1">
-                        {weddingCountdown?.isToday
-                          ? "Today"
-                          : weddingCountdown?.isPast
-                          ? "Days since"
-                          : "Days remaining"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4"><p className="text-xs text-[#8B8194]">Bride</p><p className="text-sm font-medium text-[#3F3748] mt-1">{wedding.bride_name || "Not added"}</p></div>
                   <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4"><p className="text-xs text-[#8B8194]">Groom</p><p className="text-sm font-medium text-[#3F3748] mt-1">{wedding.groom_name || "Not added"}</p></div>
@@ -2537,126 +2150,7 @@ ${message}`;
               </div>
             )}
             {activeModule === "AI Assistant" && (
-              !hasPaidAI ? (
-                <div className="mt-4 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-6">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
-                    <div>
-                      <p className="text-sm text-[#8B8194]">Premium Wedding Intelligence</p>
-                      <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding AI Assistant</h4>
-                      <p className="text-sm text-[#6B6175] mt-2 max-w-2xl">
-                        AI assistance is available for subscribed WEDORA vendors. Upgrade to PRO to use category-specific wedding intelligence for your business.
-                      </p>
-                    </div>
-                    <div className="shrink-0 rounded-xl bg-[#f4eafa] px-4 py-3 text-sm font-medium text-[#8B6AA8]">
-                      PRO
-                    </div>
-                  </div>
-                </div>
-              ) : (
-              <div className="mt-4 space-y-4">
-                <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#f4eafa] flex items-center justify-center shrink-0">
-                      <Sparkles className="w-5 h-5 text-[#8B6AA8]" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-[#8B8194]">Wedding Intelligence</p>
-                      <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding AI Assistant</h4>
-                      <p className="text-sm text-[#6B6175] mt-1">
-                        Ask WEDORA about planning, timelines, budget ideas, decor, sourcing, vendors or this wedding.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-[#eadff2] bg-white overflow-hidden">
-                  <div className="max-h-[420px] overflow-y-auto p-4 space-y-3">
-                    {aiMessages.length === 0 ? (
-                      <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
-                        <p className="text-sm font-medium text-[#3F3748]">What can I help with?</p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
-                          {[
-                            "Create a wedding planning timeline",
-                            "Help me control the wedding budget",
-                            "Suggest ideas relevant to my vendor category",
-                            "What should I discuss with my client next?",
-                          ].map((suggestion) => (
-                            <button
-                              key={suggestion}
-                              type="button"
-                              onClick={() => setAiInput(suggestion)}
-                              className="text-left rounded-xl border border-[#eadff2] bg-white px-3 py-3 text-sm text-[#6B6175] hover:bg-[#faf7ff] hover:border-[#d9c7e6] transition-colors"
-                            >
-                              {suggestion}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      aiMessages.map((message, index) => (
-                        <div
-                          key={`${message.role}-${index}`}
-                          className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                        >
-                          <div
-                            className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
-                              message.role === "user"
-                                ? "bg-[#8B6AA8] text-white"
-                                : "bg-[#faf7ff] border border-[#eadff2] text-[#3F3748]"
-                            }`}
-                          >
-                            {message.content}
-                          </div>
-                        </div>
-                      ))
-                    )}
-
-                    {aiLoading && (
-                      <div className="flex justify-start">
-                        <div className="rounded-2xl bg-[#faf7ff] border border-[#eadff2] px-4 py-3 text-sm text-[#8B8194]">
-                          WEDORA is thinking...
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {aiError && (
-                    <div className="px-4 pb-2 text-sm text-red-400">
-                      {aiError}
-                    </div>
-                  )}
-
-                  <div className="border-t border-[#eadff2] p-4 bg-[#faf7ff]">
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <textarea
-                        value={aiInput}
-                        onChange={(e) => setAiInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            sendWeddingAiMessage();
-                          }
-                        }}
-                        rows="3"
-                        placeholder="Ask WEDORA anything about this wedding..."
-                        className="flex-1 rounded-xl border border-[#eadff2] bg-white px-3 py-3 text-sm text-[#3F3748] outline-none focus:border-[#c9a9df] resize-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={sendWeddingAiMessage}
-                        disabled={!aiInput.trim() || aiLoading}
-                        className="sm:self-end rounded-xl bg-[#8B6AA8] px-5 py-3 text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {aiLoading ? "Thinking..." : "Ask WEDORA"}
-                      </button>
-                    </div>
-                    <p className="text-xs text-[#8B8194] mt-2">
-                      Enter to send · Shift + Enter for a new line
-                    </p>
-                  </div>
-                </div>
-              </div>
-              )
+              <div className="mt-4 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5"><p className="text-sm text-[#8B8194]">AI Assistant</p><h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding AI Assistant</h4><p className="text-sm text-[#6B6175] mt-1">Wedding-specific AI assistance will be added next.</p></div>
             )}
 
             {isDecorator && activeModule === "Design" && (
@@ -3031,26 +2525,6 @@ ${message}`;
                         <option value="completed">Completed</option>
                       </select>
 
-                      {/* SOURCING */}
-                      <div className="md:col-span-2 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
-                        <p className="text-sm font-medium text-[#3F3748]">Sourcing Type</p>
-                        <p className="text-xs text-[#8B8194] mt-1">
-                          Choose how this element will be arranged for the event.
-                        </p>
-                        <select
-                          value={elementForm.sourcing_type}
-                          onChange={(e) => setElementForm({ ...elementForm, sourcing_type: e.target.value })}
-                          className="mt-3 w-full rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none"
-                        >
-                          <option value="unspecified">Not Specified</option>
-                          <option value="rent">Rent / Rental Vendor</option>
-                          <option value="purchase">Purchase / Buy</option>
-                          <option value="own_inventory">Own Inventory</option>
-                          <option value="client_provided">Client Provided</option>
-                          <option value="vendor_included">Vendor Included</option>
-                        </select>
-                      </div>
-
                       {/* PRICING */}
                       <div className="md:col-span-2 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
                         <p className="text-sm font-medium text-[#3F3748]">Pricing</p>
@@ -3158,38 +2632,16 @@ ${message}`;
                       <div className="md:col-span-2 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
                         <p className="text-sm font-medium text-[#3F3748]">Supplier / Source</p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                          <div className="space-y-1">
-                            <input
-                              list="wedora-supplier-options"
-                              value={elementForm.supplier}
-                              onChange={(e) => {
-                                const supplier = e.target.value;
-                                const knownContact = supplierContactMap.get(supplier) || '';
-                                setElementForm({
-                                  ...elementForm,
-                                  supplier,
-                                  ...(knownContact ? { supplier_contact: knownContact } : {}),
-                                });
-                              }}
-                              placeholder="Supplier / Vendor name"
-                              className="w-full rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
-                            />
-                            <datalist id="wedora-supplier-options">
-                              {elementSupplierOptions.map((supplier) => (
-                                <option key={supplier} value={supplier} />
-                              ))}
-                            </datalist>
-                            {elementSupplierOptions.length > 0 && (
-                              <p className="text-xs text-[#8B8194]">
-                                Start typing to reuse an existing supplier.
-                              </p>
-                            )}
-                          </div>
+                          <input
+                            value={elementForm.supplier}
+                            onChange={(e) => setElementForm({ ...elementForm, supplier: e.target.value })}
+                            placeholder="Supplier / Vendor name"
+                            className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
+                          />
                           <input
                             value={elementForm.supplier_contact}
                             onChange={(e) => setElementForm({ ...elementForm, supplier_contact: e.target.value })}
-                            placeholder="Supplier contact / WhatsApp number"
-                            inputMode="tel"
+                            placeholder="Supplier contact"
                             className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
                           />
                         </div>
@@ -3285,17 +2737,6 @@ ${message}`;
                       <option>Manual</option>
                     </select>
 
-                    <select
-                      value={elementFilterSupplier}
-                      onChange={(e) => setElementFilterSupplier(e.target.value)}
-                      className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none"
-                    >
-                      <option>All Suppliers</option>
-                      {elementSupplierOptions.map((supplier) => (
-                        <option key={supplier}>{supplier}</option>
-                      ))}
-                    </select>
-
                     <div className="md:col-span-2 flex items-center justify-between gap-3">
                       <p className="text-xs text-[#8B8194]">
                         {hasActiveElementFilters
@@ -3316,261 +2757,16 @@ ${message}`;
                   </div>
                 </div>
 
-                {supplierOverview.length > 0 && (
-                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm text-[#8B8194]">Supplier Management</p>
-                        <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Supplier Overview</h4>
-                      </div>
-                      <p className="text-sm text-[#8B8194]">
-                        {supplierOverview.length} supplier{supplierOverview.length === 1 ? '' : 's'}
-                      </p>
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                      {supplierOverview.map((supplier) => (
-                        <button
-                          key={supplier.supplier}
-                          type="button"
-                          onClick={() => setElementFilterSupplier(supplier.supplier)}
-                          className="text-left rounded-xl border border-[#eadff2] bg-white p-4 hover:bg-[#faf7ff] transition"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="font-medium text-[#3F3748] truncate">{supplier.supplier}</p>
-                              <p className="text-xs text-[#8B8194] mt-1">
-                                {supplier.elements} element{supplier.elements === 1 ? '' : 's'}
-                              </p>
-                            </div>
-                            <span className="rounded-full bg-[#f4eafa] px-2.5 py-1 text-xs text-[#8B6AA8]">
-                              View
-                            </span>
-                          </div>
-
-                          <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-[#6B6175]">
-                            <p><span className="text-[#8B8194]">Ordered:</span> {supplier.ordered}</p>
-                            <p><span className="text-[#8B8194]">Pending:</span> {supplier.pending}</p>
-                            <p><span className="text-[#8B8194]">Estimated:</span> {formatElementCurrency(supplier.estimated)}</p>
-                            <p><span className="text-[#8B8194]">Actual:</span> {formatElementCurrency(supplier.actual)}</p>
-                          </div>
-
-                          <p className="mt-3 text-xs text-[#8B8194]">
-                            {formatElementVariance(supplier.estimated, supplier.actual)}
-                          </p>
-
-                          {supplier.contact && (
-                            <div className="mt-3 flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                              <span className="text-xs text-[#8B8194]">{supplier.contact}</span>
-                              <a
-                                href={`tel:${String(supplier.contact).replace(/[^+\d]/g, '')}`}
-                                className="rounded-lg bg-[#f4eafa] px-2.5 py-1 text-xs text-[#8B6AA8] hover:underline"
-                              >
-                                Call
-                              </a>
-                              <a
-                                href={`https://wa.me/${String(supplier.contact).replace(/\D/g, '')}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="rounded-lg bg-[#f4eafa] px-2.5 py-1 text-xs text-[#8B6AA8] hover:underline"
-                              >
-                                WhatsApp
-                              </a>
-                            </div>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-
-
-
-
-
-
-                {procurementSummary.length > 0 && (
-                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                      <div>
-                        <p className="text-sm text-[#8B8194]">Sourcing & Materials</p>
-                        <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Sourcing & Materials</h4>
-                        <p className="text-sm text-[#6B6175] mt-1">
-                          Separate rental, purchase, inventory and client/vendor-provided requirements.
-                        </p>
-                      </div>
-                      <div className="rounded-lg bg-white px-3 py-2 text-xs text-[#8B8194] border border-[#eadff2]">
-                        {procurementSummary.length} material line{procurementSummary.length === 1 ? '' : 's'}
-                      </div>
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3">
-                      {[
-                        ['Not Specified', 'unspecified'],
-                        ['Rent', 'rent'],
-                        ['Purchase', 'purchase'],
-                        ['Own Inventory', 'own_inventory'],
-                        ['Client Provided', 'client_provided'],
-                        ['Vendor Included', 'vendor_included'],
-                      ].map(([label, type]) => (
-                        <div key={type} className="rounded-xl border border-[#eadff2] bg-white p-4">
-                          <p className="text-xs text-[#8B8194]">{label}</p>
-                          <p className="text-xl font-semibold text-[#3F3748] mt-1">
-                            {elements.filter((item) => (item.sourcing_type || 'rent') === type).length}
-                          </p>
-                          <p className="text-xs text-[#8B8194] mt-1">material line{elements.filter((item) => (item.sourcing_type || 'rent') === type).length === 1 ? '' : 's'}</p>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="mt-5">
-                      <div className="mb-3">
-                        <p className="text-sm font-semibold text-[#3F3748]">Material Requirement</p>
-                        <p className="text-xs text-[#8B8194] mt-0.5">Category-wise quantity and area required, regardless of sourcing method.</p>
-                      </div>
-                      <div className="overflow-x-auto rounded-xl border border-[#eadff2] bg-white">
-                        <table className="w-full min-w-[950px] text-left">
-                          <thead>
-                            <tr className="border-b border-[#eadff2] bg-[#faf7ff] text-xs text-[#8B8194]">
-                              <th className="px-4 py-3 font-medium">Category</th>
-                              <th className="px-4 py-3 font-medium">Required Quantity</th>
-                              <th className="px-4 py-3 font-medium">Area</th>
-                              <th className="px-4 py-3 font-medium">Lines</th>
-                              <th className="px-4 py-3 font-medium">Rent</th>
-                              <th className="px-4 py-3 font-medium">Purchase</th>
-                              <th className="px-4 py-3 font-medium">Estimated</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {Array.from(
-                              procurementSummary.reduce((map, item) => {
-                                const category = item.category || 'General';
-                                const current = map.get(category) || {
-                                  category, lines: 0, area: 0, estimated: 0, quantities: {},
-                                  rent: 0, purchase: 0,
-                                };
-                                current.lines += 1;
-                                current.area += Number(item.area_sqft) || 0;
-                                current.estimated += Number(item.estimated) || 0;
-                                current.rent += item.sourcing_type === 'rent' ? 1 : 0;
-                                current.purchase += item.sourcing_type === 'purchase' ? 1 : 0;
-                                const unit = item.unit || 'pcs';
-                                current.quantities[unit] = (current.quantities[unit] || 0) + (Number(item.quantity) || 0);
-                                map.set(category, current);
-                                return map;
-                              }, new Map())
-                            ).sort((a,b) => b[1].estimated - a[1].estimated).map(([category,item]) => (
-                              <tr key={category} className="border-b border-[#f0e8f5] last:border-b-0">
-                                <td className="px-4 py-3 font-medium text-[#3F3748]">{item.category}</td>
-                                <td className="px-4 py-3">
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {Object.entries(item.quantities).map(([unit, quantity]) => (
-                                      <span key={unit} className="inline-flex items-center rounded-full bg-[#faf7ff] border border-[#eadff2] px-2.5 py-1 text-xs text-[#6B6175]">
-                                        {quantity.toLocaleString('en-IN', { maximumFractionDigits: 2 })} {unit}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </td>
-                                <td className="px-4 py-3 text-sm text-[#6B6175]">
-                                  {item.area > 0 ? `${item.area.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft` : '—'}
-                                </td>
-                                <td className="px-4 py-3 text-sm text-[#6B6175]">{item.lines}</td>
-                                <td className="px-4 py-3 text-sm text-[#6B6175]">{item.rent}</td>
-                                <td className="px-4 py-3 text-sm text-[#6B6175]">{item.purchase}</td>
-                                <td className="px-4 py-3 text-sm font-medium text-[#3F3748]">{formatElementCurrency(item.estimated)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-
-                    <div className="mt-5">
-                      <div className="mb-3">
-                        <p className="text-sm font-semibold text-[#3F3748]">Sourcing Planning</p>
-                        <p className="text-xs text-[#8B8194] mt-0.5">Rental and purchase requirements are separated so rental vendors are not treated as purchases.</p>
-                      </div>
-
-                      <div className="space-y-3">
-                        {['rent', 'purchase', 'unspecified'].map((type) => {
-                          const items = procurementSummary.filter((item) => item.sourcing_type === type);
-                          if (!items.length) return null;
-                          const sectionTitle = {
-                            rent: 'Rental Requirements',
-                            purchase: 'Purchase Requirements',
-                            unspecified: 'Sourcing Not Specified',
-                          }[type];
-                          return (
-                            <div key={type} className="rounded-xl border border-[#eadff2] bg-white overflow-hidden">
-                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-3 bg-[#faf7ff] border-b border-[#eadff2]">
-                                <div>
-                                  <p className="text-sm font-medium text-[#3F3748]">{sectionTitle}</p>
-                                  <p className="text-xs text-[#8B8194]">{items.length} line{items.length === 1 ? '' : 's'} · grouped by supplier</p>
-                                </div>
-                                <p className="text-sm font-semibold text-[#3F3748]">
-                                  {formatElementCurrency(items.reduce((sum,item) => sum + Number(item.estimated || 0), 0))}
-                                </p>
-                              </div>
-                              <div className="overflow-x-auto">
-                                <table className="w-full min-w-[900px] text-left">
-                                  <thead>
-                                    <tr className="border-b border-[#f0e8f5] text-xs text-[#8B8194]">
-                                      <th className="px-4 py-3 font-medium">Item</th>
-                                      <th className="px-4 py-3 font-medium">Category</th>
-                                      <th className="px-4 py-3 font-medium">Qty</th>
-                                      <th className="px-4 py-3 font-medium">Area</th>
-                                      <th className="px-4 py-3 font-medium">Supplier / Source</th>
-                                      <th className="px-4 py-3 font-medium">Status</th>
-                                      <th className="px-4 py-3 font-medium">Estimated</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {items.map((item,index) => (
-                                      <tr key={`${type}-${item.name}-${item.category}-${item.function}-${item.supplier}-${index}`} className="border-b border-[#f0e8f5] last:border-b-0">
-                                        <td className="px-4 py-3">
-                                          <p className="font-medium text-[#3F3748]">{item.name}</p>
-                                          <p className="text-xs text-[#8B8194] mt-0.5">Unit: {item.unit}</p>
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-[#6B6175]">{item.category}</td>
-                                        <td className="px-4 py-3 text-sm text-[#3F3748]">{item.quantity.toLocaleString('en-IN', { maximumFractionDigits: 2 })} {item.unit}</td>
-                                        <td className="px-4 py-3 text-sm text-[#6B6175]">{item.area_sqft > 0 ? `${item.area_sqft.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft` : '—'}</td>
-                                        <td className="px-4 py-3 text-sm text-[#6B6175]">{item.supplier || 'Not assigned'}</td>
-                                        <td className="px-4 py-3 text-sm text-[#6B6175]">{item.pending > 0 ? 'Pending' : 'Ordered'}</td>
-                                        <td className="px-4 py-3 text-sm font-medium text-[#3F3748]">{formatElementCurrency(item.estimated)}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {elementsLoading ? (
                   <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-8 text-center text-sm text-[#8B8194]">Loading elements...</div>
                 ) : filteredElements.length > 0 ? (
                   <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="text-sm text-[#8B8194]">Your Elements</p>
                         <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Decor Requirements</h4>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm text-[#8B8194]">{filteredElements.length} shown / {elements.length} total</p>
-                        <button
-                          type="button"
-                          onClick={exportElementsCsv}
-                          className="rounded-lg bg-[#f4eafa] px-3 py-1.5 text-sm text-[#8B6AA8] hover:bg-[#eadcf5]"
-                        >
-                          <Download className="inline w-3.5 h-3.5 mr-1" />
-                          Export CSV
-                        </button>
-                      </div>
+                      <p className="text-sm text-[#8B8194]">{filteredElements.length} shown / {elements.length} total</p>
                     </div>
 
                     <div className="mt-4 space-y-3">
@@ -3581,13 +2777,6 @@ ${message}`;
                               <div className="flex flex-wrap items-center gap-2">
                                 <p className="font-medium text-[#3F3748]">{element.name}</p>
                                 <span className="rounded-full bg-[#f4eafa] px-2.5 py-1 text-xs text-[#8B6AA8]">{element.category}</span>
-                                <span className="rounded-full bg-[#faf7ff] border border-[#eadff2] px-2.5 py-1 text-xs text-[#8B8194]">{{
-                                  rent: 'Rent',
-                                  purchase: 'Purchase',
-                                  own_inventory: 'Own Inventory',
-                                  client_provided: 'Client Provided',
-                                  vendor_included: 'Vendor Included',
-                                }[element.sourcing_type || 'unspecified'] || 'Not Specified'}</span>
                                 <span className="rounded-full bg-[#faf7ff] border border-[#eadff2] px-2.5 py-1 text-xs text-[#8B8194] capitalize">{String(element.status || 'planned').replace('_', ' ')}</span>
                               </div>
 
@@ -3596,42 +2785,10 @@ ${message}`;
                                 <p><span className="text-[#8B8194]">Size:</span> {element.dimensions ? `${element.dimensions} ${element.dimension_unit || 'ft'}` : 'Not specified'}</p>
                                 <p><span className="text-[#8B8194]">Area:</span> {Number(element.area_sqft || 0) > 0 ? `${element.area_sqft} sq ft` : 'Not calculated'}</p>
                                 <p><span className="text-[#8B8194]">Function:</span> {element.function || 'All Functions'}</p>
-                                <p><span className="text-[#8B8194]">Sourcing:</span> {{
-                                  rent: 'Rent',
-                                  purchase: 'Purchase',
-                                  own_inventory: 'Own Inventory',
-                                  client_provided: 'Client Provided',
-                                  vendor_included: 'Vendor Included',
-                                }[element.sourcing_type || 'unspecified'] || 'Not Specified'}</p>
                                 <p><span className="text-[#8B8194]">Estimated:</span> {formatElementCurrency(element.estimated_cost)}</p>
                                 <p><span className="text-[#8B8194]">Actual:</span> {formatElementCurrency(element.actual_cost)}</p>
                                 <p><span className="text-[#8B8194]">Difference:</span> {formatElementVariance(element.estimated_cost, element.actual_cost)}</p>
-                                <p>
-                                  <span className="text-[#8B8194]">Supplier:</span>{' '}
-                                  {element.supplier || 'Not assigned'}
-                                  {element.supplier_contact && (
-                                    <>
-                                      {' · '}
-                                      <a
-                                        href={`tel:${String(element.supplier_contact).replace(/[^+\d]/g, '')}`}
-                                        className="text-[#8B6AA8] hover:underline"
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        Call
-                                      </a>
-                                      {' · '}
-                                      <a
-                                        href={`https://wa.me/${String(element.supplier_contact).replace(/\D/g, '')}`}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="text-[#8B6AA8] hover:underline"
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        WhatsApp
-                                      </a>
-                                    </>
-                                  )}
-                                </p>
+                                <p><span className="text-[#8B8194]">Supplier:</span> {element.supplier || 'Not assigned'}</p>
                                 <p><span className="text-[#8B8194]">Area / Location:</span> {element.area || 'Not specified'}</p>
                               </div>
 
