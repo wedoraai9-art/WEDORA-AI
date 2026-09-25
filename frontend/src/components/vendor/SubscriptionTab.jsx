@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { PLANS_UI } from './VendorLanding';
 import { apiSwitchPlan, fmtApiError } from '@/lib/auth';
 import { toast } from 'sonner';
 import { Info } from 'lucide-react';
@@ -7,29 +6,32 @@ import { Info } from 'lucide-react';
 export const SubscriptionTab = ({ vendor, planDetails, onSaved }) => {
   const [busy, setBusy] = useState(false);
   const [switchingPlan, setSwitchingPlan] = useState(null);
+  const [billingCycle, setBillingCycle] = useState('monthly');
 
-  const currentPlan = vendor?.plan || planDetails?.id || 'free';
+  const rawCurrentPlan = vendor?.plan || planDetails?.id || 'free';
+
+  // Premium was part of the old plan structure.
+  // For the new WEDORA model, the only paid plan is PRO.
+  const currentPlan =
+    rawCurrentPlan === 'premium' ? 'pro' : rawCurrentPlan;
 
   const getPlanName = (planId) => {
-    const plan = PLANS_UI.find((item) => item.id === planId);
+    const names = {
+      free: 'FREE',
+      pro: 'PRO',
+    };
 
     return (
-      plan?.name ||
-      String(planId || 'plan')
-        .charAt(0)
-        .toUpperCase() +
-        String(planId || 'plan')
-          .slice(1)
-          .toLowerCase()
+      names[planId] ||
+      String(planId || 'plan').charAt(0).toUpperCase() +
+        String(planId || 'plan').slice(1).toLowerCase()
     );
   };
 
   const choose = async (plan) => {
     if (!plan || plan === currentPlan || busy) return;
 
-    const selectedPlan = PLANS_UI.find((item) => item.id === plan);
-
-    if (!selectedPlan) {
+    if (!['free', 'pro'].includes(plan)) {
       toast.error('This plan is not available right now.');
       return;
     }
@@ -38,11 +40,23 @@ export const SubscriptionTab = ({ vendor, planDetails, onSaved }) => {
     setSwitchingPlan(plan);
 
     try {
+      // Current system is DEMO MODE.
+      // Billing cycle is selected in the UI and will be used
+      // by the future Razorpay subscription flow.
       const response = await apiSwitchPlan(plan);
       const updatedVendor = response?.vendor;
 
+      const cycleLabel =
+        plan === 'pro'
+          ? billingCycle === 'annual'
+            ? 'annual'
+            : 'monthly'
+          : '';
+
       toast.success(
-        `Switched to ${getPlanName(plan)} (DEMO)`
+        plan === 'pro'
+          ? `Switched to PRO (${cycleLabel}) — DEMO`
+          : 'Switched to FREE — DEMO'
       );
 
       if (onSaved) {
@@ -61,8 +75,36 @@ export const SubscriptionTab = ({ vendor, planDetails, onSaved }) => {
     }
   };
 
+  const proPrice =
+    billingCycle === 'annual'
+      ? '₹4,599'
+      : '₹399';
+
+  const proPer =
+    billingCycle === 'annual'
+      ? '/year'
+      : '/month';
+
+  const proFeatures = [
+    'Unlimited weddings',
+    'Advanced vendor dashboard',
+    'Client leads & notifications',
+    'Analytics & exports',
+    'AI-powered wedding assistance',
+  ];
+
+  const freeFeatures = [
+    'Business profile',
+    'Up to 3 weddings',
+    'Basic vendor dashboard',
+    'Basic profile & portfolio',
+    'No AI features',
+  ];
+
   return (
     <div data-testid="subscription-tab">
+
+      {/* DEMO MODE NOTICE */}
       <div className="pearl-card p-5 mb-6 flex items-start gap-3 border !border-amber-200/70 !bg-gradient-to-br !from-amber-50/80 !to-white/70">
         <Info className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
 
@@ -75,72 +117,184 @@ export const SubscriptionTab = ({ vendor, planDetails, onSaved }) => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {PLANS_UI.map((plan) => {
-          const active = currentPlan === plan.id;
-          const switching = switchingPlan === plan.id;
+      {/* PLAN CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
-          return (
-            <div
-              key={plan.id}
-              data-testid={`sub-plan-${plan.id}`}
-              className={`relative pearl-card p-6 flex flex-col ${
-                active
-                  ? 'gradient-border ring-1 ring-pink-200/80'
-                  : ''
-              }`}
-            >
-              {active && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 chip !text-[10px] !py-1 !px-3 uppercase tracking-[0.2em] !bg-gradient-to-r !from-[#C9B8FF]/60 !to-[#F7B7D8]/60">
-                  Current Plan
-                </span>
-              )}
+        {/* FREE */}
+        <div
+          data-testid="sub-plan-free"
+          className={`relative pearl-card p-6 flex flex-col ${
+            currentPlan === 'free'
+              ? 'gradient-border ring-1 ring-pink-200/80'
+              : ''
+          }`}
+        >
+          {currentPlan === 'free' && (
+            <span className="absolute -top-3 left-1/2 -translate-x-1/2 chip !text-[10px] !py-1 !px-3 uppercase tracking-[0.2em] !bg-gradient-to-r !from-[#C9B8FF]/60 !to-[#F7B7D8]/60">
+              Current Plan
+            </span>
+          )}
 
+          <p className="font-heading text-sm font-semibold tracking-[0.2em] text-[#2D2638]">
+            FREE
+          </p>
+
+          <p className="mt-2">
+            <span className="font-display text-3xl text-[#2D2638]">
+              ₹0
+            </span>
+
+            <span className="text-xs text-[#988FA6]">
+              /month
+            </span>
+          </p>
+
+          <ul className="mt-4 space-y-1.5 flex-1">
+            {freeFeatures.map((feature) => (
+              <li
+                key={feature}
+                className="text-xs text-[#6B617A]"
+              >
+                · {feature}
+              </li>
+            ))}
+          </ul>
+
+          <button
+            type="button"
+            data-testid="plan-choose-free"
+            onClick={() => choose('free')}
+            disabled={busy || currentPlan === 'free'}
+            className={`mt-5 w-full ${
+              currentPlan === 'free'
+                ? 'chip !py-2 opacity-50 cursor-default'
+                : 'glow-btn !py-2.5 !text-sm'
+            }`}
+          >
+            {currentPlan === 'free'
+              ? 'Active'
+              : switchingPlan === 'free'
+                ? 'Switching…'
+                : 'Switch to FREE'}
+          </button>
+        </div>
+
+        {/* PRO */}
+        <div
+          data-testid="sub-plan-pro"
+          className={`relative pearl-card p-6 flex flex-col ${
+            currentPlan === 'pro'
+              ? 'gradient-border ring-1 ring-pink-200/80'
+              : ''
+          }`}
+        >
+          {currentPlan === 'pro' && (
+            <span className="absolute -top-3 left-1/2 -translate-x-1/2 chip !text-[10px] !py-1 !px-3 uppercase tracking-[0.2em] !bg-gradient-to-r !from-[#C9B8FF]/60 !to-[#F7B7D8]/60">
+              Current Plan
+            </span>
+          )}
+
+          <div className="flex items-start justify-between gap-4">
+            <div>
               <p className="font-heading text-sm font-semibold tracking-[0.2em] text-[#2D2638]">
-                {plan.name}
+                PRO
               </p>
 
               <p className="mt-2">
                 <span className="font-display text-3xl text-[#2D2638]">
-                  {plan.price}
+                  {proPrice}
                 </span>
 
                 <span className="text-xs text-[#988FA6]">
-                  {plan.per}
+                  {proPer}
                 </span>
               </p>
+            </div>
 
-              <ul className="mt-4 space-y-1.5 flex-1">
-                {plan.features.slice(0, 5).map((feature) => (
-                  <li
-                    key={feature}
-                    className="text-xs text-[#6B617A]"
-                  >
-                    · {feature}
-                  </li>
-                ))}
-              </ul>
+            <span className="chip !text-[10px] !py-1 !px-3 !bg-gradient-to-r !from-[#C9B8FF]/40 !to-[#F7B7D8]/40">
+              AI ACCESS
+            </span>
+          </div>
+
+          {/* BILLING CYCLE */}
+          <div className="mt-5">
+            <p className="text-xs text-[#988FA6] mb-2">
+              Choose billing cycle
+            </p>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setBillingCycle('monthly')}
+                className={`rounded-xl px-3 py-2 text-xs border transition ${
+                  billingCycle === 'monthly'
+                    ? 'border-[#C9B8FF] bg-[#F4ECFF] text-[#6B4E8A]'
+                    : 'border-[#E8DFF2] bg-white text-[#988FA6]'
+                }`}
+              >
+                ₹399 / month
+              </button>
 
               <button
                 type="button"
-                data-testid={`plan-choose-${plan.id}`}
-                onClick={() => choose(plan.id)}
-                disabled={busy || active}
-                className={`mt-5 w-full ${
-                  active
-                    ? 'chip !py-2 opacity-50 cursor-default'
-                    : 'glow-btn !py-2.5 !text-sm'
+                onClick={() => setBillingCycle('annual')}
+                className={`rounded-xl px-3 py-2 text-xs border transition ${
+                  billingCycle === 'annual'
+                    ? 'border-[#C9B8FF] bg-[#F4ECFF] text-[#6B4E8A]'
+                    : 'border-[#E8DFF2] bg-white text-[#988FA6]'
                 }`}
               >
-                {active
-                  ? 'Active'
-                  : switching
-                    ? 'Switching…'
-                    : `Switch to ${getPlanName(plan.id)}`}
+                ₹4,599 / year
               </button>
             </div>
-          );
-        })}
+          </div>
+
+          <ul className="mt-4 space-y-1.5 flex-1">
+            {proFeatures.map((feature) => (
+              <li
+                key={feature}
+                className="text-xs text-[#6B617A]"
+              >
+                · {feature}
+              </li>
+            ))}
+          </ul>
+
+          <button
+            type="button"
+            data-testid="plan-choose-pro"
+            onClick={() => choose('pro')}
+            disabled={busy || currentPlan === 'pro'}
+            className={`mt-5 w-full ${
+              currentPlan === 'pro'
+                ? 'chip !py-2 opacity-50 cursor-default'
+                : 'glow-btn !py-2.5 !text-sm'
+            }`}
+          >
+            {currentPlan === 'pro'
+              ? 'Active'
+              : switchingPlan === 'pro'
+                ? 'Switching…'
+                : `Switch to PRO — ${
+                    billingCycle === 'annual'
+                      ? '₹4,599/year'
+                      : '₹399/month'
+                  }`}
+          </button>
+        </div>
+      </div>
+
+      {/* AI ACCESS NOTE */}
+      <div className="pearl-card p-5 mt-6 border !border-[#E8DFF2] !bg-gradient-to-br !from-[#F9F4FF] !to-white">
+        <p className="text-sm font-semibold text-[#2D2638]">
+          WEDORA AI for Vendors
+        </p>
+
+        <p className="text-xs text-[#6B617A] mt-1">
+          AI-powered wedding assistance is available only to
+          PRO vendors. FREE vendors can see the AI features but
+          must upgrade to PRO to use them.
+        </p>
       </div>
     </div>
   );
