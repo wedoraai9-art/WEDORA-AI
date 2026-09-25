@@ -878,6 +878,15 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
     elementFilterPricing !== 'All Pricing' ||
     elementFilterSupplier !== 'All Suppliers';
 
+  const supplierContactMap = elements.reduce((map, element) => {
+    const supplier = String(element.supplier || '').trim();
+    const contact = String(element.supplier_contact || '').trim();
+    if (supplier && contact && !map.has(supplier)) {
+      map.set(supplier, contact);
+    }
+    return map;
+  }, new Map());
+
   const supplierOverview = Array.from(
     elements.reduce((map, element) => {
       const supplier = String(element.supplier || '').trim();
@@ -1016,6 +1025,55 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
         behavior: 'smooth',
       });
     }, 120);
+  };
+
+  const exportElementsCsv = () => {
+    const rows = filteredElements.map((element) => ({
+      Element: element.name || '',
+      Category: element.category || '',
+      Quantity: element.quantity ?? '',
+      Unit: element.unit || '',
+      Dimensions: element.dimensions || '',
+      DimensionUnit: element.dimension_unit || '',
+      AreaSqFt: element.area_sqft ?? '',
+      Function: element.function || '',
+      Status: element.status || '',
+      PricingType: element.pricing_type || '',
+      Rate: element.rate ?? '',
+      EstimatedCost: element.estimated_cost ?? '',
+      ActualCost: element.actual_cost ?? '',
+      Variance: Number(element.actual_cost || 0) - Number(element.estimated_cost || 0),
+      Supplier: element.supplier || '',
+      SupplierContact: element.supplier_contact || '',
+      AreaLocation: element.area || '',
+      Notes: element.notes || '',
+    }));
+
+    if (!rows.length) {
+      window.alert('There are no matching elements to export.');
+      return;
+    }
+
+    const headers = Object.keys(rows[0]);
+    const escapeCsv = (value) => {
+      const stringValue = String(value ?? '');
+      return `"${stringValue.replace(/"/g, '""')}"`;
+    };
+
+    const csv = [
+      headers.map(escapeCsv).join(','),
+      ...rows.map((row) => headers.map((header) => escapeCsv(row[header])).join(',')),
+    ].join('\r\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${String(wedding?.wedding_name || wedding?.name || 'wedding').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'wedding'}-elements.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   };
 
   const deleteElement = async (id) => {
@@ -2680,12 +2738,33 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                       <div className="md:col-span-2 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
                         <p className="text-sm font-medium text-[#3F3748]">Supplier / Source</p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                          <input
-                            value={elementForm.supplier}
-                            onChange={(e) => setElementForm({ ...elementForm, supplier: e.target.value })}
-                            placeholder="Supplier / Vendor name"
-                            className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
-                          />
+                          <div className="space-y-1">
+                            <input
+                              list="wedora-supplier-options"
+                              value={elementForm.supplier}
+                              onChange={(e) => {
+                                const supplier = e.target.value;
+                                const knownContact = supplierContactMap.get(supplier) || '';
+                                setElementForm({
+                                  ...elementForm,
+                                  supplier,
+                                  ...(knownContact ? { supplier_contact: knownContact } : {}),
+                                });
+                              }}
+                              placeholder="Supplier / Vendor name"
+                              className="w-full rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none focus:border-[#c9a9df]"
+                            />
+                            <datalist id="wedora-supplier-options">
+                              {elementSupplierOptions.map((supplier) => (
+                                <option key={supplier} value={supplier} />
+                              ))}
+                            </datalist>
+                            {elementSupplierOptions.length > 0 && (
+                              <p className="text-xs text-[#8B8194]">
+                                Start typing to reuse an existing supplier.
+                              </p>
+                            )}
+                          </div>
                           <input
                             value={elementForm.supplier_contact}
                             onChange={(e) => setElementForm({ ...elementForm, supplier_contact: e.target.value })}
@@ -2889,12 +2968,22 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                   <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-8 text-center text-sm text-[#8B8194]">Loading elements...</div>
                 ) : filteredElements.length > 0 ? (
                   <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div>
                         <p className="text-sm text-[#8B8194]">Your Elements</p>
                         <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Decor Requirements</h4>
                       </div>
-                      <p className="text-sm text-[#8B8194]">{filteredElements.length} shown / {elements.length} total</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-[#8B8194]">{filteredElements.length} shown / {elements.length} total</p>
+                        <button
+                          type="button"
+                          onClick={exportElementsCsv}
+                          className="rounded-lg bg-[#f4eafa] px-3 py-1.5 text-sm text-[#8B6AA8] hover:bg-[#eadcf5]"
+                        >
+                          <Download className="inline w-3.5 h-3.5 mr-1" />
+                          Export CSV
+                        </button>
+                      </div>
                     </div>
 
                     <div className="mt-4 space-y-3">
