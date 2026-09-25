@@ -23,6 +23,7 @@ import {
   CheckSquare,
   Clock,
   Plus,
+  Sparkles,
   Heart,
   Wallet,
 } from 'lucide-react';
