@@ -53,6 +53,7 @@ export const RequestQuoteModal = ({ vendor, onClose }) => {
     setBusy(true);
     try {
       await apiCreateLead({ ...form, vendor_slug: vendor.slug, guest_count: form.guest_count ? Number(form.guest_count) : null });
+      apiTrack(vendor.slug, 'contact_request').catch(() => {});
       toast.success('Your request has been sent! The vendor will reach out soon.');
       onClose(true);
     } catch (err) { toast.error(fmtApiError(err.response?.data?.detail, 'Could not send request')); }
@@ -167,6 +168,7 @@ export const VendorPublicProfile = () => {
         // The API currently returns the vendor document directly. Accept the
         // wrapped form too, so this profile works with either response shape.
         setVendor(r?.vendor || r || null);
+        apiTrack(slug, 'profile_view').catch(() => {});
       }
       catch { setNotFound(true); }
     })();
