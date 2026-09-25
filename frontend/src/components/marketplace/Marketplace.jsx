@@ -93,14 +93,28 @@ const Marketplace = () => {
   const [category, setCategory] = useState('All');
   const [q, setQ] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   const load = async () => {
     setLoading(true);
+    setLoadError('');
     const params = {};
     if (category !== 'All') params.category = category;
-    if (q.trim()) params.q = q.trim();
-    try { const r = await apiMarketplace(params); setVendors(r.vendors || []); } catch {}
-    setLoading(false);
+    if (q.trim()) params.search = q.trim();
+    try {
+      const r = await apiMarketplace(params);
+      setVendors(Array.isArray(r?.vendors) ? r.vendors : []);
+    } catch (err) {
+      setVendors([]);
+      setLoadError(fmtApiError(
+        err.response?.data?.detail,
+        err.code === 'ECONNABORTED'
+          ? 'The vendor list took too long to load. Please try again.'
+          : 'Could not load vendors. Check your connection and try again.'
+      ));
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => { load(); }, [category]);
 
@@ -122,7 +136,12 @@ const Marketplace = () => {
           <button data-testid="market-search-btn" onClick={load} className="glow-btn !py-2.5 !px-5 !text-sm">Search</button>
         </div>
 
-        {loading ? <div className="thinking-orb mx-auto" /> : vendors.length === 0 ? (
+        {loading ? <div className="thinking-orb mx-auto" /> : loadError ? (
+          <div className="text-center text-[#6B617A]" role="alert">
+            <p>{loadError}</p>
+            <button data-testid="market-retry-btn" onClick={load} className="chip mt-4">Try again</button>
+          </div>
+        ) : vendors.length === 0 ? (
           <p className="text-center text-[#6B617A]">No vendors found yet. Be the first — <a href="/for-vendors" className="underline decoration-pink-300">list your business</a>.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
