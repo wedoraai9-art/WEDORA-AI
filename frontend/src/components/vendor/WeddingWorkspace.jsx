@@ -350,6 +350,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
     function: 'All Functions',
     status: 'planned',
     pricing_type: 'manual',
+    sourcing_type: 'rent',
     rate: '',
     estimated_cost: '',
     actual_cost: '',
@@ -930,6 +931,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
       const unit = String(element.unit || 'pcs').trim();
       const functionName = String(element.function || 'All Functions').trim();
       const supplier = String(element.supplier || '').trim();
+      const sourcingType = String(element.sourcing_type || 'rent').trim();
 
       const key = [
         name.toLowerCase(),
@@ -937,6 +939,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
         unit.toLowerCase(),
         functionName.toLowerCase(),
         supplier.toLowerCase(),
+        sourcingType.toLowerCase(),
       ].join('|||');
 
       const current = map.get(key) || {
@@ -945,6 +948,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
         unit,
         function: functionName,
         supplier,
+        sourcing_type: sourcingType,
         quantity: 0,
         area_sqft: 0,
         estimated: 0,
@@ -1020,6 +1024,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
         function: elementForm.function || 'All Functions',
         status: elementForm.status || 'planned',
         pricing_type: elementForm.pricing_type || 'manual',
+        sourcing_type: elementForm.sourcing_type || 'rent',
         rate: Number(elementForm.rate || 0),
         estimated_cost: getElementEstimatedCost(elementForm),
         actual_cost: Number(elementForm.actual_cost || 0),
@@ -1060,6 +1065,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
       function: element.function || 'All Functions',
       status: element.status || 'planned',
       pricing_type: element.pricing_type || 'manual',
+      sourcing_type: element.sourcing_type || 'rent',
       rate: element.rate != null ? String(element.rate) : '',
       estimated_cost: element.estimated_cost != null ? String(element.estimated_cost) : '',
       actual_cost: element.actual_cost != null ? String(element.actual_cost) : '',
@@ -1094,6 +1100,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
       AreaSqFt: element.area_sqft ?? '',
       Function: element.function || '',
       Status: element.status || '',
+      SourcingType: element.sourcing_type || 'rent',
       PricingType: element.pricing_type || '',
       Rate: element.rate ?? '',
       EstimatedCost: element.estimated_cost ?? '',
@@ -2729,6 +2736,25 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                         <option value="completed">Completed</option>
                       </select>
 
+                      {/* SOURCING */}
+                      <div className="md:col-span-2 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
+                        <p className="text-sm font-medium text-[#3F3748]">Sourcing Type</p>
+                        <p className="text-xs text-[#8B8194] mt-1">
+                          Choose how this element will be arranged for the event.
+                        </p>
+                        <select
+                          value={elementForm.sourcing_type}
+                          onChange={(e) => setElementForm({ ...elementForm, sourcing_type: e.target.value })}
+                          className="mt-3 w-full rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none"
+                        >
+                          <option value="rent">Rent / Rental Vendor</option>
+                          <option value="purchase">Purchase / Buy</option>
+                          <option value="own_inventory">Own Inventory</option>
+                          <option value="client_provided">Client Provided</option>
+                          <option value="vendor_included">Vendor Included</option>
+                        </select>
+                      </div>
+
                       {/* PRICING */}
                       <div className="md:col-span-2 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
                         <p className="text-sm font-medium text-[#3F3748]">Pricing</p>
@@ -3072,65 +3098,50 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                   <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div>
-                        <p className="text-sm text-[#8B8194]">Procurement & Materials</p>
-                        <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Procurement & Materials</h4>
+                        <p className="text-sm text-[#8B8194]">Sourcing & Materials</p>
+                        <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Sourcing & Materials</h4>
                         <p className="text-sm text-[#6B6175] mt-1">
-                          One place to understand material quantities, purchasing status, suppliers and costs.
+                          Separate rental, purchase, inventory and client/vendor-provided requirements.
                         </p>
                       </div>
                       <div className="rounded-lg bg-white px-3 py-2 text-xs text-[#8B8194] border border-[#eadff2]">
-                        {procurementSummary.length} procurement line{procurementSummary.length === 1 ? '' : 's'}
+                        {procurementSummary.length} material line{procurementSummary.length === 1 ? '' : 's'}
                       </div>
                     </div>
 
-                    <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <div className="rounded-xl border border-[#eadff2] bg-white p-4">
-                        <p className="text-xs text-[#8B8194]">Material Lines</p>
-                        <p className="text-xl font-semibold text-[#3F3748] mt-1">{procurementSummary.length}</p>
-                      </div>
-                      <div className="rounded-xl border border-[#eadff2] bg-white p-4">
-                        <p className="text-xs text-[#8B8194]">Pending Purchase</p>
-                        <p className="text-xl font-semibold text-[#3F3748] mt-1">
-                          {procurementSummary.filter((item) => item.pending > 0).length}
-                        </p>
-                      </div>
-                      <div className="rounded-xl border border-[#eadff2] bg-white p-4">
-                        <p className="text-xs text-[#8B8194]">Total Area</p>
-                        <p className="text-lg font-semibold text-[#3F3748] mt-1">
-                          {procurementSummary
-                            .reduce((sum, item) => sum + (Number(item.area_sqft) || 0), 0)
-                            .toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft
-                        </p>
-                      </div>
-                      <div className="rounded-xl border border-[#eadff2] bg-white p-4">
-                        <p className="text-xs text-[#8B8194]">Estimated</p>
-                        <p className="text-lg font-semibold text-[#3F3748] mt-1">
-                          {formatElementCurrency(
-                            procurementSummary.reduce((sum, item) => sum + (Number(item.estimated) || 0), 0)
-                          )}
-                        </p>
-                      </div>
+                    <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3">
+                      {[
+                        ['Rent', 'rent'],
+                        ['Purchase', 'purchase'],
+                        ['Own Inventory', 'own_inventory'],
+                        ['Client Provided', 'client_provided'],
+                        ['Vendor Included', 'vendor_included'],
+                      ].map(([label, type]) => (
+                        <div key={type} className="rounded-xl border border-[#eadff2] bg-white p-4">
+                          <p className="text-xs text-[#8B8194]">{label}</p>
+                          <p className="text-xl font-semibold text-[#3F3748] mt-1">
+                            {elements.filter((item) => (item.sourcing_type || 'rent') === type).length}
+                          </p>
+                          <p className="text-xs text-[#8B8194] mt-1">material line{elements.filter((item) => (item.sourcing_type || 'rent') === type).length === 1 ? '' : 's'}</p>
+                        </div>
+                      ))}
                     </div>
 
                     <div className="mt-5">
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <p className="text-sm font-semibold text-[#3F3748]">Material Requirement</p>
-                          <p className="text-xs text-[#8B8194] mt-0.5">
-                            Category-wise quantity and area required.
-                          </p>
-                        </div>
+                      <div className="mb-3">
+                        <p className="text-sm font-semibold text-[#3F3748]">Material Requirement</p>
+                        <p className="text-xs text-[#8B8194] mt-0.5">Category-wise quantity and area required, regardless of sourcing method.</p>
                       </div>
-
                       <div className="overflow-x-auto rounded-xl border border-[#eadff2] bg-white">
-                        <table className="w-full min-w-[850px] text-left">
+                        <table className="w-full min-w-[950px] text-left">
                           <thead>
                             <tr className="border-b border-[#eadff2] bg-[#faf7ff] text-xs text-[#8B8194]">
                               <th className="px-4 py-3 font-medium">Category</th>
                               <th className="px-4 py-3 font-medium">Required Quantity</th>
                               <th className="px-4 py-3 font-medium">Area</th>
                               <th className="px-4 py-3 font-medium">Lines</th>
-                              <th className="px-4 py-3 font-medium">Pending</th>
+                              <th className="px-4 py-3 font-medium">Rent</th>
+                              <th className="px-4 py-3 font-medium">Purchase</th>
                               <th className="px-4 py-3 font-medium">Estimated</th>
                             </tr>
                           </thead>
@@ -3139,54 +3150,40 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                               procurementSummary.reduce((map, item) => {
                                 const category = item.category || 'General';
                                 const current = map.get(category) || {
-                                  category,
-                                  lines: 0,
-                                  pending: 0,
-                                  area: 0,
-                                  estimated: 0,
-                                  quantities: {},
+                                  category, lines: 0, area: 0, estimated: 0, quantities: {},
+                                  rent: 0, purchase: 0,
                                 };
                                 current.lines += 1;
-                                current.pending += Number(item.pending) || 0;
                                 current.area += Number(item.area_sqft) || 0;
                                 current.estimated += Number(item.estimated) || 0;
+                                current.rent += item.sourcing_type === 'rent' ? 1 : 0;
+                                current.purchase += item.sourcing_type === 'purchase' ? 1 : 0;
                                 const unit = item.unit || 'pcs';
-                                current.quantities[unit] =
-                                  (current.quantities[unit] || 0) + (Number(item.quantity) || 0);
+                                current.quantities[unit] = (current.quantities[unit] || 0) + (Number(item.quantity) || 0);
                                 map.set(category, current);
                                 return map;
                               }, new Map())
-                            )
-                              .sort((a, b) => b[1].estimated - a[1].estimated)
-                              .map(([category, item]) => (
-                                <tr key={category} className="border-b border-[#f0e8f5] last:border-b-0">
-                                  <td className="px-4 py-3 font-medium text-[#3F3748]">{item.category}</td>
-                                  <td className="px-4 py-3">
-                                    <div className="flex flex-wrap gap-1.5">
-                                      {Object.entries(item.quantities).map(([unit, quantity]) => (
-                                        <span
-                                          key={unit}
-                                          className="inline-flex items-center rounded-full bg-[#faf7ff] border border-[#eadff2] px-2.5 py-1 text-xs text-[#6B6175]"
-                                        >
-                                          {quantity.toLocaleString('en-IN', { maximumFractionDigits: 2 })} {unit}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-3 text-sm text-[#6B6175]">
-                                    {item.area > 0
-                                      ? `${item.area.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft`
-                                      : '—'}
-                                  </td>
-                                  <td className="px-4 py-3 text-sm text-[#6B6175]">{item.lines}</td>
-                                  <td className="px-4 py-3 text-sm text-[#6B6175]">
-                                    {item.pending > 0 ? `${item.pending}` : '0'}
-                                  </td>
-                                  <td className="px-4 py-3 text-sm font-medium text-[#3F3748]">
-                                    {formatElementCurrency(item.estimated)}
-                                  </td>
-                                </tr>
-                              ))}
+                            ).sort((a,b) => b[1].estimated - a[1].estimated).map(([category,item]) => (
+                              <tr key={category} className="border-b border-[#f0e8f5] last:border-b-0">
+                                <td className="px-4 py-3 font-medium text-[#3F3748]">{item.category}</td>
+                                <td className="px-4 py-3">
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {Object.entries(item.quantities).map(([unit, quantity]) => (
+                                      <span key={unit} className="inline-flex items-center rounded-full bg-[#faf7ff] border border-[#eadff2] px-2.5 py-1 text-xs text-[#6B6175]">
+                                        {quantity.toLocaleString('en-IN', { maximumFractionDigits: 2 })} {unit}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-[#6B6175]">
+                                  {item.area > 0 ? `${item.area.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft` : '—'}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-[#6B6175]">{item.lines}</td>
+                                <td className="px-4 py-3 text-sm text-[#6B6175]">{item.rent}</td>
+                                <td className="px-4 py-3 text-sm text-[#6B6175]">{item.purchase}</td>
+                                <td className="px-4 py-3 text-sm font-medium text-[#3F3748]">{formatElementCurrency(item.estimated)}</td>
+                              </tr>
+                            ))}
                           </tbody>
                         </table>
                       </div>
@@ -3194,87 +3191,60 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
 
                     <div className="mt-5">
                       <div className="mb-3">
-                        <p className="text-sm font-semibold text-[#3F3748]">Purchase Planning</p>
-                        <p className="text-xs text-[#8B8194] mt-0.5">
-                          Pending requirements grouped by supplier for purchasing.
-                        </p>
+                        <p className="text-sm font-semibold text-[#3F3748]">Sourcing Planning</p>
+                        <p className="text-xs text-[#8B8194] mt-0.5">Rental and purchase requirements are separated so rental vendors are not treated as purchases.</p>
                       </div>
 
-                      {procurementSummary.filter((item) => item.pending > 0).length > 0 ? (
-                        <div className="space-y-3">
-                          {Array.from(
-                            procurementSummary
-                              .filter((item) => item.pending > 0)
-                              .reduce((map, item) => {
-                                const supplier = item.supplier || 'Not Assigned';
-                                const current = map.get(supplier) || [];
-                                current.push(item);
-                                map.set(supplier, current);
-                                return map;
-                              }, new Map())
-                          ).map(([supplier, items]) => (
-                            <div key={supplier} className="rounded-xl border border-[#eadff2] bg-white overflow-hidden">
+                      <div className="space-y-3">
+                        {['rent', 'purchase'].map((type) => {
+                          const items = procurementSummary.filter((item) => item.sourcing_type === type);
+                          if (!items.length) return null;
+                          return (
+                            <div key={type} className="rounded-xl border border-[#eadff2] bg-white overflow-hidden">
                               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-3 bg-[#faf7ff] border-b border-[#eadff2]">
                                 <div>
-                                  <p className="text-sm font-medium text-[#3F3748]">{supplier}</p>
-                                  <p className="text-xs text-[#8B8194]">
-                                    {items.length} purchase line{items.length === 1 ? '' : 's'}
-                                  </p>
+                                  <p className="text-sm font-medium text-[#3F3748]">{type === 'rent' ? 'Rental Requirements' : 'Purchase Requirements'}</p>
+                                  <p className="text-xs text-[#8B8194]">{items.length} line{items.length === 1 ? '' : 's'} · grouped by supplier</p>
                                 </div>
                                 <p className="text-sm font-semibold text-[#3F3748]">
-                                  {formatElementCurrency(items.reduce((sum, item) => sum + item.estimated, 0))}
+                                  {formatElementCurrency(items.reduce((sum,item) => sum + Number(item.estimated || 0), 0))}
                                 </p>
                               </div>
-
                               <div className="overflow-x-auto">
-                                <table className="w-full min-w-[760px] text-left">
+                                <table className="w-full min-w-[900px] text-left">
                                   <thead>
                                     <tr className="border-b border-[#f0e8f5] text-xs text-[#8B8194]">
                                       <th className="px-4 py-3 font-medium">Item</th>
                                       <th className="px-4 py-3 font-medium">Category</th>
                                       <th className="px-4 py-3 font-medium">Qty</th>
                                       <th className="px-4 py-3 font-medium">Area</th>
-                                      <th className="px-4 py-3 font-medium">Function</th>
+                                      <th className="px-4 py-3 font-medium">Supplier / Source</th>
+                                      <th className="px-4 py-3 font-medium">Status</th>
                                       <th className="px-4 py-3 font-medium">Estimated</th>
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {items.map((item, index) => (
-                                      <tr
-                                        key={`${supplier}-${item.name}-${item.category}-${item.function}-${index}`}
-                                        className="border-b border-[#f0e8f5] last:border-b-0"
-                                      >
+                                    {items.map((item,index) => (
+                                      <tr key={`${type}-${item.name}-${item.category}-${item.function}-${item.supplier}-${index}`} className="border-b border-[#f0e8f5] last:border-b-0">
                                         <td className="px-4 py-3">
                                           <p className="font-medium text-[#3F3748]">{item.name}</p>
                                           <p className="text-xs text-[#8B8194] mt-0.5">Unit: {item.unit}</p>
                                         </td>
                                         <td className="px-4 py-3 text-sm text-[#6B6175]">{item.category}</td>
-                                        <td className="px-4 py-3 text-sm font-medium text-[#3F3748]">
-                                          {item.quantity.toLocaleString('en-IN', { maximumFractionDigits: 2 })} {item.unit}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-[#6B6175]">
-                                          {item.area_sqft > 0
-                                            ? `${item.area_sqft.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft`
-                                            : '—'}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-[#6B6175]">{item.function}</td>
-                                        <td className="px-4 py-3 text-sm font-medium text-[#3F3748]">
-                                          {formatElementCurrency(item.estimated)}
-                                        </td>
+                                        <td className="px-4 py-3 text-sm text-[#3F3748]">{item.quantity.toLocaleString('en-IN', { maximumFractionDigits: 2 })} {item.unit}</td>
+                                        <td className="px-4 py-3 text-sm text-[#6B6175]">{item.area_sqft > 0 ? `${item.area_sqft.toLocaleString('en-IN', { maximumFractionDigits: 2 })} sq ft` : '—'}</td>
+                                        <td className="px-4 py-3 text-sm text-[#6B6175]">{item.supplier || 'Not assigned'}</td>
+                                        <td className="px-4 py-3 text-sm text-[#6B6175]">{item.pending > 0 ? 'Pending' : 'Ordered'}</td>
+                                        <td className="px-4 py-3 text-sm font-medium text-[#3F3748]">{formatElementCurrency(item.estimated)}</td>
                                       </tr>
                                     ))}
                                   </tbody>
                                 </table>
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="rounded-xl border border-[#eadff2] bg-white p-6 text-center">
-                          <p className="text-sm font-medium text-[#3F3748]">Everything is ordered</p>
-                          <p className="text-xs text-[#8B8194] mt-1">There are no pending procurement lines right now.</p>
-                        </div>
-                      )}
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -3309,6 +3279,13 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                               <div className="flex flex-wrap items-center gap-2">
                                 <p className="font-medium text-[#3F3748]">{element.name}</p>
                                 <span className="rounded-full bg-[#f4eafa] px-2.5 py-1 text-xs text-[#8B6AA8]">{element.category}</span>
+                                <span className="rounded-full bg-[#faf7ff] border border-[#eadff2] px-2.5 py-1 text-xs text-[#8B8194]">{{
+                                  rent: 'Rent',
+                                  purchase: 'Purchase',
+                                  own_inventory: 'Own Inventory',
+                                  client_provided: 'Client Provided',
+                                  vendor_included: 'Vendor Included',
+                                }[element.sourcing_type || 'rent'] || 'Rent'}</span>
                                 <span className="rounded-full bg-[#faf7ff] border border-[#eadff2] px-2.5 py-1 text-xs text-[#8B8194] capitalize">{String(element.status || 'planned').replace('_', ' ')}</span>
                               </div>
 
@@ -3317,6 +3294,13 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                                 <p><span className="text-[#8B8194]">Size:</span> {element.dimensions ? `${element.dimensions} ${element.dimension_unit || 'ft'}` : 'Not specified'}</p>
                                 <p><span className="text-[#8B8194]">Area:</span> {Number(element.area_sqft || 0) > 0 ? `${element.area_sqft} sq ft` : 'Not calculated'}</p>
                                 <p><span className="text-[#8B8194]">Function:</span> {element.function || 'All Functions'}</p>
+                                <p><span className="text-[#8B8194]">Sourcing:</span> {{
+                                  rent: 'Rent',
+                                  purchase: 'Purchase',
+                                  own_inventory: 'Own Inventory',
+                                  client_provided: 'Client Provided',
+                                  vendor_included: 'Vendor Included',
+                                }[element.sourcing_type || 'rent'] || 'Rent'}</p>
                                 <p><span className="text-[#8B8194]">Estimated:</span> {formatElementCurrency(element.estimated_cost)}</p>
                                 <p><span className="text-[#8B8194]">Actual:</span> {formatElementCurrency(element.actual_cost)}</p>
                                 <p><span className="text-[#8B8194]">Difference:</span> {formatElementVariance(element.estimated_cost, element.actual_cost)}</p>
