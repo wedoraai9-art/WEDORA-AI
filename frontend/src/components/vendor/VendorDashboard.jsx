@@ -327,7 +327,10 @@ const VendorDashboard = () => {
       <WeddingWorkspace
         wedding={selectedWedding}
         vendor={vendor}
-        onBack={() => setSelectedWedding(null)}
+        onBack={() => {
+          setSelectedWedding(null);
+          load();
+        }}
       />
     );
   }
