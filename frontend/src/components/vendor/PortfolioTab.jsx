@@ -19,6 +19,9 @@ export const PortfolioTab = ({ vendor, planDetails, onSaved }) => {
   const limitLabel = hasUnlimitedPhotos ? '∞' : limit;
 
   const atLimit = !hasUnlimitedPhotos && portfolio.length >= limit;
+  const limitMessage = hasUnlimitedPhotos
+    ? 'Your PRO portfolio has reached its current photo limit.'
+    : `FREE includes up to ${limit} portfolio photos. PRO expands your portfolio after payment is verified.`;
 
   const refreshAfterChange = async (updatedVendor) => {
     if (onSaved) {
@@ -43,15 +46,18 @@ export const PortfolioTab = ({ vendor, planDetails, onSaved }) => {
     if (!file) return;
 
     if (atLimit) {
-      toast.error(
-        `Photo limit reached for your plan (${limit}). Upgrade to add more photos.`
-      );
+      toast.error(limitMessage);
       openSubscription();
       return;
     }
 
     if (!file.type.startsWith('image/')) {
       toast.error('Please select an image file');
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error('Portfolio images must be 8 MB or smaller.');
       return;
     }
 
@@ -66,10 +72,11 @@ export const PortfolioTab = ({ vendor, planDetails, onSaved }) => {
     } catch (err) {
       const detail = err?.response?.data?.detail || '';
 
-      if (String(detail).startsWith('PHOTO_LIMIT')) {
-        toast.error(
-          `Photo limit reached for your plan (${limit}). This feature expands on PRO/PREMIUM.`
-        );
+      if (
+        String(detail).startsWith('PHOTO_LIMIT') ||
+        (err?.response?.status === 403 && /portfolio limit/i.test(String(detail)))
+      ) {
+        toast.error(limitMessage);
         openSubscription();
       } else {
         toast.error(
@@ -135,9 +142,7 @@ export const PortfolioTab = ({ vendor, planDetails, onSaved }) => {
           data-testid="portfolio-upload-btn"
           onClick={() => {
             if (atLimit) {
-              toast.error(
-                `Photo limit reached for your plan (${limit}). Upgrade to add more photos.`
-              );
+              toast.error(limitMessage);
               openSubscription();
               return;
             }
