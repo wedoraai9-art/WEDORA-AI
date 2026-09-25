@@ -2123,7 +2123,9 @@ async def vendor_get_wedding_elements_summary(
         status = str(item.get("status", "planned")).lower()
         if status in {"ordered", "received", "installed", "completed"}:
             ordered += 1
-        if status not in {"completed"}:
+        # Pending means the element has not been ordered yet.
+        # Ordered, received, installed and completed are no longer pending.
+        if status not in {"ordered", "received", "installed", "completed"}:
             pending += 1
 
         calculated = _element_calculated_cost(item)
