@@ -303,7 +303,11 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
 
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [taskTitle, setTaskTitle] = useState("");
+  const [taskDueDate, setTaskDueDate] = useState("");
   const [tasks, setTasks] = useState([]);
+  const [tasksLoading, setTasksLoading] = useState(false);
+  const [taskSaving, setTaskSaving] = useState(false);
+  const [taskUpdatingId, setTaskUpdatingId] = useState(null);
   const [clients, setClients] = useState([]);
   const [showClientForm, setShowClientForm] = useState(false);
   const [clientName, setClientName] = useState("");
@@ -313,7 +317,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
   const [clientNotes, setClientNotes] = useState("");
   const [savingClient, setSavingClient] = useState(false);
   const [editingClientId, setEditingClientId] = useState(null);
-  const [editingTaskIndex, setEditingTaskIndex] = useState(null);
+  const [editingTaskId, setEditingTaskId] = useState(null);
 
   const [budgetData, setBudgetData] = useState({
     budget: {
@@ -421,7 +425,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
 
 
   const getWeddingAiSessionId = () =>
-    `vendor-wedding-ai-${vendor?.id || vendor?._id || user?.id || 'vendor'}`;
+    `vendor-wedding-ai-${vendor?.id || vendor?._id || 'vendor'}`;
 
   const getWeddingAiContext = () => {
     const weddingDetails = [
@@ -530,6 +534,8 @@ ${message}`;
 
   useEffect(() => {
     if (wedding?.id) {
+      setTasks([]);
+      loadTasks();
       loadClients();
       loadBudget();
       loadDocuments();
@@ -558,6 +564,90 @@ ${message}`;
       setClients(response.data.clients || []);
     } catch (error) {
       console.error("Failed to load clients:", error);
+    }
+  };
+
+  const loadTasks = async () => {
+    if (!wedding?.id) return;
+    setTasksLoading(true);
+    try {
+      const response = await authAxios.get(
+        `/vendor/weddings/${wedding.id}/tasks`
+      );
+      setTasks(Array.isArray(response.data?.tasks) ? response.data.tasks : []);
+    } catch (error) {
+      console.error("Failed to load wedding tasks:", error);
+      setTasks([]);
+    } finally {
+      setTasksLoading(false);
+    }
+  };
+
+  const resetTaskForm = () => {
+    setTaskTitle("");
+    setTaskDueDate("");
+    setEditingTaskId(null);
+    setShowTaskForm(false);
+  };
+
+  const saveTask = async () => {
+    const title = taskTitle.trim();
+    if (!title || taskSaving || !wedding?.id) return;
+
+    setTaskSaving(true);
+    try {
+      const payload = { title, due_date: taskDueDate };
+      if (editingTaskId) {
+        await authAxios.patch(
+          `/vendor/weddings/${wedding.id}/tasks/${editingTaskId}`,
+          payload
+        );
+      } else {
+        await authAxios.post(
+          `/vendor/weddings/${wedding.id}/tasks`,
+          { ...payload, completed: false }
+        );
+      }
+      resetTaskForm();
+      await loadTasks();
+    } catch (error) {
+      console.error("Failed to save wedding task:", error);
+      window.alert(error.response?.data?.detail || "Could not save task.");
+    } finally {
+      setTaskSaving(false);
+    }
+  };
+
+  const toggleTask = async (task) => {
+    if (!task?.id || taskUpdatingId) return;
+    setTaskUpdatingId(task.id);
+    try {
+      await authAxios.patch(
+        `/vendor/weddings/${wedding.id}/tasks/${task.id}`,
+        { completed: !task.completed }
+      );
+      await loadTasks();
+    } catch (error) {
+      console.error("Failed to update wedding task:", error);
+      window.alert(error.response?.data?.detail || "Could not update task.");
+    } finally {
+      setTaskUpdatingId(null);
+    }
+  };
+
+  const deleteTask = async (task) => {
+    if (!task?.id || !window.confirm("Delete this task?")) return;
+    setTaskUpdatingId(task.id);
+    try {
+      await authAxios.delete(
+        `/vendor/weddings/${wedding.id}/tasks/${task.id}`
+      );
+      await loadTasks();
+    } catch (error) {
+      console.error("Failed to delete wedding task:", error);
+      window.alert(error.response?.data?.detail || "Could not delete task.");
+    } finally {
+      setTaskUpdatingId(null);
     }
   };
 
@@ -1837,7 +1927,10 @@ ${message}`;
 
                     <button
                       type="button"
-                      onClick={() => setShowTaskForm(true)}
+                      onClick={() => {
+                        resetTaskForm();
+                        setShowTaskForm(true);
+                      }}
                       className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadcf5]"
                     >
                       + Add Task
@@ -1847,7 +1940,9 @@ ${message}`;
 
                 {showTaskForm && (
                   <div className="mb-5 rounded-xl border border-[#eadff2] bg-white p-5">
-                    <p className="text-sm font-medium text-[#3F3748] mb-2">New Task</p>
+                    <p className="text-sm font-medium text-[#3F3748] mb-2">
+                      {editingTaskId ? "Edit Task" : "New Task"}
+                    </p>
                     <input
                       type="text"
                       value={taskTitle}
@@ -1855,33 +1950,31 @@ ${message}`;
                       placeholder="Enter task name"
                       className="w-full rounded-xl border border-[#eadff2] bg-[#faf7ff] px-4 py-3 text-sm text-[#3F3748] outline-none focus:border-[#c9a9df]"
                     />
+                    <label className="block mt-3 text-xs text-[#8B8194]">
+                      Due date
+                      <input
+                        type="date"
+                        value={taskDueDate}
+                        onChange={(e) => setTaskDueDate(e.target.value)}
+                        className="input mt-1"
+                      />
+                    </label>
                     <div className="flex gap-2 mt-3">
                       <button
                         type="button"
-                        onClick={() => {
-                          if (!taskTitle.trim()) return;
-                          if (editingTaskIndex !== null) {
-                            setTasks(
-                              tasks.map((item, index) =>
-                                index === editingTaskIndex
-                                  ? { ...item, title: taskTitle }
-                                  : item
-                              )
-                            );
-                            setEditingTaskIndex(null);
-                          } else {
-                            setTasks([...tasks, { title: taskTitle, completed: false }]);
-                          }
-                          setTaskTitle("");
-                          setShowTaskForm(false);
-                        }}
-                        className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8]"
+                        onClick={saveTask}
+                        disabled={taskSaving || !taskTitle.trim()}
+                        className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] disabled:opacity-60"
                       >
-                        {editingTaskIndex !== null ? "Update Task" : "Save Task"}
+                        {taskSaving
+                          ? "Saving..."
+                          : editingTaskId
+                          ? "Update Task"
+                          : "Save Task"}
                       </button>
                       <button
                         type="button"
-                        onClick={() => setShowTaskForm(false)}
+                        onClick={resetTaskForm}
                         className="rounded-xl px-4 py-2 text-sm text-[#8B8194]"
                       >
                         Cancel
@@ -1890,24 +1983,24 @@ ${message}`;
                   </div>
                 )}
 
-                {tasks.length > 0 && (
+                {tasksLoading ? (
+                  <div className="mb-5 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5 text-sm text-[#8B8194]">
+                    Loading tasks...
+                  </div>
+                ) : tasks.length > 0 ? (
                   <div className="mb-5 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
                     <p className="text-sm text-[#8B8194]">Your Tasks</p>
                     <div className="mt-3 space-y-2">
-                      {tasks.map((task, index) => (
+                      {tasks.map((task) => (
                         <div
-                          key={index}
+                          key={task.id}
                           className="flex items-center gap-3 rounded-lg border border-[#eadff2] bg-white px-4 py-3"
                         >
                           <button
                             type="button"
-                            onClick={() => {
-                              setTasks(
-                                tasks.map((item, i) =>
-                                  i === index ? { ...item, completed: !item.completed } : item
-                                )
-                              );
-                            }}
+                            onClick={() => toggleTask(task)}
+                            disabled={taskUpdatingId === task.id}
+                            aria-label={task.completed ? "Mark task incomplete" : "Mark task complete"}
                             className={`w-5 h-5 rounded-md border flex items-center justify-center ${
                               task.completed
                                 ? "bg-[#8B6AA8] border-[#8B6AA8] text-white"
@@ -1919,20 +2012,40 @@ ${message}`;
                           <span className={`text-sm ${task.completed ? "text-[#9B91A3] line-through" : "text-[#3F3748]"}`}>
                             {task.title}
                           </span>
+                          {task.due_date && (
+                            <span className="text-xs text-[#8B8194]">
+                              Due {formatDate(task.due_date)}
+                            </span>
+                          )}
                           <button
                             type="button"
                             onClick={() => {
-                              setEditingTaskIndex(index);
+                              setEditingTaskId(task.id);
                               setTaskTitle(task.title);
+                              setTaskDueDate(task.due_date || "");
                               setShowTaskForm(true);
                             }}
-                            className="ml-auto rounded-lg bg-[#f4eafa] px-3 py-1 text-sm text-[#8B6AA8]"
+                            disabled={taskUpdatingId === task.id}
+                            className="ml-auto rounded-lg bg-[#f4eafa] px-3 py-1 text-sm text-[#8B6AA8] disabled:opacity-60"
                           >
                             Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteTask(task)}
+                            disabled={taskUpdatingId === task.id}
+                            aria-label={`Delete task: ${task.title}`}
+                            className="rounded-lg bg-[#fff1f4] px-3 py-1 text-sm text-red-400 disabled:opacity-60"
+                          >
+                            <Trash2 className="inline w-3.5 h-3.5" />
                           </button>
                         </div>
                       ))}
                     </div>
+                  </div>
+                ) : (
+                  <div className="mb-5 rounded-xl border border-dashed border-[#eadff2] bg-[#faf7ff] p-6 text-center text-sm text-[#8B8194]">
+                    No tasks yet. Add a task and due date to track it here.
                   </div>
                 )}
               </>
