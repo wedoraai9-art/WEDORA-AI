@@ -22,6 +22,9 @@ from html.parser import HTMLParser
 from urllib.parse import urlparse
 import ipaddress
 import asyncio
+import hashlib
+import smtplib
+from email.message import EmailMessage
 
 from google import genai
 
@@ -496,6 +499,198 @@ async def auth_me(authorization: str = Header(None)):
         "user": user
     }
 
+
+# ================= PASSWORD RESET =================
+PASSWORD_RESET_TTL_MINUTES = int(os.environ.get("PASSWORD_RESET_TTL_MINUTES", "30"))
+FRONTEND_URL = (
+    os.environ.get("FRONTEND_URL", "https://wedora-ai.wedoraai9.workers.dev")
+    .strip()
+    .rstrip("/")
+)
+SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "").strip()
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+EMAIL_FROM = (os.environ.get("EMAIL_FROM") or SMTP_USERNAME).strip()
+
+
+class ForgotPasswordIn(BaseModel):
+    email: str
+
+
+class ResetPasswordIn(BaseModel):
+    token: str
+    new_password: str
+
+
+def _hash_reset_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _smtp_configured() -> bool:
+    return bool(SMTP_HOST and SMTP_USERNAME and SMTP_PASSWORD and EMAIL_FROM)
+
+
+def _send_password_reset_email_sync(to_email: str, reset_url: str) -> None:
+    message = EmailMessage()
+    message["Subject"] = "Reset your WEDORA AI password"
+    message["From"] = EMAIL_FROM
+    message["To"] = to_email
+    message.set_content(
+        "WEDORA AI password reset\n\n"
+        "We received a request to reset your WEDORA AI password.\n\n"
+        f"Use this link within {PASSWORD_RESET_TTL_MINUTES} minutes:\n{reset_url}\n\n"
+        "If you did not request this, you can safely ignore this email.\n"
+        "This link can only be used once."
+    )
+    message.add_alternative(
+        f"""
+        <html>
+          <body style=\"font-family:Arial,sans-serif;color:#2D2638;line-height:1.6;\">
+            <h2 style=\"margin-bottom:8px;\">Reset your WEDORA AI password</h2>
+            <p>We received a request to reset your WEDORA AI password.</p>
+            <p>This link expires in <strong>{PASSWORD_RESET_TTL_MINUTES} minutes</strong> and can only be used once.</p>
+            <p>
+              <a href=\"{html_escape(reset_url)}\" style=\"display:inline-block;padding:12px 20px;border-radius:10px;background:#2D2638;color:#ffffff;text-decoration:none;\">
+                Reset Password
+              </a>
+            </p>
+            <p>If the button does not work, copy and open this link:</p>
+            <p>{html_escape(reset_url)}</p>
+            <p>If you did not request this, you can safely ignore this email.</p>
+          </body>
+        </html>
+        """,
+        subtype="html",
+    )
+
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as smtp:
+        smtp.ehlo()
+        smtp.starttls()
+        smtp.ehlo()
+        smtp.login(SMTP_USERNAME, SMTP_PASSWORD)
+        smtp.send_message(message)
+
+
+@api_router.post("/auth/forgot-password")
+async def auth_forgot_password(payload: ForgotPasswordIn):
+    email = payload.email.strip().lower()
+
+    # Always return the same response so the endpoint does not reveal whether
+    # an account exists for a given email address.
+    generic_response = {
+        "message": "If an account exists for this email, a password reset link has been sent."
+    }
+
+    if not email:
+        return generic_response
+
+    user = await db.users.find_one({"email": email}, {"_id": 0, "id": 1, "email": 1, "name": 1})
+    if not user:
+        return generic_response
+
+    raw_token = secrets.token_urlsafe(32)
+    token_hash = _hash_reset_token(raw_token)
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(minutes=PASSWORD_RESET_TTL_MINUTES)
+
+    # Invalidate any previous unused reset links for this account.
+    await db.password_reset_tokens.update_many(
+        {"user_id": user["id"], "used_at": None},
+        {"$set": {"used_at": now.isoformat(), "invalidated_at": now.isoformat()}},
+    )
+
+    reset_doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "email": email,
+        "token_hash": token_hash,
+        "created_at": now.isoformat(),
+        "expires_at": expires_at.isoformat(),
+        "used_at": None,
+    }
+    await db.password_reset_tokens.insert_one(reset_doc)
+
+    reset_url = f"{FRONTEND_URL}/vendor/auth?mode=reset&token={raw_token}"
+
+    if not _smtp_configured():
+        logging.warning(
+            "Password reset token created for %s, but SMTP is not configured. "
+            "Set SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD and EMAIL_FROM.",
+            email,
+        )
+        return generic_response
+
+    try:
+        await asyncio.to_thread(_send_password_reset_email_sync, email, reset_url)
+    except Exception:
+        # Do not expose SMTP/account details to the requester. The token remains
+        # valid until expiry, so a transient mail failure can be retried.
+        logging.exception("Password reset email delivery failed")
+
+    return generic_response
+
+
+@api_router.post("/auth/reset-password")
+async def auth_reset_password(payload: ResetPasswordIn):
+    token = payload.token.strip()
+    new_password = payload.new_password
+
+    if not token:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    if len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
+
+    token_hash = _hash_reset_token(token)
+    now = datetime.now(timezone.utc)
+
+    reset_doc = await db.password_reset_tokens.find_one(
+        {
+            "token_hash": token_hash,
+            "used_at": None,
+        },
+        {"_id": 0},
+    )
+
+    if not reset_doc:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    try:
+        expires_at = datetime.fromisoformat(str(reset_doc.get("expires_at", "")).replace("Z", "+00:00"))
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    if expires_at <= now:
+        await db.password_reset_tokens.update_one(
+            {"id": reset_doc["id"]},
+            {"$set": {"used_at": now.isoformat(), "expired_at": now.isoformat()}},
+        )
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    user_id = reset_doc.get("user_id")
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "id": 1})
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    password_hash = hash_password(new_password)
+
+    result = await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"password_hash": password_hash, "updated_at": now.isoformat()}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    # Mark this token used and invalidate every other outstanding reset link.
+    await db.password_reset_tokens.update_many(
+        {"user_id": user_id, "used_at": None},
+        {"$set": {"used_at": now.isoformat(), "invalidated_at": now.isoformat()}},
+    )
+
+    return {"message": "Password reset successful. You can now sign in with your new password."}
 
 
 # ================= VENDOR SYSTEM =================
