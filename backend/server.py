@@ -663,6 +663,7 @@ class WeddingElementIn(BaseModel):
     function: Optional[str] = "All Functions"
     status: Optional[str] = "planned"
     pricing_type: Optional[str] = "manual"
+    sourcing_type: Optional[str] = "unspecified"
     rate: float = 0
     estimated_cost: float = 0
     actual_cost: float = 0
@@ -682,6 +683,7 @@ class WeddingElementUpdateIn(BaseModel):
     function: Optional[str] = None
     status: Optional[str] = None
     pricing_type: Optional[str] = None
+    sourcing_type: Optional[str] = None
     rate: Optional[float] = None
     estimated_cost: Optional[float] = None
     actual_cost: Optional[float] = None
@@ -1883,6 +1885,7 @@ def _element_response(element: dict, wedding_id: str, vendor_id: str) -> dict:
         "function": element.get("function", "All Functions"),
         "status": element.get("status", "planned"),
         "pricing_type": element.get("pricing_type", "manual"),
+        "sourcing_type": element.get("sourcing_type", "unspecified"),
         "rate": element.get("rate", 0),
         "estimated_cost": calculated["estimated_cost"],
         "actual_cost": calculated["actual_cost"],
@@ -1951,6 +1954,10 @@ async def vendor_create_wedding_element(
     actual_cost = max(0.0, float(payload.actual_cost or 0))
 
     category = (payload.category or "General").strip() or "General"
+    sourcing_type = (payload.sourcing_type or "unspecified").strip().lower()
+    if sourcing_type not in {"unspecified", "rent", "purchase", "own_inventory", "client_provided", "vendor_included"}:
+        raise HTTPException(status_code=400, detail="Invalid sourcing type")
+
     unit = (payload.unit or "pcs").strip() or "pcs"
     dimensions = (payload.dimensions or "").strip()
     dimension_unit = (payload.dimension_unit or "ft").strip().lower() or "ft"
@@ -2046,6 +2053,12 @@ async def vendor_update_wedding_element(
 
     if "pricing_type" in data:
         updates["pricing_type"] = _validate_pricing_type(data["pricing_type"])
+
+    if "sourcing_type" in data:
+        sourcing_type = (data["sourcing_type"] or "unspecified").strip().lower()
+        if sourcing_type not in {"unspecified", "rent", "purchase", "own_inventory", "client_provided", "vendor_included"}:
+            raise HTTPException(status_code=400, detail="Invalid sourcing type")
+        updates["sourcing_type"] = sourcing_type
 
     if "rate" in data:
         updates["rate"] = max(0.0, float(data["rate"] or 0))
