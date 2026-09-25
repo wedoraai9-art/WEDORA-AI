@@ -9,19 +9,14 @@ export const PLANS_UI = [
     cta: 'Start Free', highlight: false,
   },
   {
-    id: 'pro', name: 'PRO', price: '₹999', per: '/month',
-    features: ['Featured profile', '30 photos', 'Portfolio', 'Lead notifications', 'Analytics', 'Enhanced profile', 'WhatsApp inquiry button'],
-    cta: 'Choose Pro', highlight: false,
-  },
-  {
-    id: 'premium', name: 'PREMIUM', price: '₹2,999', per: '/month',
-    features: ['Featured placement', 'AI-generated business profile', 'Priority lead notifications', 'WhatsApp integration', 'Advanced analytics', 'Unlimited portfolio', 'Premium badge'],
-    cta: 'Choose Premium', highlight: true,
+    id: 'pro', name: 'PRO', price: '₹599', per: '/month', annualPrice: '₹5,999/year',
+    features: ['Featured profile', 'Unlimited portfolio', 'Client lead access and management', 'Priority lead notifications', 'Analytics', 'AI business profile assistant', 'WhatsApp integration', 'PRO vendor badge'],
+    cta: 'Choose Pro', highlight: true,
   },
 ];
 
 export const PricingCards = ({ onChoose, compact = false }) => (
-  <div className={`grid grid-cols-1 md:grid-cols-3 gap-5 ${compact ? '' : 'max-w-6xl mx-auto'}`}>
+  <div className={`grid grid-cols-1 md:grid-cols-2 gap-5 ${compact ? '' : 'max-w-4xl mx-auto'}`}>
     {PLANS_UI.map((p) => (
       <div
         key={p.id}
@@ -38,6 +33,7 @@ export const PricingCards = ({ onChoose, compact = false }) => (
           <span className="font-display text-4xl text-[#2D2638]">{p.price}</span>
           <span className="text-sm text-[#988FA6]">{p.per}</span>
         </p>
+        {p.annualPrice && <p className="mt-1 text-sm text-[#6B617A]">or {p.annualPrice}</p>}
         <ul className="mt-5 space-y-2.5 flex-1">
           {p.features.map((f) => (
             <li key={f} className="flex items-start gap-2.5 text-sm text-[#4a4257]">
@@ -97,7 +93,7 @@ const VendorLanding = () => {
           </h2>
         </div>
         <PricingCards onChoose={(plan) => navigate(`/vendor/auth?mode=register&plan=${plan}`)} />
-        <p className="text-center text-xs text-[#988FA6] mt-6">DEMO MODE — no payment is collected during testing. Plans can be switched instantly.</p>
+        <p className="text-center text-xs text-[#988FA6] mt-6">PRO features activate after payment is verified.</p>
       </section>
     </div>
   );
