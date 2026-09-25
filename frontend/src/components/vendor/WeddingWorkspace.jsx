@@ -14,6 +14,9 @@ import {
   Trash2,
   Edit3,
   Download,
+  Mail,
+  Phone,
+  MessageCircle,
 } from 'lucide-react';
 import { authAxios } from '../../lib/auth';
 
@@ -309,14 +312,25 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
   const [taskSaving, setTaskSaving] = useState(false);
   const [taskUpdatingId, setTaskUpdatingId] = useState(null);
   const [clients, setClients] = useState([]);
+  const [availableWeddings, setAvailableWeddings] = useState([]);
+  const [clientsLoading, setClientsLoading] = useState(false);
   const [showClientForm, setShowClientForm] = useState(false);
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
+  const [clientWhatsapp, setClientWhatsapp] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [clientRelation, setClientRelation] = useState("");
   const [clientNotes, setClientNotes] = useState("");
+  const [clientStatus, setClientStatus] = useState("Lead");
+  const [clientFollowUpDate, setClientFollowUpDate] = useState("");
+  const [clientWeddingIds, setClientWeddingIds] = useState([]);
   const [savingClient, setSavingClient] = useState(false);
   const [editingClientId, setEditingClientId] = useState(null);
+  const [communicationDrafts, setCommunicationDrafts] = useState({});
+  const [savingCommunicationId, setSavingCommunicationId] = useState(null);
+  const [clientHistory, setClientHistory] = useState({});
+  const [clientHistoryLoadingId, setClientHistoryLoadingId] = useState(null);
+  const [expandedClientHistoryId, setExpandedClientHistoryId] = useState(null);
   const [editingTaskId, setEditingTaskId] = useState(null);
 
   const [budgetData, setBudgetData] = useState({
@@ -537,6 +551,7 @@ ${message}`;
       setTasks([]);
       loadTasks();
       loadClients();
+      loadAvailableWeddings();
       loadBudget();
       loadDocuments();
       loadNotifications();
@@ -557,13 +572,26 @@ ${message}`;
   }
 
   const loadClients = async () => {
+    setClientsLoading(true);
     try {
-      const response = await authAxios.get(
-        `/vendor/weddings/${wedding.id}/clients`
-      );
-      setClients(response.data.clients || []);
+      const response = await authAxios.get('/vendor/clients');
+      setClients(Array.isArray(response.data?.clients) ? response.data.clients : []);
     } catch (error) {
       console.error("Failed to load clients:", error);
+      setClients([]);
+    } finally {
+      setClientsLoading(false);
+    }
+  };
+
+  const loadAvailableWeddings = async () => {
+    try {
+      const response = await authAxios.get('/vendor/weddings');
+      const loaded = Array.isArray(response.data?.weddings) ? response.data.weddings : [];
+      setAvailableWeddings(loaded);
+    } catch (error) {
+      console.error('Failed to load wedding list for client CRM:', error);
+      setAvailableWeddings(wedding ? [wedding] : []);
     }
   };
 
@@ -1541,13 +1569,19 @@ ${message}`;
 
     try {
       await authAxios.post(
-        `/vendor/weddings/${wedding.id}/clients`,
+        '/vendor/clients',
         {
           name: clientName.trim(),
           phone: clientPhone,
+          whatsapp: clientWhatsapp,
           email: clientEmail,
           relation: clientRelation,
           notes: clientNotes,
+          status: clientStatus,
+          follow_up_date: clientFollowUpDate,
+          wedding_ids: clientWeddingIds.includes(wedding.id)
+            ? clientWeddingIds
+            : [...clientWeddingIds, wedding.id],
         }
       );
 
@@ -1555,6 +1589,7 @@ ${message}`;
       await loadClients();
     } catch (error) {
       console.error("Failed to save client:", error);
+      window.alert(error.response?.data?.detail || "Could not save client.");
     } finally {
       setSavingClient(false);
     }
@@ -1567,13 +1602,19 @@ ${message}`;
 
     try {
       await authAxios.put(
-        `/vendor/weddings/${wedding.id}/clients/${editingClientId}`,
+        `/vendor/clients/${editingClientId}`,
         {
           name: clientName.trim(),
           phone: clientPhone,
+          whatsapp: clientWhatsapp,
           email: clientEmail,
           relation: clientRelation,
           notes: clientNotes,
+          status: clientStatus,
+          follow_up_date: clientFollowUpDate,
+          wedding_ids: clientWeddingIds.includes(wedding.id)
+            ? clientWeddingIds
+            : [...clientWeddingIds, wedding.id],
         }
       );
 
@@ -1581,19 +1622,92 @@ ${message}`;
       await loadClients();
     } catch (error) {
       console.error("Failed to update client:", error);
+      window.alert(error.response?.data?.detail || "Could not update client.");
     } finally {
       setSavingClient(false);
+    }
+  };
+
+  const updateClientStatus = async (clientId, status) => {
+    try {
+      await authAxios.put(`/vendor/clients/${clientId}`, { status });
+      await loadClients();
+    } catch (error) {
+      console.error('Failed to update client status:', error);
+      window.alert(error.response?.data?.detail || 'Could not update client status.');
     }
   };
 
   const resetClientForm = () => {
     setClientName("");
     setClientPhone("");
+    setClientWhatsapp("");
     setClientEmail("");
     setClientRelation("");
     setClientNotes("");
+    setClientStatus("Lead");
+    setClientFollowUpDate("");
+    setClientWeddingIds(wedding?.id ? [wedding.id] : []);
     setEditingClientId(null);
     setShowClientForm(false);
+  };
+
+  const loadClientHistory = async (clientId) => {
+    setClientHistoryLoadingId(clientId);
+    try {
+      const response = await authAxios.get(`/vendor/clients/${clientId}/history`);
+      setClientHistory((current) => ({
+        ...current,
+        [clientId]: {
+          documents: Array.isArray(response.data?.documents) ? response.data.documents : [],
+          payments: Array.isArray(response.data?.payments) ? response.data.payments : [],
+        },
+      }));
+    } catch (error) {
+      console.error('Failed to load client documents and payment history:', error);
+      window.alert(error.response?.data?.detail || 'Could not load client history.');
+    } finally {
+      setClientHistoryLoadingId(null);
+    }
+  };
+
+  const toggleClientHistory = async (clientId) => {
+    if (expandedClientHistoryId === clientId) {
+      setExpandedClientHistoryId(null);
+      return;
+    }
+    setExpandedClientHistoryId(clientId);
+    if (!clientHistory[clientId]) await loadClientHistory(clientId);
+  };
+
+  const updateCommunicationDraft = (clientId, field, value) => {
+    setCommunicationDrafts((current) => ({
+      ...current,
+      [clientId]: { channel: 'Note', message: '', ...(current[clientId] || {}), [field]: value },
+    }));
+  };
+
+  const saveClientCommunication = async (clientId) => {
+    const draft = communicationDrafts[clientId] || {};
+    if (!String(draft.message || '').trim() || savingCommunicationId) return;
+    setSavingCommunicationId(clientId);
+    try {
+      const response = await authAxios.post(
+        `/vendor/clients/${clientId}/communications`,
+        { channel: draft.channel || 'Note', message: draft.message.trim() }
+      );
+      setClients((current) => current.map((client) =>
+        client.id === clientId
+          ? { ...client, communications: [response.data, ...(client.communications || [])] }
+          : client
+      ));
+      setCommunicationDrafts((current) => ({ ...current, [clientId]: { channel: 'Note', message: '' } }));
+    } catch (error) {
+      console.error('Failed to save client communication:', error);
+      window.alert(error.response?.data?.detail || 'Could not save communication note.');
+    } finally {
+      setSavingCommunicationId(null);
+    }
   };
 
   const resetExpenseForm = () => {
@@ -2051,79 +2165,169 @@ ${message}`;
               </>
             )}
 
-            {/* CLIENTS MODULE */}
+            {/* CLIENT CRM MODULE */}
             {activeModule === "Clients" && (
               <div className="mt-4 mb-5 rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
-                    <p className="text-sm text-[#8B8194]">Client Management</p>
-                    <h4 className="text-lg font-semibold text-[#3F3748] mt-1">
-                      Wedding Clients
-                    </h4>
+                    <p className="text-sm text-[#8B8194]">Client CRM</p>
+                    <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Client Book</h4>
                     <p className="text-sm text-[#6B6175] mt-1">
-                      Manage client details and communication for this wedding.
+                      Keep each client’s contact details, follow-ups, conversation notes and linked weddings together.
                     </p>
                   </div>
-
                   <button
                     type="button"
-                    onClick={() => {
-                      resetClientForm();
-                      setShowClientForm(true);
-                    }}
-                    className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadff5]"
+                    onClick={() => { resetClientForm(); setShowClientForm(true); }}
+                    className="shrink-0 rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadff5]"
                   >
-                    + Add Client
+                    <Plus className="inline w-4 h-4 mr-1" /> Add Client
                   </button>
                 </div>
 
                 {showClientForm && (
                   <div className="mt-5 rounded-xl border border-[#eadff2] bg-white p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Client Name *" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
-                      <input value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} placeholder="Phone" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
-                      <input value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} placeholder="Email" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
+                    <h5 className="font-medium text-[#3F3748] mb-3">{editingClientId ? 'Edit client profile' : 'New client profile'}</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Client name *" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
                       <input value={clientRelation} onChange={(e) => setClientRelation(e.target.value)} placeholder="Relation (Bride / Groom / Family)" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
-                      <textarea value={clientNotes} onChange={(e) => setClientNotes(e.target.value)} placeholder="Notes" rows="3" className="md:col-span-2 rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
+                      <input type="tel" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} placeholder="Phone number" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
+                      <input type="tel" value={clientWhatsapp} onChange={(e) => setClientWhatsapp(e.target.value)} placeholder="WhatsApp number (with country code)" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
+                      <input type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} placeholder="Email address" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
+                      <select value={clientStatus} onChange={(e) => setClientStatus(e.target.value)} className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none">
+                        {['Lead', 'Discussion', 'Confirmed', 'Completed'].map((status) => <option key={status} value={status}>{status}</option>)}
+                      </select>
+                      <label className="text-xs text-[#8B8194]">Follow-up date<input type="date" value={clientFollowUpDate} onChange={(e) => setClientFollowUpDate(e.target.value)} className="mt-1 block w-full rounded-lg border border-[#eadff2] px-3 py-2 text-sm text-[#3F3748] outline-none" /></label>
+                      <div className="md:col-span-2">
+                        <p className="text-xs text-[#8B8194] mb-2">Link this client to weddings or events</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-lg border border-[#eadff2] bg-[#fdfbff] p-3 max-h-40 overflow-y-auto">
+                          {(availableWeddings.length ? availableWeddings : [wedding]).map((event) => {
+                            const eventId = String(event.id || event._id || '');
+                            if (!eventId) return null;
+                            return (
+                              <label key={eventId} className="flex items-start gap-2 text-sm text-[#5b5266]">
+                                <input
+                                  type="checkbox"
+                                  checked={clientWeddingIds.includes(eventId)}
+                                  onChange={(e) => setClientWeddingIds((current) => e.target.checked
+                                    ? [...new Set([...current, eventId])]
+                                    : current.filter((id) => id !== eventId))}
+                                  className="mt-1 accent-[#8B6AA8]"
+                                />
+                                <span>{event.wedding_name || event.name || 'Wedding'}{(event.wedding_date || event.event_date) ? ` · ${formatDate(event.wedding_date || event.event_date)}` : ''}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                        <p className="text-[11px] text-[#9b91a5] mt-1">The current wedding is always linked to this client record.</p>
+                      </div>
+                      <textarea value={clientNotes} onChange={(e) => setClientNotes(e.target.value)} placeholder="Private notes, preferences or requirements" rows="3" className="md:col-span-2 rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
                     </div>
-
                     <div className="flex gap-2 mt-4">
-                      <button type="button" onClick={editingClientId ? updateClient : saveClient} disabled={savingClient} className="rounded-xl bg-[#8B6AA8] px-4 py-2 text-sm font-medium text-white disabled:opacity-60 disabled:cursor-not-allowed">
-                        {savingClient ? "Saving..." : editingClientId ? "Update Client" : "Save Client"}
+                      <button type="button" onClick={editingClientId ? updateClient : saveClient} disabled={savingClient || !clientName.trim()} className="rounded-xl bg-[#8B6AA8] px-4 py-2 text-sm font-medium text-white disabled:opacity-60 disabled:cursor-not-allowed">
+                        {savingClient ? 'Saving...' : editingClientId ? 'Update Client' : 'Save Client'}
                       </button>
-                      <button type="button" onClick={resetClientForm} className="rounded-xl px-4 py-2 text-sm text-[#8B8194]">
-                        Cancel
-                      </button>
+                      <button type="button" onClick={resetClientForm} className="rounded-xl px-4 py-2 text-sm text-[#8B8194]">Cancel</button>
                     </div>
                   </div>
                 )}
 
-                {clients.length > 0 && (
-                  <div className="mt-4 space-y-3">
-                    {clients.map((client) => (
-                      <div key={client.id} className="rounded-xl border border-[#eadff2] bg-white p-4">
-                        <p className="font-medium text-[#3F3748]">{client.name}</p>
-                        <div className="mt-1 text-sm text-[#6B6175] space-y-1">
-                          {client.phone && <p>Phone: {client.phone}</p>}
-                          {client.email && <p>Email: {client.email}</p>}
-                          {client.relation && <p>Relation: {client.relation}</p>}
-                          {client.notes && <p>Notes: {client.notes}</p>}
-                        </div>
-                        <div className="mt-3">
-                          <button type="button" onClick={() => {
-                            setEditingClientId(client.id);
-                            setClientName(client.name || "");
-                            setClientPhone(client.phone || "");
-                            setClientEmail(client.email || "");
-                            setClientRelation(client.relation || "");
-                            setClientNotes(client.notes || "");
-                            setShowClientForm(true);
-                          }} className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadff5]">
-                            Edit
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                {clientsLoading ? (
+                  <div className="mt-5 rounded-xl border border-[#eadff2] bg-white p-6 text-center text-sm text-[#8B8194]">Loading client book...</div>
+                ) : clients.length === 0 ? (
+                  <div className="mt-5 rounded-xl border border-dashed border-[#eadff2] bg-white p-6 text-center text-sm text-[#8B8194]">No clients saved yet. Add a client to start the CRM.</div>
+                ) : (
+                  <div className="mt-5 space-y-4">
+                    {clients.map((client) => {
+                      const clientEvents = Array.isArray(client.weddings) ? client.weddings : [];
+                      const conversations = Array.isArray(client.communications) ? client.communications : [];
+                      const draft = communicationDrafts[client.id] || { channel: 'Note', message: '' };
+                      const history = clientHistory[client.id];
+                      return (
+                        <article key={client.id} className="rounded-xl border border-[#eadff2] bg-white p-4 md:p-5">
+                          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h5 className="text-base font-semibold text-[#3F3748]">{client.name}</h5>
+                                {client.relation && <span className="text-xs text-[#8B8194]">{client.relation}</span>}
+                                <span className="rounded-full bg-[#f4eafa] px-2.5 py-1 text-xs text-[#76588f]">{client.status || 'Lead'}</span>
+                              </div>
+                              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-sm text-[#6B6175]">
+                                {client.phone && <a href={`tel:${client.phone}`} className="inline-flex items-center gap-1.5 hover:text-[#8B6AA8]"><Phone className="w-3.5 h-3.5" />{client.phone}</a>}
+                                {client.email && <a href={`mailto:${client.email}`} className="inline-flex items-center gap-1.5 hover:text-[#8B6AA8]"><Mail className="w-3.5 h-3.5" />{client.email}</a>}
+                                {client.whatsapp && <a href={`https://wa.me/${String(client.whatsapp).replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 hover:text-[#8B6AA8]"><MessageCircle className="w-3.5 h-3.5" />WhatsApp</a>}
+                              </div>
+                              {client.follow_up_date && <p className="mt-2 text-xs text-[#8B6AA8]">Follow up: {formatDate(client.follow_up_date)}</p>}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <select aria-label={`Update ${client.name} status`} value={client.status || 'Lead'} onChange={(e) => updateClientStatus(client.id, e.target.value)} className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-xs text-[#6B6175] outline-none">
+                                {['Lead', 'Discussion', 'Confirmed', 'Completed'].map((status) => <option key={status}>{status}</option>)}
+                              </select>
+                              <button type="button" onClick={() => {
+                                setEditingClientId(client.id);
+                                setClientName(client.name || '');
+                                setClientPhone(client.phone || '');
+                                setClientWhatsapp(client.whatsapp || '');
+                                setClientEmail(client.email || '');
+                                setClientRelation(client.relation || '');
+                                setClientNotes(client.notes || '');
+                                setClientStatus(client.status || 'Lead');
+                                setClientFollowUpDate(client.follow_up_date || '');
+                                setClientWeddingIds(client.wedding_ids || [wedding.id]);
+                                setShowClientForm(true);
+                              }} className="rounded-lg bg-[#f4eafa] px-3 py-2 text-sm text-[#8B6AA8]">Edit profile</button>
+                            </div>
+                          </div>
+
+                          {clientEvents.length > 0 && (
+                            <div className="mt-4">
+                              <p className="text-xs font-medium uppercase tracking-wide text-[#9a8da6]">Linked weddings / events</p>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {clientEvents.map((event) => <span key={event.id} className="rounded-full border border-[#eadff2] bg-[#fcf9ff] px-3 py-1.5 text-xs text-[#655a70]">{event.wedding_name}{event.wedding_date ? ` · ${formatDate(event.wedding_date)}` : ''}</span>)}
+                              </div>
+                            </div>
+                          )}
+                          {client.notes && <p className="mt-3 rounded-lg bg-[#faf7ff] px-3 py-2 text-sm text-[#6B6175]"><span className="font-medium text-[#5b5266]">Notes: </span>{client.notes}</p>}
+
+                          <div className="mt-4 border-t border-[#f0e8f5] pt-4">
+                            <p className="text-sm font-medium text-[#3F3748]">Communication history</p>
+                            <div className="mt-2 grid grid-cols-1 md:grid-cols-[150px_1fr_auto] gap-2">
+                              <select value={draft.channel || 'Note'} onChange={(e) => updateCommunicationDraft(client.id, 'channel', e.target.value)} className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm outline-none">
+                                {['Note', 'Phone', 'WhatsApp', 'Email', 'Meeting', 'Other'].map((channel) => <option key={channel}>{channel}</option>)}
+                              </select>
+                              <input value={draft.message || ''} onChange={(e) => updateCommunicationDraft(client.id, 'message', e.target.value)} placeholder="Log a call, message, meeting or client update" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm outline-none" />
+                              <button type="button" onClick={() => saveClientCommunication(client.id)} disabled={!String(draft.message || '').trim() || savingCommunicationId === client.id} className="rounded-lg bg-[#8B6AA8] px-3 py-2 text-sm text-white disabled:opacity-50">{savingCommunicationId === client.id ? 'Saving...' : 'Add note'}</button>
+                            </div>
+                            {conversations.length > 0 ? (
+                              <div className="mt-3 space-y-2">
+                                {conversations.slice(0, 5).map((entry) => <div key={entry.id} className="rounded-lg bg-[#fcf9ff] px-3 py-2"><p className="text-xs text-[#8B6AA8]">{entry.channel || 'Note'} · {entry.logged_at ? formatDate(entry.logged_at) : 'Date not set'}</p><p className="mt-1 text-sm text-[#5d5367] whitespace-pre-wrap">{entry.message}</p></div>)}
+                              </div>
+                            ) : <p className="mt-2 text-xs text-[#9b91a5]">No communication notes logged yet.</p>}
+                          </div>
+
+                          <div className="mt-4 border-t border-[#f0e8f5] pt-3">
+                            <button type="button" onClick={() => toggleClientHistory(client.id)} className="text-sm font-medium text-[#8B6AA8] hover:text-[#6B4F82]">
+                              {expandedClientHistoryId === client.id ? 'Hide' : 'Show'} linked documents & payment history
+                            </button>
+                            <p className="mt-1 text-xs text-[#9b91a5]">These records come from the client’s linked weddings.</p>
+                            {expandedClientHistoryId === client.id && (
+                              clientHistoryLoadingId === client.id ? <p className="mt-3 text-sm text-[#8B8194]">Loading history...</p> : (
+                                <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-3">
+                                  <div className="rounded-lg border border-[#eadff2] bg-[#fcf9ff] p-3">
+                                    <p className="text-sm font-medium text-[#3F3748]">Documents ({history?.documents?.length || 0})</p>
+                                    {history?.documents?.length ? <div className="mt-2 space-y-2">{history.documents.slice(0, 8).map((doc) => <div key={doc.id} className="text-xs text-[#6B6175]"><span className="font-medium">{doc.title || doc.file_name}</span><span className="block text-[#9b91a5]">{doc.wedding_name} · {doc.category || 'Document'}</span></div>)}</div> : <p className="mt-2 text-xs text-[#9b91a5]">No documents on the linked weddings.</p>}
+                                  </div>
+                                  <div className="rounded-lg border border-[#eadff2] bg-[#fcf9ff] p-3">
+                                    <p className="text-sm font-medium text-[#3F3748]">Payment history ({history?.payments?.length || 0})</p>
+                                    {history?.payments?.length ? <div className="mt-2 space-y-2">{history.payments.slice(0, 8).map((payment) => <div key={payment.id} className="flex items-start justify-between gap-3 text-xs text-[#6B6175]"><span><span className="font-medium">{payment.title}</span><span className="block text-[#9b91a5]">{payment.wedding_name} · {payment.payment_type}{payment.payment_date ? ` · ${formatDate(payment.payment_date)}` : ''}</span></span><span className="shrink-0 font-medium">{formatCurrency(payment.amount)}</span></div>)}</div> : <p className="mt-2 text-xs text-[#9b91a5]">No payments on the linked weddings.</p>}
+                                  </div>
+                                </div>
+                              )
+                            )}
+                          </div>
+                        </article>
+                      );
+                    })}
                   </div>
                 )}
               </div>
