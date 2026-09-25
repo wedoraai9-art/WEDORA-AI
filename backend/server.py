@@ -746,6 +746,7 @@ class VendorRegisterIn(BaseModel):
 class VendorUpdateIn(BaseModel):
     business_name: Optional[str] = None
     name: Optional[str] = None
+    contact_person: Optional[str] = None
     category: Optional[str] = None
     city: Optional[str] = None
     phone: Optional[str] = None
@@ -756,6 +757,9 @@ class VendorUpdateIn(BaseModel):
     description: Optional[str] = None
     about: Optional[str] = None
     address: Optional[str] = None
+    years_experience: Optional[int] = None
+    starting_price: Optional[float] = None
+    services: Optional[List[str]] = None
     logo: Optional[str] = None
     slug: Optional[str] = None
 
@@ -1059,6 +1063,13 @@ async def vendor_update(payload: VendorUpdateIn, authorization: str = Header(Non
     vendor = await _ensure_vendor_profile(user)
 
     updates = payload.model_dump(exclude_none=True)
+
+    if "services" in updates:
+        updates["services"] = [
+            str(service).strip()
+            for service in (updates["services"] or [])
+            if str(service).strip()
+        ][:30]
 
     if "business_name" in updates:
         updates["business_name"] = updates["business_name"].strip()
