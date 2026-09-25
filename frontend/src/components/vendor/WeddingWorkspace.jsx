@@ -3292,7 +3292,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                                   own_inventory: 'Own Inventory',
                                   client_provided: 'Client Provided',
                                   vendor_included: 'Vendor Included',
-                                }[element.sourcing_type || 'unspecified'] || 'Rent'}</span>
+                                }[element.sourcing_type || 'unspecified'] || 'Not Specified'}</span>
                                 <span className="rounded-full bg-[#faf7ff] border border-[#eadff2] px-2.5 py-1 text-xs text-[#8B8194] capitalize">{String(element.status || 'planned').replace('_', ' ')}</span>
                               </div>
 
@@ -3307,7 +3307,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
                                   own_inventory: 'Own Inventory',
                                   client_provided: 'Client Provided',
                                   vendor_included: 'Vendor Included',
-                                }[element.sourcing_type || 'unspecified'] || 'Rent'}</p>
+                                }[element.sourcing_type || 'unspecified'] || 'Not Specified'}</p>
                                 <p><span className="text-[#8B8194]">Estimated:</span> {formatElementCurrency(element.estimated_cost)}</p>
                                 <p><span className="text-[#8B8194]">Actual:</span> {formatElementCurrency(element.actual_cost)}</p>
                                 <p><span className="text-[#8B8194]">Difference:</span> {formatElementVariance(element.estimated_cost, element.actual_cost)}</p>
