@@ -118,6 +118,10 @@ class ChatMessageIn(BaseModel):
     session_id: Optional[str] = None
     message: str
 
+class VendorWeddingAIIn(BaseModel):
+    session_id: Optional[str] = None
+    message: str
+
 class ChatMessage(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     session_id: str
@@ -409,6 +413,104 @@ async def chat_history(session_id: str):
     ).sort("timestamp", 1).to_list(500)
     return {"session_id": session_id, "messages": msgs}
 
+
+# ================= PAID VENDOR WEDDING AI =================
+@api_router.post("/vendor/wedding-ai", response_model=dict)
+async def vendor_wedding_ai(payload: VendorWeddingAIIn, authorization: str = Header(None)):
+    user, vendor, plan = await require_paid_vendor_ai(authorization)
+
+    session_id = payload.session_id or f"vendor-wedding-ai-{vendor['id']}"
+    message = payload.message.strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Please enter a question.")
+
+    await db.chat_messages.insert_one(
+        ChatMessage(session_id=session_id, role="user", content=message).model_dump()
+    )
+
+    history = await db.chat_messages.find(
+        {"session_id": session_id}, {"_id": 0}
+    ).sort("timestamp", 1).to_list(200)
+
+    prior = history[:-1] if history and history[-1]["role"] == "user" else history
+    context_prefix = ""
+    if prior:
+        recent = prior[-8:]
+        lines = [
+            f"{'User' if item['role'] == 'user' else 'WEDORA'}: {item['content']}"
+            for item in recent
+        ]
+        context_prefix = "Prior conversation:\n" + "\n".join(lines) + "\n\nCurrent message:\n"
+
+    category = str(vendor.get("category") or "Wedding Vendor").strip()
+    business_name = str(vendor.get("business_name") or vendor.get("name") or "Vendor").strip()
+
+    vendor_ai_system = f"""
+You are WEDORA Wedding AI, a premium wedding-management assistant for subscribed WEDORA vendors.
+
+Current vendor:
+- Business: {business_name}
+- Vendor category: {category}
+- City: {vendor.get("city") or "Not specified"}
+
+You support ALL wedding vendor categories. Adapt your answer to the actual vendor category and never assume the vendor is a decorator.
+
+Examples:
+- Photographer / videographer: shot lists, coverage schedules, deliverables, client communication and timelines.
+- Decorator / decor company: concepts, decor requirements, sourcing, setup, execution and teardown.
+- Caterer: menus, service flow, guest counts, food quantities, staffing and operations.
+- Makeup artist / stylist: looks, schedules, artist allocation, timings and coordination.
+- Venue / resort / banquet: venue operations, guest flow, rooms, functions and coordination.
+- Planner / coordinator: timelines, tasks, vendor coordination, client communication and execution.
+- Entertainment / DJ / artist: performance schedules, technical requirements and event flow.
+- Florist, rental, production, lighting, sound, invitation, transport and other vendors: tailor the advice to their service.
+
+Use current wedding information supplied in the conversation as context.
+Do not invent facts. If information is missing, say what is missing.
+Give practical, concise answers suitable for running a real wedding business.
+"""
+    chat = LlmChat(session_id=session_id, system_message=vendor_ai_system)
+
+    try:
+        reply = await chat.send_message(
+            UserMessage(text=context_prefix + message)
+        )
+        reply_text = reply if isinstance(reply, str) else str(reply)
+    except Exception as e:
+        logging.exception("vendor wedding AI failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+    await db.chat_messages.insert_one(
+        ChatMessage(
+            session_id=session_id,
+            role="assistant",
+            content=reply_text,
+        ).model_dump()
+    )
+
+    return {
+        "session_id": session_id,
+        "reply": reply_text,
+        "plan": plan,
+        "vendor_category": category,
+    }
+
+
+@api_router.get("/vendor/wedding-ai/history/{session_id}")
+async def vendor_wedding_ai_history(session_id: str, authorization: str = Header(None)):
+    user, vendor, plan = await require_paid_vendor_ai(authorization)
+    expected_prefix = f"vendor-wedding-ai-{vendor['id']}"
+
+    if not session_id.startswith(expected_prefix):
+        raise HTTPException(status_code=403, detail="Invalid AI session.")
+
+    msgs = await db.chat_messages.find(
+        {"session_id": session_id}, {"_id": 0}
+    ).sort("timestamp", 1).to_list(500)
+
+    return {"session_id": session_id, "messages": msgs, "plan": plan}
+
+
 # ================= AUTH =================
 JWT_SECRET = os.environ.get("JWT_SECRET", "super-secret-key")
 JWT_ALG = "HS256"
@@ -663,7 +765,6 @@ class WeddingElementIn(BaseModel):
     function: Optional[str] = "All Functions"
     status: Optional[str] = "planned"
     pricing_type: Optional[str] = "manual"
-    sourcing_type: Optional[str] = "unspecified"
     rate: float = 0
     estimated_cost: float = 0
     actual_cost: float = 0
@@ -683,7 +784,6 @@ class WeddingElementUpdateIn(BaseModel):
     function: Optional[str] = None
     status: Optional[str] = None
     pricing_type: Optional[str] = None
-    sourcing_type: Optional[str] = None
     rate: Optional[float] = None
     estimated_cost: Optional[float] = None
     actual_cost: Optional[float] = None
@@ -757,6 +857,21 @@ async def _ensure_vendor_profile(user: dict):
 
     await db.vendors.insert_one(vendor.copy())
     return {k: v for k, v in vendor.items()}
+
+
+
+async def require_paid_vendor_ai(authorization: str = Header(None)):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    plan = str(vendor.get("plan") or user.get("plan") or "free").strip().lower()
+
+    if plan not in ("pro", "premium"):
+        raise HTTPException(
+            status_code=403,
+            detail="Wedding AI Assistant is available only on WEDORA PRO and PREMIUM plans."
+        )
+
+    return user, vendor, plan
 
 
 def _profile_completion(vendor: dict) -> int:
@@ -1885,7 +2000,6 @@ def _element_response(element: dict, wedding_id: str, vendor_id: str) -> dict:
         "function": element.get("function", "All Functions"),
         "status": element.get("status", "planned"),
         "pricing_type": element.get("pricing_type", "manual"),
-        "sourcing_type": element.get("sourcing_type", "unspecified"),
         "rate": element.get("rate", 0),
         "estimated_cost": calculated["estimated_cost"],
         "actual_cost": calculated["actual_cost"],
@@ -1954,10 +2068,6 @@ async def vendor_create_wedding_element(
     actual_cost = max(0.0, float(payload.actual_cost or 0))
 
     category = (payload.category or "General").strip() or "General"
-    sourcing_type = (payload.sourcing_type or "unspecified").strip().lower()
-    if sourcing_type not in {"unspecified", "rent", "purchase", "own_inventory", "client_provided", "vendor_included"}:
-        raise HTTPException(status_code=400, detail="Invalid sourcing type")
-
     unit = (payload.unit or "pcs").strip() or "pcs"
     dimensions = (payload.dimensions or "").strip()
     dimension_unit = (payload.dimension_unit or "ft").strip().lower() or "ft"
@@ -2053,12 +2163,6 @@ async def vendor_update_wedding_element(
 
     if "pricing_type" in data:
         updates["pricing_type"] = _validate_pricing_type(data["pricing_type"])
-
-    if "sourcing_type" in data:
-        sourcing_type = (data["sourcing_type"] or "unspecified").strip().lower()
-        if sourcing_type not in {"unspecified", "rent", "purchase", "own_inventory", "client_provided", "vendor_included"}:
-            raise HTTPException(status_code=400, detail="Invalid sourcing type")
-        updates["sourcing_type"] = sourcing_type
 
     if "rate" in data:
         updates["rate"] = max(0.0, float(data["rate"] or 0))
