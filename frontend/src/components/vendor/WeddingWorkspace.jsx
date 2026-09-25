@@ -291,8 +291,7 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
   const weddingCountdown = getWeddingCountdown(wedding?.wedding_date);
 
   const vendorPlan = String(vendor?.plan || 'free').trim().toLowerCase();
-  const hasPaidAI = vendorPlan === 'pro' || vendorPlan === 'premium';
-  const vendorCategory = String(vendor?.category || 'Wedding Vendor').trim();
+  const hasPaidAI = vendorPlan === 'pro';
   const vendorBusinessName = String(vendor?.business_name || vendor?.name || 'Your Business').trim();
 
   const [activeModule, setActiveModule] = useState(null);
@@ -488,7 +487,7 @@ ${weddingDetails}`;
 
   const sendWeddingAiMessage = async () => {
     if (!hasPaidAI) {
-      setAiError("Wedding AI Assistant is available only on WEDORA PRO and PREMIUM plans.");
+      setAiError("Wedding AI Assistant is available only on WEDORA PRO plans.");
       return;
     }
 
@@ -2545,11 +2544,11 @@ ${message}`;
                       <p className="text-sm text-[#8B8194]">Premium Wedding Intelligence</p>
                       <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding AI Assistant</h4>
                       <p className="text-sm text-[#6B6175] mt-2 max-w-2xl">
-                        AI assistance is available for subscribed WEDORA vendors. Upgrade to PRO or PREMIUM to use category-specific wedding intelligence for your business.
+                        AI assistance is available for subscribed WEDORA vendors. Upgrade to PRO to use category-specific wedding intelligence for your business.
                       </p>
                     </div>
                     <div className="shrink-0 rounded-xl bg-[#f4eafa] px-4 py-3 text-sm font-medium text-[#8B6AA8]">
-                      PRO / PREMIUM
+                      PRO
                     </div>
                   </div>
                 </div>
