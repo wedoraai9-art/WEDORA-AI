@@ -824,6 +824,20 @@ class WeddingPaymentIn(BaseModel):
     notes: Optional[str] = ""
 
 
+class WeddingQuotationIn(BaseModel):
+    title: Optional[str] = ""
+    client_name: Optional[str] = ""
+    issue_date: Optional[str] = ""
+    valid_until: Optional[str] = ""
+    line_items: List[dict] = Field(default_factory=list)
+    discount_type: str = "amount"
+    discount_value: float = 0
+    tax_percent: float = 0
+    advance_amount: float = 0
+    terms: Optional[str] = ""
+    notes: Optional[str] = ""
+
+
 class WeddingTaskIn(BaseModel):
     title: str
     due_date: Optional[str] = ""
@@ -2356,6 +2370,151 @@ async def vendor_delete_wedding_payment(
 
     return {"success": True}
 
+
+
+def _build_wedding_quotation(payload: WeddingQuotationIn, wedding_id: str, vendor_id: str, existing=None) -> dict:
+    title = (payload.title or "").strip()[:160]
+    client_name = (payload.client_name or "").strip()[:160]
+    if not payload.line_items:
+        raise HTTPException(status_code=400, detail="Add at least one quotation line item")
+
+    line_items = []
+    for item in payload.line_items[:100]:
+        description = str(item.get("description") or "").strip()[:240]
+        try:
+            quantity = float(item.get("quantity", 1))
+            unit_price = float(item.get("unit_price", item.get("rate", 0)))
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="Line item quantity and price must be numbers")
+        if not description:
+            raise HTTPException(status_code=400, detail="Every line item needs a description")
+        if quantity <= 0 or unit_price < 0:
+            raise HTTPException(status_code=400, detail="Line item quantity must be above zero and price cannot be negative")
+        line_items.append({
+            "description": description,
+            "quantity": round(quantity, 3),
+            "unit": str(item.get("unit") or "unit").strip()[:40],
+            "unit_price": round(unit_price, 2),
+            "amount": round(quantity * unit_price, 2),
+        })
+
+    try:
+        discount_value = float(payload.discount_value or 0)
+        tax_percent = float(payload.tax_percent or 0)
+        advance_amount = float(payload.advance_amount or 0)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Discount, tax, and advance must be numbers")
+    if discount_value < 0 or tax_percent < 0 or tax_percent > 100 or advance_amount < 0:
+        raise HTTPException(status_code=400, detail="Discount and advance cannot be negative; tax must be between 0 and 100")
+
+    discount_type = str(payload.discount_type or "amount").strip().lower()
+    if discount_type not in {"amount", "percent"}:
+        raise HTTPException(status_code=400, detail="Discount type must be amount or percent")
+    subtotal = round(sum(item["amount"] for item in line_items), 2)
+    if discount_type == "percent":
+        if discount_value > 100:
+            raise HTTPException(status_code=400, detail="Percentage discount cannot exceed 100")
+        discount_amount = round(subtotal * discount_value / 100, 2)
+    else:
+        discount_amount = round(min(discount_value, subtotal), 2)
+    taxable_amount = round(max(subtotal - discount_amount, 0), 2)
+    tax_amount = round(taxable_amount * tax_percent / 100, 2)
+    total = round(taxable_amount + tax_amount, 2)
+    if advance_amount > total:
+        raise HTTPException(status_code=400, detail="Advance cannot be greater than the quotation total")
+
+    now = datetime.now(timezone.utc).isoformat()
+    return {
+        "id": (existing or {}).get("id") or str(uuid.uuid4()),
+        "wedding_id": wedding_id,
+        "vendor_id": vendor_id,
+        "title": title or "Quotation",
+        "client_name": client_name,
+        "issue_date": (payload.issue_date or "").strip()[:20],
+        "valid_until": (payload.valid_until or "").strip()[:20],
+        "line_items": line_items,
+        "subtotal": subtotal,
+        "discount_type": discount_type,
+        "discount_value": round(discount_value, 2),
+        "discount_amount": discount_amount,
+        "tax_percent": round(tax_percent, 2),
+        "tax_amount": tax_amount,
+        "total": total,
+        "advance_amount": round(advance_amount, 2),
+        "balance_amount": round(total - advance_amount, 2),
+        "terms": (payload.terms or "").strip()[:5000],
+        "notes": (payload.notes or "").strip()[:2000],
+        "created_at": (existing or {}).get("created_at") or now,
+        "updated_at": now,
+    }
+
+
+@api_router.get("/vendor/weddings/{wedding_id}/quotations")
+async def vendor_get_wedding_quotations(
+    wedding_id: str,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+    quotations = await db.vendor_wedding_quotations.find(
+        {"wedding_id": wedding_id, "vendor_id": vendor["id"]}, {"_id": 0}
+    ).sort("created_at", -1).to_list(200)
+    return {"quotations": quotations}
+
+
+@api_router.post("/vendor/weddings/{wedding_id}/quotations")
+async def vendor_create_wedding_quotation(
+    wedding_id: str,
+    payload: WeddingQuotationIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+    quotation = _build_wedding_quotation(payload, wedding_id, vendor["id"])
+    await db.vendor_wedding_quotations.insert_one(quotation.copy())
+    return quotation
+
+
+@api_router.put("/vendor/weddings/{wedding_id}/quotations/{quotation_id}")
+async def vendor_update_wedding_quotation(
+    wedding_id: str,
+    quotation_id: str,
+    payload: WeddingQuotationIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+    existing = await db.vendor_wedding_quotations.find_one(
+        {"id": quotation_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]}, {"_id": 0}
+    )
+    if not existing:
+        raise HTTPException(status_code=404, detail="Quotation not found")
+    quotation = _build_wedding_quotation(payload, wedding_id, vendor["id"], existing)
+    await db.vendor_wedding_quotations.update_one(
+        {"id": quotation_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"$set": {key: value for key, value in quotation.items() if key not in {"id", "created_at"}}},
+    )
+    return quotation
+
+
+@api_router.delete("/vendor/weddings/{wedding_id}/quotations/{quotation_id}")
+async def vendor_delete_wedding_quotation(
+    wedding_id: str,
+    quotation_id: str,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+    result = await db.vendor_wedding_quotations.delete_one(
+        {"id": quotation_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]}
+    )
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Quotation not found")
+    return {"success": True}
 
 
 # ================= WEDDING DESIGN (DECORATOR ONLY) =================
