@@ -50,6 +50,19 @@ const emptyQuotation = (wedding) => ({
   notes: '',
 });
 
+const emptyInvoice = (wedding) => ({
+  title: 'Wedding invoice',
+  client_name: wedding?.client_name || [wedding?.bride_name, wedding?.groom_name].filter(Boolean).join(' & '),
+  issue_date: new Date().toISOString().slice(0, 10),
+  due_date: '',
+  line_items: [{ description: '', quantity: '1', unit: 'service', unit_price: '' }],
+  discount_type: 'amount',
+  discount_value: '0',
+  tax_percent: '0',
+  terms: '',
+  notes: '',
+});
+
 const DECORATOR_ELEMENT_CATEGORIES = [
   'General',
   'Mandap',
@@ -373,6 +386,17 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
   const [showQuotationForm, setShowQuotationForm] = useState(false);
   const [editingQuotationId, setEditingQuotationId] = useState(null);
   const [quotationForm, setQuotationForm] = useState(() => emptyQuotation(wedding));
+  const [invoices, setInvoices] = useState([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [invoiceSaving, setInvoiceSaving] = useState(false);
+  const [showInvoiceForm, setShowInvoiceForm] = useState(false);
+  const [editingInvoiceId, setEditingInvoiceId] = useState(null);
+  const [invoiceForm, setInvoiceForm] = useState(() => emptyInvoice(wedding));
+  const [payingInvoiceId, setPayingInvoiceId] = useState(null);
+  const [invoicePaymentSaving, setInvoicePaymentSaving] = useState(false);
+  const [invoicePaymentForm, setInvoicePaymentForm] = useState({
+    amount: '', payment_date: new Date().toISOString().slice(0, 10), payment_method: 'Other', notes: '',
+  });
 
   const [documents, setDocuments] = useState([]);
   const [documentsLoading, setDocumentsLoading] = useState(false);
@@ -575,6 +599,7 @@ ${message}`;
       loadAvailableWeddings();
       loadBudget();
       loadQuotations();
+      loadInvoices();
       loadDocuments();
       loadNotifications();
       if (isDecorator) {
@@ -817,6 +842,163 @@ ${message}`;
       console.error('Failed to delete wedding quotation:', error);
       window.alert(error.response?.data?.detail || 'Could not delete quotation.');
     }
+  };
+
+  const loadInvoices = async () => {
+    if (!wedding?.id) return;
+    setInvoicesLoading(true);
+    try {
+      const response = await authAxios.get(`/vendor/weddings/${wedding.id}/invoices`);
+      setInvoices(Array.isArray(response.data?.invoices) ? response.data.invoices : []);
+    } catch (error) {
+      console.error('Failed to load wedding invoices:', error);
+      setInvoices([]);
+    } finally {
+      setInvoicesLoading(false);
+    }
+  };
+
+  const resetInvoiceForm = () => {
+    setInvoiceForm(emptyInvoice(wedding));
+    setEditingInvoiceId(null);
+    setShowInvoiceForm(false);
+  };
+
+  const updateInvoiceLine = (index, field, value) => {
+    setInvoiceForm((current) => ({
+      ...current,
+      line_items: current.line_items.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, [field]: value } : item
+      ),
+    }));
+  };
+
+  const saveInvoice = async () => {
+    if (invoiceSaving) return;
+    const lineItems = invoiceForm.line_items
+      .filter((item) => String(item.description || '').trim())
+      .map((item) => ({
+        ...item,
+        description: String(item.description || '').trim(),
+        quantity: Number(item.quantity),
+        unit_price: Number(item.unit_price),
+      }));
+    if (!lineItems.length || lineItems.some((item) => !Number.isFinite(item.quantity) || item.quantity <= 0 || !Number.isFinite(item.unit_price) || item.unit_price < 0)) {
+      window.alert('Add a description, quantity, and valid price for at least one line item.');
+      return;
+    }
+    setInvoiceSaving(true);
+    try {
+      const payload = {
+        ...invoiceForm,
+        title: String(invoiceForm.title || '').trim() || 'Invoice',
+        client_name: String(invoiceForm.client_name || '').trim(),
+        line_items: lineItems,
+        discount_value: Number(invoiceForm.discount_value || 0),
+        tax_percent: Number(invoiceForm.tax_percent || 0),
+      };
+      if (editingInvoiceId) {
+        await authAxios.put(`/vendor/weddings/${wedding.id}/invoices/${editingInvoiceId}`, payload);
+      } else {
+        await authAxios.post(`/vendor/weddings/${wedding.id}/invoices`, payload);
+      }
+      resetInvoiceForm();
+      await loadInvoices();
+    } catch (error) {
+      console.error('Failed to save wedding invoice:', error);
+      window.alert(error.response?.data?.detail || 'Could not save invoice.');
+    } finally {
+      setInvoiceSaving(false);
+    }
+  };
+
+  const editInvoice = (invoice) => {
+    setEditingInvoiceId(invoice.id);
+    setInvoiceForm({
+      ...emptyInvoice(wedding),
+      ...invoice,
+      line_items: Array.isArray(invoice.line_items) && invoice.line_items.length
+        ? invoice.line_items.map((item) => ({
+            description: item.description || '', quantity: String(item.quantity ?? 1),
+            unit: item.unit || 'unit', unit_price: String(item.unit_price ?? 0),
+          }))
+        : [{ description: '', quantity: '1', unit: 'service', unit_price: '' }],
+      discount_value: String(invoice.discount_value ?? 0),
+      tax_percent: String(invoice.tax_percent ?? 0),
+    });
+    setShowInvoiceForm(true);
+  };
+
+  const deleteInvoice = async (invoiceId) => {
+    if (!window.confirm('Delete this invoice and its recorded receipts?')) return;
+    try {
+      await authAxios.delete(`/vendor/weddings/${wedding.id}/invoices/${invoiceId}`);
+      await loadInvoices();
+    } catch (error) {
+      console.error('Failed to delete wedding invoice:', error);
+      window.alert(error.response?.data?.detail || 'Could not delete invoice.');
+    }
+  };
+
+  const startInvoicePayment = (invoice) => {
+    setPayingInvoiceId(invoice.id);
+    setInvoicePaymentForm({
+      amount: String(invoice.balance_amount || ''),
+      payment_date: new Date().toISOString().slice(0, 10),
+      payment_method: 'Other',
+      notes: '',
+    });
+  };
+
+  const recordInvoicePayment = async (invoice) => {
+    if (invoicePaymentSaving) return;
+    const amount = Number(invoicePaymentForm.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      window.alert('Enter a payment amount greater than zero.');
+      return;
+    }
+    setInvoicePaymentSaving(true);
+    try {
+      await authAxios.post(`/vendor/weddings/${wedding.id}/invoices/${invoice.id}/payments`, {
+        ...invoicePaymentForm,
+        amount,
+      });
+      setPayingInvoiceId(null);
+      await loadInvoices();
+    } catch (error) {
+      console.error('Failed to record invoice payment:', error);
+      window.alert(error.response?.data?.detail || 'Could not record payment.');
+    } finally {
+      setInvoicePaymentSaving(false);
+    }
+  };
+
+  const printInvoice = (invoice) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      window.alert('Please allow pop-ups for WEDORA to print or save this invoice as a PDF.');
+      return;
+    }
+    const safe = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[char]));
+    const rows = (invoice.line_items || []).map((item) => `<tr><td>${safe(item.description)}</td><td>${safe(item.quantity)} ${safe(item.unit || '')}</td><td>₹${Number(item.unit_price || 0).toLocaleString('en-IN')}</td><td>₹${Number(item.amount || 0).toLocaleString('en-IN')}</td></tr>`).join('');
+    const status = String(invoice.status || 'unpaid').toUpperCase();
+    printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${safe(invoice.invoice_number)} invoice</title><style>body{font:14px Arial,sans-serif;color:#30283a;margin:40px}h1{font-size:26px;margin:0 0 6px}p{line-height:1.5}.muted{color:#756d7d}table{width:100%;border-collapse:collapse;margin:24px 0}th,td{text-align:left;padding:12px 8px;border-bottom:1px solid #e7dfea}th{background:#faf7ff}.totals{margin-left:auto;width:280px}.totals div{display:flex;justify-content:space-between;padding:5px}.grand{font-weight:bold;font-size:17px;border-top:1px solid #bba8c8;margin-top:6px;padding-top:10px!important}@media print{body{margin:18mm}}</style></head><body><h1>${safe(vendorBusinessName)}</h1><p class="muted">INVOICE · ${safe(status)}</p><h2>${safe(invoice.title || 'Invoice')}</h2><p><strong>Invoice:</strong> ${safe(invoice.invoice_number)}<br><strong>Client:</strong> ${safe(invoice.client_name || '—')}<br><strong>Wedding:</strong> ${safe(wedding.wedding_name || wedding.name || 'Wedding')}<br><strong>Issued:</strong> ${safe(invoice.issue_date || '—')} &nbsp; <strong>Due:</strong> ${safe(invoice.due_date || '—')}</p><table><thead><tr><th>Item</th><th>Quantity</th><th>Rate</th><th>Amount</th></tr></thead><tbody>${rows}</tbody></table><div class="totals"><div><span>Subtotal</span><span>₹${Number(invoice.subtotal || 0).toLocaleString('en-IN')}</span></div><div><span>Discount</span><span>− ₹${Number(invoice.discount_amount || 0).toLocaleString('en-IN')}</span></div><div><span>Tax (${Number(invoice.tax_percent || 0)}%)</span><span>₹${Number(invoice.tax_amount || 0).toLocaleString('en-IN')}</span></div><div class="grand"><span>Total</span><span>₹${Number(invoice.total || 0).toLocaleString('en-IN')}</span></div><div><span>Paid</span><span>₹${Number(invoice.paid_amount || 0).toLocaleString('en-IN')}</span></div><div><strong>Balance</strong><strong>₹${Number(invoice.balance_amount || 0).toLocaleString('en-IN')}</strong></div></div>${invoice.terms ? `<h3>Terms</h3><p>${safe(invoice.terms).replace(/\n/g, '<br>')}</p>` : ''}${invoice.notes ? `<h3>Notes</h3><p>${safe(invoice.notes).replace(/\n/g, '<br>')}</p>` : ''}<script>window.onload=()=>setTimeout(()=>window.print(),250);</script></body></html>`);
+    printWindow.document.close();
+  };
+
+  const printReceipt = (invoice, receipt) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      window.alert('Please allow pop-ups for WEDORA to print or save this receipt as a PDF.');
+      return;
+    }
+    const safe = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[char]));
+    printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${safe(receipt.receipt_number)} receipt</title><style>body{font:14px Arial,sans-serif;color:#30283a;margin:40px}.receipt{max-width:700px;margin:0 auto;border:1px solid #e7dfea;padding:32px;border-radius:16px}h1{font-size:24px}.amount{font-size:28px;font-weight:bold;color:#6b4f82;margin:24px 0}.muted{color:#756d7d;line-height:1.7}@media print{body{margin:18mm}.receipt{border:1px solid #bbb}}</style></head><body><div class="receipt"><p class="muted">PAYMENT RECEIPT</p><h1>${safe(vendorBusinessName)}</h1><p>Receipt number: <strong>${safe(receipt.receipt_number)}</strong><br>Invoice: ${safe(invoice.invoice_number)} · ${safe(invoice.title || 'Invoice')}<br>Received from: ${safe(invoice.client_name || 'Client')}<br>Wedding: ${safe(wedding.wedding_name || wedding.name || 'Wedding')}</p><div class="amount">₹${Number(receipt.amount || 0).toLocaleString('en-IN')}</div><p class="muted">Received on ${safe(receipt.payment_date || '—')} by ${safe(receipt.payment_method || 'Other')}${receipt.notes ? `<br>${safe(receipt.notes)}` : ''}</p><p class="muted">Invoice balance after this payment: ₹${Number(invoice.balance_amount || 0).toLocaleString('en-IN')}</p></div><script>window.onload=()=>setTimeout(()=>window.print(),250);</script></body></html>`);
+    printWindow.document.close();
   };
 
   const printQuotation = (quotation) => {
@@ -2005,6 +2187,7 @@ ${message}`;
     { title: 'Clients', description: 'Manage bride, groom and client communication', icon: Users },
     { title: 'Budget & Payments', description: 'Track budget, expenses, advances and payments', icon: Wallet },
     { title: 'Quotations', description: 'Prepare itemized client quotations and save them as PDF', icon: FileText },
+    { title: 'Invoices & Receipts', description: 'Track client invoices, payments and printable receipts', icon: FileText },
     { title: 'Documents', description: 'Keep contracts, bills and important files organized', icon: FileText },
     { title: 'Notifications', description: 'Important reminders and wedding updates', icon: Bell },
     { title: 'AI Assistant', description: 'Get AI-powered help for this wedding', icon: Sparkles },
@@ -2027,6 +2210,15 @@ ${message}`;
   const quotationTax = quotationTaxable * (Number(quotationForm.tax_percent) || 0) / 100;
   const quotationTotal = quotationTaxable + quotationTax;
   const quotationBalance = Math.max(0, quotationTotal - (Number(quotationForm.advance_amount) || 0));
+  const invoiceDraftSubtotal = (invoiceForm.line_items || []).reduce(
+    (sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unit_price) || 0), 0
+  );
+  const invoiceDraftDiscount = invoiceForm.discount_type === 'percent'
+    ? invoiceDraftSubtotal * (Number(invoiceForm.discount_value) || 0) / 100
+    : Number(invoiceForm.discount_value) || 0;
+  const invoiceDraftTaxable = Math.max(0, invoiceDraftSubtotal - Math.min(invoiceDraftDiscount, invoiceDraftSubtotal));
+  const invoiceDraftTax = invoiceDraftTaxable * (Number(invoiceForm.tax_percent) || 0) / 100;
+  const invoiceDraftTotal = invoiceDraftTaxable + invoiceDraftTax;
 
   return (
     <div className="min-h-screen bg-[#fcf9ff] px-4 pt-28 pb-6 md:px-8 md:pt-32 text-[#2D2638]">
@@ -2185,6 +2377,8 @@ ${message}`;
                 ? "Track budget, expenses, advances and payments for this wedding."
                 : activeModule === "Quotations"
                 ? "Create, save, update and print client quotations for this wedding."
+                : activeModule === "Invoices & Receipts"
+                ? "Issue invoices, record payments and print invoices or receipts as PDFs."
                 : activeModule === "Documents"
                 ? "Keep contracts, bills and important files organized for this wedding."
                 : "Wedding overview and important details."}
@@ -2733,6 +2927,94 @@ ${message}`;
                       ))}
                     </div>
                   ) : <p className="mt-4 text-sm text-[#8B8194]">No quotations saved for this wedding yet.</p>}
+                </div>
+              </div>
+            )}
+
+            {/* INVOICES & RECEIPTS MODULE */}
+            {activeModule === "Invoices & Receipts" && (
+              <div className="mt-4 space-y-5" data-testid="wedding-invoices">
+                <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div><p className="text-sm text-[#8B8194]">Billing</p><h4 className="text-lg font-semibold text-[#3F3748] mt-1">Invoices & Receipts</h4><p className="text-sm text-[#6B6175] mt-1">Create invoices, track full or partial payments and print receipts.</p></div>
+                  <button type="button" onClick={() => { setInvoiceForm(emptyInvoice(wedding)); setEditingInvoiceId(null); setShowInvoiceForm(true); }} className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadcf5]"><Plus className="inline w-4 h-4 mr-1" />New Invoice</button>
+                </div>
+
+                {showInvoiceForm && (
+                  <div className="rounded-xl border border-[#eadff2] bg-white p-5 space-y-4" data-testid="invoice-form">
+                    <div className="flex items-center justify-between gap-3"><div><p className="text-sm text-[#8B8194]">{editingInvoiceId ? 'Update invoice details' : 'New invoice'}</p><h4 className="text-lg font-semibold text-[#3F3748] mt-1">Invoice Details</h4></div><button type="button" onClick={resetInvoiceForm} className="rounded-xl px-3 py-2 text-sm text-[#8B8194]">Close</button></div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <label className="text-xs text-[#8B8194]">Invoice title<input value={invoiceForm.title} onChange={(event) => setInvoiceForm({ ...invoiceForm, title: event.target.value })} maxLength={160} className="mt-1 w-full rounded-lg border border-[#eadff2] px-3 py-2 text-sm text-[#3F3748]" placeholder="Wedding services invoice" /></label>
+                      <label className="text-xs text-[#8B8194]">Client name<input value={invoiceForm.client_name} onChange={(event) => setInvoiceForm({ ...invoiceForm, client_name: event.target.value })} maxLength={160} className="mt-1 w-full rounded-lg border border-[#eadff2] px-3 py-2 text-sm text-[#3F3748]" placeholder="Client name" /></label>
+                      <label className="text-xs text-[#8B8194]">Issue date<input type="date" value={invoiceForm.issue_date || ''} onChange={(event) => setInvoiceForm({ ...invoiceForm, issue_date: event.target.value })} className="mt-1 w-full rounded-lg border border-[#eadff2] px-3 py-2 text-sm text-[#3F3748]" /></label>
+                      <label className="text-xs text-[#8B8194]">Payment due date<input type="date" value={invoiceForm.due_date || ''} onChange={(event) => setInvoiceForm({ ...invoiceForm, due_date: event.target.value })} className="mt-1 w-full rounded-lg border border-[#eadff2] px-3 py-2 text-sm text-[#3F3748]" /></label>
+                    </div>
+
+                    <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
+                      <div className="flex items-center justify-between gap-3 mb-3"><div><p className="text-sm font-semibold text-[#3F3748]">Line Items</p><p className="text-xs text-[#8B8194] mt-1">Add the services or products included on this invoice.</p></div><button type="button" onClick={() => setInvoiceForm({ ...invoiceForm, line_items: [...invoiceForm.line_items, { description: '', quantity: '1', unit: 'service', unit_price: '' }] })} className="rounded-lg bg-white px-3 py-2 text-xs text-[#8B6AA8]"><Plus className="inline w-3.5 h-3.5 mr-1" />Add line</button></div>
+                      <div className="space-y-2">
+                        {invoiceForm.line_items.map((item, index) => (
+                          <div key={index} className="grid grid-cols-1 sm:grid-cols-[minmax(160px,1fr)_90px_100px_130px_40px] gap-2 items-center">
+                            <input value={item.description} onChange={(event) => updateInvoiceLine(index, 'description', event.target.value)} maxLength={240} placeholder="Description" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm" />
+                            <input type="number" min="0.001" step="0.001" value={item.quantity} onChange={(event) => updateInvoiceLine(index, 'quantity', event.target.value)} placeholder="Qty" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm" />
+                            <input value={item.unit} onChange={(event) => updateInvoiceLine(index, 'unit', event.target.value)} maxLength={40} placeholder="Unit" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm" />
+                            <input type="number" min="0" step="0.01" value={item.unit_price} onChange={(event) => updateInvoiceLine(index, 'unit_price', event.target.value)} placeholder="Price (₹)" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm" />
+                            <button type="button" aria-label="Remove invoice line item" disabled={invoiceForm.line_items.length <= 1} onClick={() => setInvoiceForm({ ...invoiceForm, line_items: invoiceForm.line_items.filter((_, itemIndex) => itemIndex !== index) })} className="rounded-lg bg-[#fff1f4] px-2 py-2 text-red-400 disabled:opacity-40"><Trash2 className="w-4 h-4 mx-auto" /></button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="text-xs text-[#8B8194]">Discount type<select value={invoiceForm.discount_type} onChange={(event) => setInvoiceForm({ ...invoiceForm, discount_type: event.target.value })} className="mt-1 w-full rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm"><option value="amount">Fixed amount (₹)</option><option value="percent">Percentage (%)</option></select></label>
+                        <label className="text-xs text-[#8B8194]">Discount<input type="number" min="0" step="0.01" value={invoiceForm.discount_value} onChange={(event) => setInvoiceForm({ ...invoiceForm, discount_value: event.target.value })} className="mt-1 w-full rounded-lg border border-[#eadff2] px-3 py-2 text-sm" /></label>
+                      </div>
+                      <label className="text-xs text-[#8B8194]">Tax (%)<input type="number" min="0" max="100" step="0.01" value={invoiceForm.tax_percent} onChange={(event) => setInvoiceForm({ ...invoiceForm, tax_percent: event.target.value })} className="mt-1 w-full rounded-lg border border-[#eadff2] px-3 py-2 text-sm" /></label>
+                      <label className="text-xs text-[#8B8194] md:col-span-2">Terms<textarea rows="3" maxLength={5000} value={invoiceForm.terms} onChange={(event) => setInvoiceForm({ ...invoiceForm, terms: event.target.value })} placeholder="Payment terms and conditions" className="mt-1 w-full rounded-lg border border-[#eadff2] px-3 py-2 text-sm" /></label>
+                      <label className="text-xs text-[#8B8194] md:col-span-2">Notes<textarea rows="2" maxLength={2000} value={invoiceForm.notes} onChange={(event) => setInvoiceForm({ ...invoiceForm, notes: event.target.value })} className="mt-1 w-full rounded-lg border border-[#eadff2] px-3 py-2 text-sm" /></label>
+                    </div>
+
+                    <div className="ml-auto max-w-sm rounded-xl bg-[#faf7ff] p-4 space-y-1 text-sm">
+                      <div className="flex justify-between"><span>Subtotal</span><span>{formatCurrency(invoiceDraftSubtotal)}</span></div>
+                      <div className="flex justify-between"><span>Discount</span><span>− {formatCurrency(Math.min(invoiceDraftDiscount, invoiceDraftSubtotal))}</span></div>
+                      <div className="flex justify-between"><span>Tax ({Number(invoiceForm.tax_percent) || 0}%)</span><span>{formatCurrency(invoiceDraftTax)}</span></div>
+                      <div className="flex justify-between border-t border-[#eadff2] pt-2 font-semibold"><span>Total</span><span>{formatCurrency(invoiceDraftTotal)}</span></div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 justify-end"><button type="button" onClick={resetInvoiceForm} className="rounded-xl px-4 py-2 text-sm text-[#8B8194]">Cancel</button><button type="button" onClick={saveInvoice} disabled={invoiceSaving} className="rounded-xl bg-[#8B6AA8] px-4 py-2 text-sm font-medium text-white disabled:opacity-60">{invoiceSaving ? 'Saving...' : editingInvoiceId ? 'Update Invoice' : 'Save Invoice'}</button></div>
+                  </div>
+                )}
+
+                <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                  <div className="flex items-center justify-between"><div><p className="text-sm text-[#8B8194]">Saved for this wedding</p><h4 className="text-lg font-semibold text-[#3F3748] mt-1">Your Invoices</h4></div><span className="text-sm text-[#8B8194]">{invoices.length}</span></div>
+                  {invoicesLoading ? <p className="mt-4 text-sm text-[#8B8194]">Loading invoices...</p> : invoices.length ? (
+                    <div className="mt-4 space-y-3">
+                      {invoices.map((invoice) => (
+                        <div key={invoice.id} className="rounded-xl border border-[#eadff2] bg-white p-4">
+                          <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+                            <div className="flex-1 min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-medium text-[#3F3748]">{invoice.title || 'Invoice'}</p><span className={`rounded-full px-2.5 py-1 text-[11px] font-medium capitalize ${invoice.status === 'paid' ? 'bg-green-50 text-green-700' : invoice.status === 'partial' ? 'bg-amber-50 text-amber-700' : 'bg-[#fff1f4] text-[#b25b70]'}`}>{invoice.status || 'unpaid'}</span></div><p className="text-xs text-[#8B8194] mt-1">{invoice.invoice_number} · {invoice.client_name || 'No client name'}{invoice.due_date ? ` · Due ${invoice.due_date}` : ''}</p><p className="text-xs text-[#8B8194] mt-1">Total {formatCurrency(invoice.total)} · Paid {formatCurrency(invoice.paid_amount)} · Balance {formatCurrency(invoice.balance_amount)}</p></div>
+                            <div className="flex flex-wrap gap-2"><button type="button" onClick={() => printInvoice(invoice)} className="rounded-lg bg-[#eaf7ff] px-3 py-1.5 text-sm text-[#557c9a]"><Download className="inline w-3.5 h-3.5 mr-1" />PDF</button>{Number(invoice.balance_amount) > 0 && <button type="button" onClick={() => startInvoicePayment(invoice)} className="rounded-lg bg-[#eef8ef] px-3 py-1.5 text-sm text-green-700"><Plus className="inline w-3.5 h-3.5 mr-1" />Record payment</button>}<button type="button" onClick={() => editInvoice(invoice)} className="rounded-lg bg-[#f4eafa] px-3 py-1.5 text-sm text-[#8B6AA8]"><Edit3 className="inline w-3.5 h-3.5 mr-1" />Edit</button><button type="button" onClick={() => deleteInvoice(invoice.id)} className="rounded-lg bg-[#fff1f4] px-3 py-1.5 text-sm text-red-400"><Trash2 className="inline w-3.5 h-3.5 mr-1" />Delete</button></div>
+                          </div>
+
+                          {payingInvoiceId === invoice.id && (
+                            <div className="mt-4 rounded-xl border border-[#dcefe0] bg-[#f7fcf7] p-4">
+                              <p className="text-sm font-medium text-[#3F3748]">Record a payment</p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-3">
+                                <input type="number" min="0.01" step="0.01" max={invoice.balance_amount} value={invoicePaymentForm.amount} onChange={(event) => setInvoicePaymentForm({ ...invoicePaymentForm, amount: event.target.value })} placeholder="Amount received" className="rounded-lg border border-[#dcefe0] px-3 py-2 text-sm" />
+                                <input type="date" value={invoicePaymentForm.payment_date} onChange={(event) => setInvoicePaymentForm({ ...invoicePaymentForm, payment_date: event.target.value })} className="rounded-lg border border-[#dcefe0] px-3 py-2 text-sm" />
+                                <select value={invoicePaymentForm.payment_method} onChange={(event) => setInvoicePaymentForm({ ...invoicePaymentForm, payment_method: event.target.value })} className="rounded-lg border border-[#dcefe0] bg-white px-3 py-2 text-sm"><option>Other</option><option>Cash</option><option>UPI</option><option>Bank transfer</option><option>Card</option><option>Cheque</option></select>
+                                <input value={invoicePaymentForm.notes} onChange={(event) => setInvoicePaymentForm({ ...invoicePaymentForm, notes: event.target.value })} placeholder="Payment note (optional)" className="rounded-lg border border-[#dcefe0] px-3 py-2 text-sm" />
+                              </div>
+                              <div className="flex gap-2 justify-end mt-3"><button type="button" onClick={() => setPayingInvoiceId(null)} className="rounded-lg px-3 py-2 text-sm text-[#8B8194]">Cancel</button><button type="button" disabled={invoicePaymentSaving} onClick={() => recordInvoicePayment(invoice)} className="rounded-lg bg-[#6d9a73] px-4 py-2 text-sm font-medium text-white disabled:opacity-60">{invoicePaymentSaving ? 'Saving...' : 'Save payment'}</button></div>
+                            </div>
+                          )}
+
+                          {Array.isArray(invoice.payments) && invoice.payments.length > 0 && (
+                            <div className="mt-4 border-t border-[#f0e8f5] pt-3"><p className="text-xs font-medium text-[#6B6175] mb-2">Receipts</p><div className="space-y-2">{invoice.payments.map((receipt) => <div key={receipt.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-lg bg-[#faf7ff] px-3 py-2"><p className="text-xs text-[#6B6175]">{receipt.receipt_number} · {receipt.payment_date || 'Date not set'} · {receipt.payment_method || 'Other'} · {formatCurrency(receipt.amount)}</p><button type="button" onClick={() => printReceipt(invoice, receipt)} className="rounded-lg bg-white px-3 py-1.5 text-xs text-[#557c9a]"><Download className="inline w-3.5 h-3.5 mr-1" />Receipt PDF</button></div>)}</div></div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : <p className="mt-4 text-sm text-[#8B8194]">No invoices saved for this wedding yet.</p>}
                 </div>
               </div>
             )}
