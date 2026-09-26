@@ -7,6 +7,7 @@ import {
   useLocation,
 } from 'react-router-dom';
 import { Toaster } from 'sonner';
+import { Sparkles } from 'lucide-react';
 
 import { AuthProvider } from '@/context/AuthContext';
 import Navigation from '@/components/Navigation';
@@ -40,10 +41,9 @@ import WeddingTransportation from '@/components/WeddingTransportation';
 import WedoraVenueDiscovery from '@/components/WedoraVenueDiscovery';
 import WedoraVendorDiscovery from '@/components/WedoraVendorDiscovery';
 
-const INTRO_TOTAL_DURATION = 3500;
-const LOGO_TRAVEL_START = 2600;
-const LOGO_TRAVEL_DURATION = 750;
-const HIDDEN_NAVBAR_OFFSET = 72;
+const INTRO_TOTAL_DURATION = 3400;
+const STAR_TRAVEL_START = 2450;
+const STAR_TRAVEL_DURATION = 650;
 
 const shouldPlayIntro = (pathname) => {
   if (pathname !== '/' || typeof window === 'undefined') return false;
@@ -85,13 +85,13 @@ const Home = () => {
 const AppContent = () => {
   const location = useLocation();
   const isHomePage = location.pathname === '/';
-  const introLogoRef = useRef(null);
-  const logoAnimationRef = useRef(null);
+  const introStarRef = useRef(null);
+  const starAnimationRef = useRef(null);
 
   const [introActive, setIntroActive] = useState(() =>
     shouldPlayIntro(location.pathname)
   );
-  const [introTraveling, setIntroTraveling] = useState(false);
+  const [starTraveling, setStarTraveling] = useState(false);
 
   useEffect(() => {
     if (!isHomePage) {
@@ -102,21 +102,22 @@ const AppContent = () => {
     if (!introActive) return undefined;
 
     const travelTimer = window.setTimeout(() => {
-      setIntroTraveling(true);
+      setStarTraveling(true);
 
-      const introLogo = introLogoRef.current;
-      const navbarLogo = document.querySelector('.wedora-nav-logo img');
+      const introStar = introStarRef.current;
+      const searchStar = document.querySelector(
+        '[data-wedora-search-sparkle]'
+      );
 
-      if (!introLogo || !navbarLogo || !introLogo.animate) return;
+      if (!introStar || !searchStar || !introStar.animate) return;
 
-      const startRect = introLogo.getBoundingClientRect();
-      const targetRect = navbarLogo.getBoundingClientRect();
+      const startRect = introStar.getBoundingClientRect();
+      const targetRect = searchStar.getBoundingClientRect();
 
       const startCenterX = startRect.left + startRect.width / 2;
       const startCenterY = startRect.top + startRect.height / 2;
       const targetCenterX = targetRect.left + targetRect.width / 2;
-      const targetCenterY =
-        targetRect.top + targetRect.height / 2 + HIDDEN_NAVBAR_OFFSET;
+      const targetCenterY = targetRect.top + targetRect.height / 2;
 
       const moveX = targetCenterX - startCenterX;
       const moveY = targetCenterY - startCenterY;
@@ -127,24 +128,24 @@ const AppContent = () => {
         `translate(calc(-50% + ${moveX}px), calc(-50% + ${moveY}px)) ` +
         `scale(${scaleX}, ${scaleY})`;
 
-      logoAnimationRef.current = introLogo.animate(
+      starAnimationRef.current = introStar.animate(
         [
           {
             transform: 'translate(-50%, -50%) scale(1, 1)',
-            borderRadius: '30px',
+            opacity: 1,
           },
           {
             transform: endTransform,
-            borderRadius: '50%',
+            opacity: 0.92,
           },
         ],
         {
-          duration: LOGO_TRAVEL_DURATION,
+          duration: STAR_TRAVEL_DURATION,
           easing: 'cubic-bezier(.22, .72, .22, 1)',
           fill: 'forwards',
         }
       );
-    }, LOGO_TRAVEL_START);
+    }, STAR_TRAVEL_START);
 
     const finishTimer = window.setTimeout(() => {
       setIntroActive(false);
@@ -154,9 +155,9 @@ const AppContent = () => {
       window.clearTimeout(travelTimer);
       window.clearTimeout(finishTimer);
 
-      if (logoAnimationRef.current) {
-        logoAnimationRef.current.cancel();
-        logoAnimationRef.current = null;
+      if (starAnimationRef.current) {
+        starAnimationRef.current.cancel();
+        starAnimationRef.current = null;
       }
     };
   }, [introActive, isHomePage]);
@@ -230,7 +231,7 @@ const AppContent = () => {
       {introActive && (
         <div
           className={`wedora-intro-screen ${
-            introTraveling ? 'wedora-intro-traveling' : ''
+            starTraveling ? 'wedora-intro-star-traveling' : ''
           }`}
           role="status"
           aria-label="WEDORA AI welcome"
@@ -286,6 +287,7 @@ const AppContent = () => {
                 0 0 38px rgba(201, 184, 255, .17),
                 inset 0 0 38px rgba(255, 255, 255, .24);
               animation: wedora-intro-ribbon-form 1.9s cubic-bezier(.2, .7, .2, 1) .05s forwards;
+              transition: opacity .35s ease, transform .35s ease;
             }
 
             .wedora-intro-ribbon::after {
@@ -304,9 +306,22 @@ const AppContent = () => {
               filter: blur(16px);
             }
 
+            .wedora-intro-star {
+              position: absolute;
+              top: 46%;
+              left: 50%;
+              width: clamp(64px, 10vw, 92px);
+              height: clamp(64px, 10vw, 92px);
+              color: #C9B8FF;
+              filter: drop-shadow(0 0 14px rgba(201, 184, 255, .65));
+              transform: translate(-50%, -50%);
+              animation: wedora-intro-star-reveal 1.1s cubic-bezier(.2, .72, .2, 1) .18s both;
+              will-change: transform;
+            }
+
             .wedora-intro-copy {
               position: absolute;
-              top: calc(46% + clamp(130px, 19vw, 190px));
+              top: calc(46% + clamp(108px, 15vw, 140px));
               left: 50%;
               width: max-content;
               max-width: 90vw;
@@ -319,28 +334,14 @@ const AppContent = () => {
               text-transform: uppercase;
               opacity: 0;
               transform: translate(-50%, 10px);
-              animation: wedora-intro-copy-in .65s ease-out .75s forwards;
+              animation: wedora-intro-copy-in .65s ease-out .72s forwards;
               transition: opacity .3s ease, transform .3s ease;
             }
 
-            .wedora-intro-traveling .wedora-intro-copy {
+            .wedora-intro-star-traveling .wedora-intro-copy,
+            .wedora-intro-star-traveling .wedora-intro-ribbon {
               opacity: 0;
-              transform: translate(-50%, 4px);
-            }
-
-            .wedora-intro-logo {
-              position: absolute;
-              top: 46%;
-              left: 50%;
-              width: min(76vw, 320px);
-              aspect-ratio: 1;
-              object-fit: cover;
-              object-position: center;
-              border-radius: 30px;
-              box-shadow: 0 22px 70px rgba(137, 111, 170, .16);
-              transform: translate(-50%, -50%);
-              animation: wedora-intro-logo-reveal 1s cubic-bezier(.2, .72, .2, 1) .2s both;
-              will-change: transform;
+              transform: translate(-50%, 4px) scale(.96);
             }
 
             .wedora-intro-skip {
@@ -385,16 +386,20 @@ const AppContent = () => {
               }
             }
 
-            @keyframes wedora-intro-logo-reveal {
-              from {
+            @keyframes wedora-intro-star-reveal {
+              0% {
                 opacity: 0;
-                filter: blur(9px);
-                transform: translate(-50%, -46%) scale(.94);
+                filter: blur(8px) drop-shadow(0 0 4px rgba(201, 184, 255, .3));
+                transform: translate(-50%, -46%) scale(.62) rotate(-18deg);
               }
-              to {
+              70% {
                 opacity: 1;
-                filter: blur(0);
-                transform: translate(-50%, -50%) scale(1);
+                transform: translate(-50%, -50%) scale(1.08) rotate(4deg);
+              }
+              100% {
+                opacity: 1;
+                filter: drop-shadow(0 0 14px rgba(201, 184, 255, .65));
+                transform: translate(-50%, -50%) scale(1) rotate(0);
               }
             }
 
@@ -416,7 +421,7 @@ const AppContent = () => {
               .wedora-intro-screen,
               .wedora-intro-screen::before,
               .wedora-intro-ribbon,
-              .wedora-intro-logo,
+              .wedora-intro-star,
               .wedora-intro-copy {
                 animation: none;
                 transition: none;
@@ -426,11 +431,10 @@ const AppContent = () => {
 
           <div className="wedora-intro-ribbon" aria-hidden="true" />
 
-          <img
-            ref={introLogoRef}
-            className="wedora-intro-logo"
-            src="/WEDORA.jpg"
-            alt="WEDORA AI"
+          <Sparkles
+            ref={introStarRef}
+            className="wedora-intro-star"
+            aria-hidden="true"
           />
 
           <p className="wedora-intro-copy">
