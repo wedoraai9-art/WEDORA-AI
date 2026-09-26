@@ -2732,9 +2732,166 @@ async def vendor_add_wedding_invoice_payment(
             },
         },
     )
+    await db.vendor_wedding_payments.insert_one({
+        "id": str(uuid.uuid4()),
+        "invoice_payment_id": receipt["id"],
+        "invoice_id": invoice_id,
+        "invoice_number": invoice.get("invoice_number"),
+        "wedding_id": wedding_id,
+        "vendor_id": vendor["id"],
+        "title": invoice.get("title") or "Invoice payment",
+        "payment_type": "payment",
+        "amount": amount,
+        "payment_date": receipt["payment_date"],
+        "notes": receipt["notes"] or receipt["payment_method"],
+        "created_at": now,
+        "updated_at": now,
+    })
     return {"receipt": receipt, "invoice": await db.vendor_wedding_invoices.find_one(
         {"id": invoice_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]}, {"_id": 0}
     )}
+
+
+async def _vendor_profit_loss_data(vendor_id: str, month: Optional[str] = None, wedding_id: Optional[str] = None) -> dict:
+    wedding_query = {"vendor_id": vendor_id}
+    if wedding_id:
+        wedding_query["id"] = wedding_id
+    weddings = await db.vendor_weddings.find(wedding_query, {"_id": 0, "id": 1, "wedding_name": 1, "name": 1}).to_list(500)
+    wedding_names = {
+        item["id"]: item.get("wedding_name") or item.get("name") or "Wedding"
+        for item in weddings if item.get("id")
+    }
+    wedding_ids = list(wedding_names)
+    if not wedding_ids:
+        return {
+            "period": {"month": month or "all time"},
+            "basis": "Cash received and recorded expenses",
+            "income": 0,
+            "expenses": 0,
+            "net_profit": 0,
+            "invoice_balance_due": 0,
+            "by_month": [],
+            "by_wedding": [],
+        }
+
+    expenses = await db.vendor_wedding_expenses.find(
+        {"vendor_id": vendor_id, "wedding_id": {"$in": wedding_ids}}, {"_id": 0}
+    ).to_list(5000)
+    payments = await db.vendor_wedding_payments.find(
+        {"vendor_id": vendor_id, "wedding_id": {"$in": wedding_ids}}, {"_id": 0}
+    ).to_list(5000)
+    invoices = await db.vendor_wedding_invoices.find(
+        {"vendor_id": vendor_id, "wedding_id": {"$in": wedding_ids}}, {"_id": 0}
+    ).to_list(2000)
+
+    mirrored_invoice_payment_ids = {
+        str(payment.get("invoice_payment_id"))
+        for payment in payments if payment.get("invoice_payment_id")
+    }
+    income_records = []
+    for payment in payments:
+        amount = abs(float(payment.get("amount") or 0))
+        if str(payment.get("payment_type") or "payment").lower() == "refund":
+            amount = -amount
+        income_records.append({
+            "wedding_id": payment.get("wedding_id"),
+            "date": str(payment.get("payment_date") or payment.get("created_at") or "")[:10],
+            "amount": amount,
+        })
+    for invoice in invoices:
+        for receipt in invoice.get("payments", []) or []:
+            if str(receipt.get("id")) in mirrored_invoice_payment_ids:
+                continue
+            income_records.append({
+                "wedding_id": invoice.get("wedding_id"),
+                "date": str(receipt.get("payment_date") or receipt.get("created_at") or "")[:10],
+                "amount": float(receipt.get("amount") or 0),
+            })
+
+    def in_period(date_value: str) -> bool:
+        return not month or date_value.startswith(month)
+
+    month_rows = {}
+    wedding_rows = {
+        wedding_id_value: {"wedding_id": wedding_id_value, "wedding_name": name, "income": 0.0, "expenses": 0.0, "net_profit": 0.0}
+        for wedding_id_value, name in wedding_names.items()
+    }
+    total_income = 0.0
+    total_expenses = 0.0
+    expenses_by_category = {}
+
+    for record in income_records:
+        date_value = record["date"]
+        if not in_period(date_value):
+            continue
+        amount = float(record["amount"])
+        total_income += amount
+        wedding_row = wedding_rows.get(record["wedding_id"])
+        if wedding_row:
+            wedding_row["income"] += amount
+        month_key = date_value[:7] if len(date_value) >= 7 else "Undated"
+        row = month_rows.setdefault(month_key, {"month": month_key, "income": 0.0, "expenses": 0.0, "net_profit": 0.0})
+        row["income"] += amount
+
+    for expense in expenses:
+        date_value = str(expense.get("expense_date") or expense.get("created_at") or "")[:10]
+        if not in_period(date_value):
+            continue
+        amount = float(expense.get("amount") or 0)
+        total_expenses += amount
+        wedding_row = wedding_rows.get(expense.get("wedding_id"))
+        if wedding_row:
+            wedding_row["expenses"] += amount
+        month_key = date_value[:7] if len(date_value) >= 7 else "Undated"
+        row = month_rows.setdefault(month_key, {"month": month_key, "income": 0.0, "expenses": 0.0, "net_profit": 0.0})
+        row["expenses"] += amount
+        category = str(expense.get("category") or "General")
+        expenses_by_category[category] = expenses_by_category.get(category, 0.0) + amount
+
+    for row in month_rows.values():
+        row["income"] = round(row["income"], 2)
+        row["expenses"] = round(row["expenses"], 2)
+        row["net_profit"] = round(row["income"] - row["expenses"], 2)
+    for row in wedding_rows.values():
+        row["income"] = round(row["income"], 2)
+        row["expenses"] = round(row["expenses"], 2)
+        row["net_profit"] = round(row["income"] - row["expenses"], 2)
+
+    invoice_balance_due = round(sum(
+        float(invoice.get("balance_amount") or 0)
+        for invoice in invoices
+        if not month or str(invoice.get("due_date") or "").startswith(month)
+    ), 2)
+
+    return {
+        "period": {"month": month or "all time", "wedding_id": wedding_id or ""},
+        "basis": "Cash received and recorded expenses",
+        "income": round(total_income, 2),
+        "expenses": round(total_expenses, 2),
+        "net_profit": round(total_income - total_expenses, 2),
+        "invoice_balance_due": invoice_balance_due,
+        "expenses_by_category": [
+            {"category": category, "amount": round(amount, 2)}
+            for category, amount in sorted(expenses_by_category.items(), key=lambda item: item[1], reverse=True)
+        ],
+        "by_month": sorted(month_rows.values(), key=lambda row: row["month"], reverse=True),
+        "by_wedding": sorted(wedding_rows.values(), key=lambda row: row["wedding_name"].lower()),
+    }
+
+
+@api_router.get("/vendor/profit-loss")
+async def vendor_profit_loss(
+    month: Optional[str] = Query(None),
+    wedding_id: Optional[str] = Query(None),
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    if month and not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", month):
+        raise HTTPException(status_code=400, detail="Month must use YYYY-MM format")
+    if wedding_id:
+        await _get_vendor_wedding(wedding_id, vendor["id"])
+    return await _vendor_profit_loss_data(vendor["id"], month, wedding_id)
 
 
 # ================= WEDDING DESIGN (DECORATOR ONLY) =================
