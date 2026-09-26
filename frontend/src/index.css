@@ -73,7 +73,10 @@ body {
   font-family: 'Plus Jakarta Sans', 'Manrope', sans-serif;
 }
 
-/* ---------- Iridescent gradient text ---------- */
+
+/* =========================================================
+   IRIDESCENT GRADIENT TEXT
+   ========================================================= */
 
 .iridescent-text {
   background: linear-gradient(
@@ -84,10 +87,14 @@ body {
     #A9E8FF 80%,
     #C9B8FF 100%
   );
+
   background-size: 200% 200%;
+
   -webkit-background-clip: text;
   background-clip: text;
+
   color: transparent;
+
   animation: irid-shift 12s ease-in-out infinite;
 }
 
@@ -102,7 +109,10 @@ body {
   }
 }
 
-/* ---------- Liquid blobs ---------- */
+
+/* =========================================================
+   LIQUID BLOBS
+   ========================================================= */
 
 .blob {
   position: absolute;
@@ -147,24 +157,27 @@ body {
   animation: float-slow-2 22s ease-in-out infinite;
 }
 
-/* ---------- Apple Liquid Glass ---------- */
+
+/* =========================================================
+   APPLE LIQUID GLASS
+   ========================================================= */
 
 .liquid-glass {
   background:
     linear-gradient(
       135deg,
-      rgba(255, 255, 255, 0.55) 0%,
-      rgba(255, 255, 255, 0.25) 100%
+      rgba(255,255,255,0.55) 0%,
+      rgba(255,255,255,0.25) 100%
     );
 
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
 
-  border: 1px solid rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255,255,255,0.7);
 
   box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.9),
-    inset 0 -1px 0.5px rgba(255, 255, 255, 0.35),
+    inset 0 1px 1px rgba(255,255,255,0.9),
+    inset 0 -1px 0.5px rgba(255,255,255,0.35),
     0 12px 40px -12px rgba(201, 184, 255, 0.35),
     0 1px 2px rgba(45, 38, 56, 0.05);
 }
@@ -173,17 +186,17 @@ body {
   background:
     linear-gradient(
       135deg,
-      rgba(255, 255, 255, 0.75) 0%,
-      rgba(255, 255, 255, 0.55) 100%
+      rgba(255,255,255,0.75) 0%,
+      rgba(255,255,255,0.55) 100%
     );
 
   backdrop-filter: blur(30px) saturate(200%);
   -webkit-backdrop-filter: blur(30px) saturate(200%);
 
-  border: 1px solid rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255,255,255,0.85);
 
   box-shadow:
-    inset 0 1.5px 1px rgba(255, 255, 255, 1),
+    inset 0 1.5px 1px rgba(255,255,255,1),
     0 20px 60px -20px rgba(201, 184, 255, 0.45),
     0 4px 12px -4px rgba(247, 183, 216, 0.25);
 }
@@ -192,21 +205,22 @@ body {
   background:
     linear-gradient(
       135deg,
-      rgba(255, 255, 255, 0.85) 0%,
+      rgba(255,255,255,0.85) 0%,
       rgba(253, 251, 247, 0.7) 100%
     );
 
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 
-  border: 1px solid rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(255,255,255,0.75);
 
-  box-shadow: 0 8px 32px 0 rgba(201, 184, 255, 0.14);
+  box-shadow:
+    0 8px 32px 0 rgba(201, 184, 255, 0.14);
 
   border-radius: 24px;
 
   transition:
-    transform 0.35s cubic-bezier(.2, .8, .2, 1),
+    transform 0.35s cubic-bezier(.2,.8,.2,1),
     box-shadow 0.35s ease,
     border-color 0.35s ease;
 }
@@ -220,7 +234,10 @@ body {
   border-color: rgba(247, 183, 216, 0.7);
 }
 
-/* ---------- Gradient border trick ---------- */
+
+/* =========================================================
+   GRADIENT BORDER
+   ========================================================= */
 
 .gradient-border {
   position: relative;
@@ -228,17 +245,20 @@ body {
 
 .gradient-border::before {
   content: '';
+
   position: absolute;
   inset: 0;
+
   padding: 1px;
+
   border-radius: inherit;
 
   background:
     linear-gradient(
       135deg,
-      rgba(201, 184, 255, 0.7),
-      rgba(247, 183, 216, 0.6),
-      rgba(169, 232, 255, 0.7)
+      rgba(201,184,255,0.7),
+      rgba(247,183,216,0.6),
+      rgba(169,232,255,0.7)
     );
 
   -webkit-mask:
@@ -251,7 +271,10 @@ body {
   pointer-events: none;
 }
 
-/* ---------- Thinking orb ---------- */
+
+/* =========================================================
+   THINKING ORB
+   ========================================================= */
 
 @keyframes orb-spin {
   0% {
@@ -266,6 +289,7 @@ body {
 .thinking-orb {
   width: 20px;
   height: 20px;
+
   border-radius: 9999px;
 
   background:
@@ -286,10 +310,17 @@ body {
   filter: blur(0.5px);
 }
 
-/* ---------- Glowing button ---------- */
+
+/* =========================================================
+   GLOW BUTTON
+   ========================================================= */
 
 .glow-btn {
   position: relative;
+
+  isolation: isolate;
+
+  overflow: hidden;
 
   background:
     linear-gradient(
@@ -301,43 +332,423 @@ body {
 
   color: #2D2638;
 
-  border: 1px solid rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255,255,255,0.85);
+
   border-radius: 9999px;
 
   padding: 0.75rem 1.5rem;
 
   font-weight: 500;
 
+  cursor: pointer;
+
+  transform: translateZ(0);
+
   transition:
-    transform 0.25s ease,
-    box-shadow 0.25s ease;
+    transform 0.28s cubic-bezier(.2,.8,.2,1),
+    box-shadow 0.3s ease,
+    filter 0.3s ease;
 
   box-shadow:
     0 8px 24px -6px rgba(247, 183, 216, 0.5),
-    inset 0 1px 1px rgba(255, 255, 255, 0.9);
+    inset 0 1px 1px rgba(255,255,255,0.9);
 }
 
+
+/* ---------------------------------------------------------
+   Liquid glass highlight layer
+   --------------------------------------------------------- */
+
+.glow-btn::before {
+  content: '';
+
+  position: absolute;
+
+  inset: -30%;
+
+  z-index: -1;
+
+  pointer-events: none;
+
+  border-radius: inherit;
+
+  background:
+    radial-gradient(
+      ellipse at 25% 20%,
+      rgba(255,255,255,0.72) 0%,
+      rgba(255,255,255,0.22) 18%,
+      transparent 48%
+    ),
+    linear-gradient(
+      115deg,
+      transparent 20%,
+      rgba(255,255,255,0.18) 35%,
+      rgba(201,184,255,0.22) 47%,
+      rgba(247,183,216,0.25) 58%,
+      rgba(169,232,255,0.2) 68%,
+      transparent 82%
+    );
+
+  opacity: 0;
+
+  transform:
+    translateX(-35%)
+    rotate(-8deg)
+    scale(0.8);
+
+  transition:
+    opacity 0.35s ease,
+    transform 0.65s cubic-bezier(.2,.8,.2,1);
+}
+
+
+/* ---------------------------------------------------------
+   Liquid ripple
+   --------------------------------------------------------- */
+
+.glow-btn::after {
+  content: '';
+
+  position: absolute;
+
+  width: 20px;
+  height: 20px;
+
+  left: 50%;
+  top: 50%;
+
+  z-index: 0;
+
+  pointer-events: none;
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(255,255,255,0.75) 0%,
+      rgba(247,183,216,0.34) 25%,
+      rgba(201,184,255,0.22) 48%,
+      rgba(169,232,255,0.10) 65%,
+      transparent 75%
+    );
+
+  transform:
+    translate(-50%, -50%)
+    scale(0);
+
+  opacity: 0;
+
+  filter: blur(1px);
+}
+
+
+/* ---------------------------------------------------------
+   Hover
+   --------------------------------------------------------- */
+
 .glow-btn:hover {
-  transform: translateY(-1px) scale(1.02);
+  transform:
+    translateY(-1px)
+    scale(1.02);
 
   box-shadow:
     0 14px 32px -6px rgba(247, 183, 216, 0.65),
-    inset 0 1px 1px rgba(255, 255, 255, 1);
+    inset 0 1px 1px rgba(255,255,255,1);
+
+  filter: saturate(1.04);
 }
+
+.glow-btn:hover::before {
+  opacity: 1;
+
+  transform:
+    translateX(20%)
+    rotate(-8deg)
+    scale(1.15);
+}
+
+
+/* ---------------------------------------------------------
+   CLICK / PRESS
+   --------------------------------------------------------- */
 
 .glow-btn:active {
-  transform: translateY(0) scale(0.99);
+  transform:
+    translateY(1px)
+    scale(0.965);
+
+  box-shadow:
+    0 4px 12px -5px rgba(247,183,216,0.55),
+    inset 0 2px 7px rgba(255,255,255,0.75),
+    inset 0 -3px 8px rgba(201,184,255,0.22);
+
+  filter:
+    saturate(1.12)
+    brightness(1.025);
+
+  transition:
+    transform 0.08s ease,
+    box-shadow 0.08s ease,
+    filter 0.08s ease;
 }
 
-/* ---------- Suggested prompt chip ---------- */
+
+/* Activate liquid ripple during click */
+
+.glow-btn:active::after {
+  opacity: 1;
+
+  animation:
+    wedora-liquid-ripple 0.65s
+    cubic-bezier(.16,.75,.25,1)
+    forwards;
+}
+
+
+/* Activate glass refraction */
+
+.glow-btn:active::before {
+  opacity: 1;
+
+  animation:
+    wedora-liquid-shine 0.65s
+    cubic-bezier(.18,.8,.22,1)
+    forwards;
+}
+
+
+/* =========================================================
+   LIQUID BUTTON — REUSABLE CLASS
+   =========================================================
+   
+   You can also add:
+   
+   className="liquid-button"
+   
+   to any button that should receive the same effect.
+   ========================================================= */
+
+.liquid-button {
+  position: relative;
+
+  isolation: isolate;
+
+  overflow: hidden;
+
+  cursor: pointer;
+
+  transform: translateZ(0);
+
+  transition:
+    transform 0.28s cubic-bezier(.2,.8,.2,1),
+    box-shadow 0.3s ease,
+    filter 0.3s ease;
+}
+
+.liquid-button::before {
+  content: '';
+
+  position: absolute;
+
+  inset: -35%;
+
+  z-index: -1;
+
+  pointer-events: none;
+
+  border-radius: inherit;
+
+  background:
+    linear-gradient(
+      110deg,
+      transparent 15%,
+      rgba(255,255,255,0.18) 30%,
+      rgba(247,183,216,0.28) 45%,
+      rgba(201,184,255,0.3) 57%,
+      rgba(169,232,255,0.25) 70%,
+      transparent 85%
+    );
+
+  opacity: 0;
+
+  transform:
+    translateX(-45%)
+    rotate(-8deg)
+    scale(.75);
+}
+
+.liquid-button::after {
+  content: '';
+
+  position: absolute;
+
+  width: 18px;
+  height: 18px;
+
+  left: 50%;
+  top: 50%;
+
+  z-index: 0;
+
+  pointer-events: none;
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(255,255,255,0.78) 0%,
+      rgba(247,183,216,0.32) 28%,
+      rgba(201,184,255,0.24) 50%,
+      transparent 74%
+    );
+
+  opacity: 0;
+
+  transform:
+    translate(-50%, -50%)
+    scale(0);
+}
+
+.liquid-button:hover {
+  transform:
+    translateY(-1px)
+    scale(1.015);
+
+  filter: saturate(1.04);
+}
+
+.liquid-button:hover::before {
+  opacity: .8;
+
+  transform:
+    translateX(20%)
+    rotate(-8deg)
+    scale(1.1);
+
+  transition:
+    opacity .3s ease,
+    transform .6s cubic-bezier(.2,.8,.2,1);
+}
+
+.liquid-button:active {
+  transform:
+    translateY(1px)
+    scale(.965);
+
+  filter:
+    saturate(1.12)
+    brightness(1.025);
+
+  box-shadow:
+    inset 0 2px 7px rgba(255,255,255,.75),
+    inset 0 -3px 8px rgba(201,184,255,.22);
+
+  transition:
+    transform .08s ease,
+    box-shadow .08s ease,
+    filter .08s ease;
+}
+
+.liquid-button:active::after {
+  opacity: 1;
+
+  animation:
+    wedora-liquid-ripple .65s
+    cubic-bezier(.16,.75,.25,1)
+    forwards;
+}
+
+.liquid-button:active::before {
+  opacity: 1;
+
+  animation:
+    wedora-liquid-shine .65s
+    cubic-bezier(.18,.8,.22,1)
+    forwards;
+}
+
+
+/* =========================================================
+   LIQUID ANIMATIONS
+   ========================================================= */
+
+@keyframes wedora-liquid-ripple {
+  0% {
+    opacity: 0;
+
+    transform:
+      translate(-50%, -50%)
+      scale(0);
+  }
+
+  12% {
+    opacity: .9;
+  }
+
+  55% {
+    opacity: .45;
+  }
+
+  100% {
+    opacity: 0;
+
+    transform:
+      translate(-50%, -50%)
+      scale(12);
+  }
+}
+
+@keyframes wedora-liquid-shine {
+  0% {
+    opacity: 0;
+
+    transform:
+      translateX(-55%)
+      rotate(-8deg)
+      scale(.7);
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  60% {
+    opacity: .7;
+
+    transform:
+      translateX(10%)
+      rotate(-8deg)
+      scale(1.1);
+  }
+
+  100% {
+    opacity: 0;
+
+    transform:
+      translateX(55%)
+      rotate(-8deg)
+      scale(1.2);
+  }
+}
+
+
+/* =========================================================
+   SUGGESTED PROMPT CHIP
+   ========================================================= */
 
 .chip {
-  background: rgba(255, 255, 255, 0.6);
+  position: relative;
+
+  overflow: hidden;
+
+  background: rgba(255,255,255,0.6);
 
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255,255,255,0.8);
 
   border-radius: 9999px;
 
@@ -347,7 +758,8 @@ body {
 
   color: #4a4257;
 
-  transition: all 0.25s ease;
+  transition:
+    all 0.25s ease;
 
   cursor: pointer;
 }
@@ -356,34 +768,55 @@ body {
   background:
     linear-gradient(
       120deg,
-      rgba(201, 184, 255, 0.35),
-      rgba(247, 183, 216, 0.35)
+      rgba(201,184,255,0.35),
+      rgba(247,183,216,0.35)
     );
 
-  border-color: rgba(247, 183, 216, 0.7);
+  border-color: rgba(247,183,216,0.7);
 
-  transform: translateY(-1px);
+  transform:
+    translateY(-1px);
 
   color: #2D2638;
 }
 
-/* ---------- Reveal on scroll ---------- */
+.chip:active {
+  transform:
+    translateY(1px)
+    scale(.97);
+
+  box-shadow:
+    inset 0 2px 6px rgba(255,255,255,.7),
+    inset 0 -2px 6px rgba(201,184,255,.18);
+
+  filter: saturate(1.08);
+}
+
+
+/* =========================================================
+   REVEAL ON SCROLL
+   ========================================================= */
 
 .reveal {
   opacity: 0;
+
   transform: translateY(24px);
 
   transition:
     opacity 0.9s ease,
-    transform 0.9s cubic-bezier(.2, .8, .2, 1);
+    transform 0.9s cubic-bezier(.2,.8,.2,1);
 }
 
 .reveal.in {
   opacity: 1;
+
   transform: translateY(0);
 }
 
-/* ---------- Scroll bar ---------- */
+
+/* =========================================================
+   SCROLL BAR
+   ========================================================= */
 
 ::-webkit-scrollbar {
   width: 10px;
@@ -395,16 +828,25 @@ body {
 
 ::-webkit-scrollbar-thumb {
   background:
-    linear-gradient(#C9B8FF, #F7B7D8);
+    linear-gradient(
+      #C9B8FF,
+      #F7B7D8
+    );
 
   border-radius: 9999px;
 }
 
-/* ---------- Vendor dashboard tabs scrollbar ---------- */
+
+/* =========================================================
+   VENDOR DASHBOARD TABS SCROLLBAR
+   ========================================================= */
 
 .liquid-glass[data-testid="dashboard-tabs"] {
   scrollbar-width: auto;
-  scrollbar-color: #D8AFE9 transparent;
+
+  scrollbar-color:
+    #D8AFE9
+    transparent;
 }
 
 .liquid-glass[data-testid="dashboard-tabs"]::-webkit-scrollbar {
@@ -413,15 +855,21 @@ body {
 
 .liquid-glass[data-testid="dashboard-tabs"]::-webkit-scrollbar-track {
   background: transparent;
+
   margin-left: 14px;
   margin-right: 14px;
 }
 
 .liquid-glass[data-testid="dashboard-tabs"]::-webkit-scrollbar-thumb {
   background:
-    linear-gradient(90deg, #C9B8FF, #F7B7D8);
+    linear-gradient(
+      90deg,
+      #C9B8FF,
+      #F7B7D8
+    );
 
   border: 2px solid rgba(255, 255, 255, 0.85);
+
   border-radius: 9999px;
 
   cursor: grab;
@@ -431,26 +879,37 @@ body {
   cursor: grabbing;
 }
 
-/* ---------- Thin scroll for chat area ---------- */
+
+/* =========================================================
+   THIN CHAT SCROLL
+   ========================================================= */
 
 .chat-scroll::-webkit-scrollbar {
   width: 6px;
 }
 
 .chat-scroll::-webkit-scrollbar-thumb {
-  background: rgba(201, 184, 255, 0.5);
+  background:
+    rgba(201,184,255,0.5);
 }
 
-/* ---------- Prose overrides for AI messages ---------- */
+
+/* =========================================================
+   PROSE OVERRIDES FOR AI MESSAGES
+   ========================================================= */
 
 .ai-prose h1,
 .ai-prose h2,
 .ai-prose h3 {
   font-family: 'Plus Jakarta Sans', sans-serif;
+
   font-weight: 600;
+
   color: #2D2638;
 
-  margin: 0.9rem 0 0.35rem;
+  margin:
+    0.9rem 0
+    0.35rem;
 
   letter-spacing: -0.005em;
 }
@@ -470,7 +929,8 @@ body {
 
   padding-bottom: 0.35rem;
 
-  border-bottom: 1px solid rgba(201, 184, 255, 0.35);
+  border-bottom:
+    1px solid rgba(201,184,255,0.35);
 
   margin-top: 1.1rem;
 }
@@ -486,20 +946,30 @@ body {
 
 .ai-prose p {
   margin: 0.4rem 0;
+
   line-height: 1.6;
+
   color: #3b3547;
 }
 
 .ai-prose .ai-ul {
-  margin: 0.35rem 0 0.35rem 0.2rem;
+  margin:
+    0.35rem 0
+    0.35rem
+    0.2rem;
+
   list-style: none;
+
   padding: 0;
 }
 
 .ai-prose .ai-ul > li {
   position: relative;
+
   padding-left: 1.1rem;
+
   margin: 0.2rem 0;
+
   line-height: 1.55;
 }
 
@@ -525,9 +995,15 @@ body {
 }
 
 .ai-prose .ai-ol {
-  margin: 0.35rem 0 0.35rem 0.2rem;
+  margin:
+    0.35rem 0
+    0.35rem
+    0.2rem;
+
   counter-reset: item;
+
   list-style: none;
+
   padding: 0;
 }
 
@@ -551,7 +1027,9 @@ body {
   left: 0;
   top: 0.15em;
 
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family:
+    'Plus Jakarta Sans',
+    sans-serif;
 
   font-weight: 600;
 
@@ -569,11 +1047,12 @@ body {
   background:
     linear-gradient(
       120deg,
-      rgba(201, 184, 255, 0.55),
-      rgba(247, 183, 216, 0.55)
+      rgba(201,184,255,0.55),
+      rgba(247,183,216,0.55)
     );
 
-  border: 1px solid rgba(255, 255, 255, 0.85);
+  border:
+    1px solid rgba(255,255,255,0.85);
 
   display: inline-flex;
 
@@ -591,9 +1070,12 @@ body {
 }
 
 .ai-prose code {
-  background: rgba(201, 184, 255, 0.18);
+  background:
+    rgba(201,184,255,0.18);
 
-  padding: 0.05rem 0.35rem;
+  padding:
+    0.05rem
+    0.35rem;
 
   border-radius: 4px;
 
@@ -604,31 +1086,42 @@ body {
   color: #7c5cf2;
 }
 
-/* ---------- Silky background section ---------- */
+
+/* =========================================================
+   SILKY BACKGROUND SECTION
+   ========================================================= */
 
 .silky-bg {
   background:
     radial-gradient(
       ellipse 60% 40% at 20% 20%,
-      rgba(201, 184, 255, 0.35),
+      rgba(201,184,255,0.35),
       transparent 60%
     ),
+
     radial-gradient(
       ellipse 50% 40% at 80% 30%,
-      rgba(247, 183, 216, 0.32),
+      rgba(247,183,216,0.32),
       transparent 60%
     ),
+
     radial-gradient(
       ellipse 60% 50% at 50% 80%,
-      rgba(169, 232, 255, 0.3),
+      rgba(169,232,255,0.3),
       transparent 60%
     ),
+
     linear-gradient(
       180deg,
       #FDFBF7 0%,
       #FAF8F6 100%
     );
 }
+
+
+/* =========================================================
+   SLIDE IN
+   ========================================================= */
 
 @keyframes slideIn {
   from {
@@ -642,8 +1135,9 @@ body {
   }
 }
 
+
 /* =========================================================
-   WEDORA VENUE DISCOVERY — UNIFIED WEDORA THEME
+   WEDORA VENUE DISCOVERY
    ========================================================= */
 
 .wedora-venue-page {
@@ -651,31 +1145,40 @@ body {
 
   color: #2D2638 !important;
 
-  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-family:
+    'Plus Jakarta Sans',
+    sans-serif !important;
 
   background:
     radial-gradient(
       ellipse 55% 45% at 15% 15%,
-      rgba(201, 184, 255, 0.18),
+      rgba(201,184,255,0.18),
       transparent 65%
     ),
+
     radial-gradient(
       ellipse 55% 45% at 85% 18%,
-      rgba(247, 183, 216, 0.18),
+      rgba(247,183,216,0.18),
       transparent 65%
     ),
+
     radial-gradient(
       ellipse 55% 45% at 50% 85%,
-      rgba(169, 232, 255, 0.14),
+      rgba(169,232,255,0.14),
       transparent 65%
     ),
+
     #FFFCF8 !important;
 }
 
-/* Main WEDORA headings */
+
+/* Main headings */
 
 .wedora-venue-page h1 {
-  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-family:
+    'Cormorant Garamond',
+    Georgia,
+    serif !important;
 
   font-weight: 400 !important;
 
@@ -687,12 +1190,16 @@ body {
 .wedora-venue-page h2,
 .wedora-venue-page h3,
 .wedora-venue-page h4 {
-  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-family:
+    'Cormorant Garamond',
+    Georgia,
+    serif !important;
 
   font-weight: 500 !important;
 
   color: #2D2638 !important;
 }
+
 
 /* Supporting text */
 
@@ -704,7 +1211,8 @@ body {
   color: #6B617A !important;
 }
 
-/* WEDORA pastel heading highlight */
+
+/* Heading highlight */
 
 .wedora-venue-page h1 span,
 .wedora-venue-page h1 em,
@@ -725,25 +1233,31 @@ body {
   color: transparent !important;
 }
 
-/* Keep body controls in Jakarta Sans */
+
+/* Controls */
 
 .wedora-venue-page input,
 .wedora-venue-page select,
 .wedora-venue-page textarea,
 .wedora-venue-page button {
-  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-family:
+    'Plus Jakarta Sans',
+    sans-serif !important;
 }
+
 
 /* Search */
 
 .wedora-venue-page input,
 .wedora-venue-page select,
 .wedora-venue-page textarea {
-  background: rgba(255, 255, 255, 0.82) !important;
+  background:
+    rgba(255,255,255,0.82) !important;
 
   color: #2D2638 !important;
 
-  border-color: rgba(201, 184, 255, 0.35) !important;
+  border-color:
+    rgba(201,184,255,0.35) !important;
 }
 
 .wedora-venue-page input::placeholder,
@@ -751,12 +1265,15 @@ body {
   color: #A49AAF !important;
 }
 
+
 /* Primary dark buttons */
 
 .wedora-venue-page button[class*="bg-[#302c29"] {
   background: #2D2638 !important;
+
   color: #FFFFFF !important;
 }
+
 
 /* WEDORA pastel buttons */
 
@@ -773,18 +1290,23 @@ body {
   color: #2D2638 !important;
 }
 
+
 /* Cards */
 
 .wedora-venue-page [class*="rounded-xl"],
 .wedora-venue-page [class*="rounded-2xl"] {
-  border-color: rgba(201, 184, 255, 0.28) !important;
+  border-color:
+    rgba(201,184,255,0.28) !important;
 }
 
-/* Soft glass surfaces */
+
+/* Glass surfaces */
 
 .wedora-venue-page [class*="bg-white"] {
-  background: rgba(255, 255, 255, 0.72) !important;
+  background:
+    rgba(255,255,255,0.72) !important;
 }
+
 
 /* Icons */
 
@@ -792,11 +1314,14 @@ body {
   color: #8B72D8;
 }
 
+
 /* Icon circles */
 
 .wedora-venue-page [class*="rounded-full"] {
-  border-color: rgba(201, 184, 255, 0.25);
+  border-color:
+    rgba(201,184,255,0.25);
 }
+
 
 /* Links */
 
@@ -804,12 +1329,15 @@ body {
   color: #7C63C7 !important;
 }
 
-/* Soft borders */
+
+/* Borders */
 
 .wedora-venue-page [class*="border-[#"],
 .wedora-venue-page [class*="border-b"] {
-  border-color: rgba(201, 184, 255, 0.28) !important;
+  border-color:
+    rgba(201,184,255,0.28) !important;
 }
+
 
 /* Hover */
 
@@ -817,15 +1345,18 @@ body {
   border-color: #C9B8FF !important;
 }
 
+
 /* Selection */
 
 .wedora-venue-page ::selection {
   background: #C9B8FF;
+
   color: #2D2638;
 }
 
+
 /* =========================================================
-   WEDORA VENDOR DISCOVERY — UNIFIED WEDORA THEME
+   WEDORA VENDOR DISCOVERY
    ========================================================= */
 
 .wedora-vendor-page {
@@ -833,31 +1364,40 @@ body {
 
   color: #2D2638 !important;
 
-  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-family:
+    'Plus Jakarta Sans',
+    sans-serif !important;
 
   background:
     radial-gradient(
       ellipse 55% 45% at 15% 15%,
-      rgba(201, 184, 255, 0.18),
+      rgba(201,184,255,0.18),
       transparent 65%
     ),
+
     radial-gradient(
       ellipse 55% 45% at 85% 18%,
-      rgba(247, 183, 216, 0.18),
+      rgba(247,183,216,0.18),
       transparent 65%
     ),
+
     radial-gradient(
       ellipse 55% 45% at 50% 85%,
-      rgba(169, 232, 255, 0.14),
+      rgba(169,232,255,0.14),
       transparent 65%
     ),
+
     #FFFCF8 !important;
 }
+
 
 /* WEDORA heading typography */
 
 .wedora-vendor-page h1 {
-  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-family:
+    'Cormorant Garamond',
+    Georgia,
+    serif !important;
 
   font-weight: 400 !important;
 
@@ -869,7 +1409,10 @@ body {
 .wedora-vendor-page h2,
 .wedora-vendor-page h3,
 .wedora-vendor-page h4 {
-  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-family:
+    'Cormorant Garamond',
+    Georgia,
+    serif !important;
 
   font-weight: 500 !important;
 
@@ -881,10 +1424,13 @@ body {
 .wedora-vendor-page input,
 .wedora-vendor-page select,
 .wedora-vendor-page button {
-  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-family:
+    'Plus Jakarta Sans',
+    sans-serif !important;
 }
 
-/* Highlighted / italic heading text */
+
+/* Highlighted / italic heading */
 
 .wedora-vendor-page h1 span,
 .wedora-vendor-page h1 em,
@@ -905,11 +1451,13 @@ body {
   color: transparent !important;
 }
 
+
 /* Main text */
 
 .wedora-vendor-page p {
   color: #6B617A !important;
 }
+
 
 /* Small labels */
 
@@ -918,27 +1466,33 @@ body {
   color: #9B8FA8 !important;
 }
 
+
 /* Search box */
 
 .wedora-vendor-page input,
 .wedora-vendor-page select {
-  background: rgba(255, 255, 255, 0.82) !important;
+  background:
+    rgba(255,255,255,0.82) !important;
 
   color: #2D2638 !important;
 
-  border-color: rgba(201, 184, 255, 0.35) !important;
+  border-color:
+    rgba(201,184,255,0.35) !important;
 }
 
 .wedora-vendor-page input::placeholder {
   color: #A49AAF !important;
 }
 
+
 /* Search / primary buttons */
 
 .wedora-vendor-page button[class*="bg-[#302c29"] {
   background: #2D2638 !important;
+
   color: #FFFFFF !important;
 }
+
 
 /* WEDORA pastel buttons */
 
@@ -955,18 +1509,23 @@ body {
   color: #2D2638 !important;
 }
 
+
 /* Cards */
 
 .wedora-vendor-page [class*="rounded-xl"],
 .wedora-vendor-page [class*="rounded-2xl"] {
-  border-color: rgba(201, 184, 255, 0.28) !important;
+  border-color:
+    rgba(201,184,255,0.28) !important;
 }
+
 
 /* Soft glass effect */
 
 .wedora-vendor-page [class*="bg-white"] {
-  background: rgba(255, 255, 255, 0.72) !important;
+  background:
+    rgba(255,255,255,0.72) !important;
 }
+
 
 /* Icons */
 
@@ -974,11 +1533,14 @@ body {
   color: #8B72D8;
 }
 
-/* Keep icon circles soft and pastel */
+
+/* Icon circles */
 
 .wedora-vendor-page [class*="rounded-full"] {
-  border-color: rgba(201, 184, 255, 0.25);
+  border-color:
+    rgba(201,184,255,0.25);
 }
+
 
 /* Links */
 
@@ -986,12 +1548,15 @@ body {
   color: #7C63C7 !important;
 }
 
+
 /* Soft borders */
 
 .wedora-vendor-page [class*="border-[#"],
 .wedora-vendor-page [class*="border-b"] {
-  border-color: rgba(201, 184, 255, 0.28) !important;
+  border-color:
+    rgba(201,184,255,0.28) !important;
 }
+
 
 /* Hover */
 
@@ -999,299 +1564,38 @@ body {
   border-color: #C9B8FF !important;
 }
 
+
 /* Selection */
 
 .wedora-vendor-page ::selection {
   background: #C9B8FF;
+
   color: #2D2638;
 }
 
 
 /* =========================================================
-   WEDORA — LIQUID PRESS BUTTON EFFECT
-   Soft Apple/iOS-inspired liquid glass interaction
-   ========================================================= */
-
-/*
-   These are the pastel / glass buttons only.
-
-   The normal button appearance remains unchanged.
-   The effect activates when the user presses the button.
-*/
-
-.glow-btn,
-.chip,
-.wedora-venue-page button[class*="bg-[#b"],
-.wedora-venue-page button[class*="bg-[#a"],
-.wedora-vendor-page button[class*="bg-[#b"],
-.wedora-vendor-page button[class*="bg-[#a"] {
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-
-  -webkit-tap-highlight-color: transparent;
-
-  transform-origin: center;
-
-  will-change:
-    transform,
-    box-shadow;
-
-  transition:
-    transform 0.28s cubic-bezier(.2, .8, .2, 1),
-    box-shadow 0.28s ease,
-    background 0.35s ease,
-    border-color 0.28s ease;
-}
-
-
-/* ---------------------------------------------------------
-   Keep button text/icons above the liquid animation
-   --------------------------------------------------------- */
-
-.glow-btn > *,
-.chip > *,
-.wedora-venue-page button[class*="bg-[#b"] > *,
-.wedora-venue-page button[class*="bg-[#a"] > *,
-.wedora-vendor-page button[class*="bg-[#b"] > *,
-.wedora-vendor-page button[class*="bg-[#a"] > * {
-  position: relative;
-  z-index: 2;
-}
-
-
-/* ---------------------------------------------------------
-   Soft moving glass highlight
-   --------------------------------------------------------- */
-
-.glow-btn::before,
-.chip::before,
-.wedora-venue-page button[class*="bg-[#b"]::before,
-.wedora-venue-page button[class*="bg-[#a"]::before,
-.wedora-vendor-page button[class*="bg-[#b"]::before,
-.wedora-vendor-page button[class*="bg-[#a"]::before {
-  content: '';
-
-  position: absolute;
-
-  z-index: 1;
-
-  width: 70%;
-  height: 180%;
-
-  left: -85%;
-  top: -40%;
-
-  background:
-    linear-gradient(
-      105deg,
-      transparent 0%,
-      rgba(255, 255, 255, 0.04) 25%,
-      rgba(255, 255, 255, 0.55) 50%,
-      rgba(255, 255, 255, 0.04) 75%,
-      transparent 100%
-    );
-
-  filter: blur(10px);
-
-  transform: rotate(12deg);
-
-  opacity: 0;
-
-  pointer-events: none;
-}
-
-
-/* ---------------------------------------------------------
-   Liquid ripple
-   --------------------------------------------------------- */
-
-.glow-btn::after,
-.chip::after,
-.wedora-venue-page button[class*="bg-[#b"]::after,
-.wedora-venue-page button[class*="bg-[#a"]::after,
-.wedora-vendor-page button[class*="bg-[#b"]::after,
-.wedora-vendor-page button[class*="bg-[#a"]::after {
-  content: '';
-
-  position: absolute;
-
-  z-index: 1;
-
-  left: 50%;
-  top: 50%;
-
-  width: 22px;
-  height: 22px;
-
-  border-radius: 50%;
-
-  background:
-    radial-gradient(
-      circle,
-      rgba(255, 255, 255, 0.62) 0%,
-      rgba(255, 255, 255, 0.30) 28%,
-      rgba(255, 255, 255, 0.12) 48%,
-      transparent 72%
-    );
-
-  transform:
-    translate(-50%, -50%)
-    scale(0);
-
-  opacity: 0;
-
-  pointer-events: none;
-}
-
-
-/* =========================================================
-   LIQUID PRESS
-   ========================================================= */
-
-.glow-btn:active,
-.chip:active,
-.wedora-venue-page button[class*="bg-[#b"]:active,
-.wedora-venue-page button[class*="bg-[#a"]:active,
-.wedora-vendor-page button[class*="bg-[#b"]:active,
-.wedora-vendor-page button[class*="bg-[#a"]:active {
-  transform: scale(0.975);
-
-  box-shadow:
-    0 4px 14px -5px rgba(247, 183, 216, 0.38),
-    inset 0 2px 8px rgba(255, 255, 255, 0.38),
-    inset 0 -2px 5px rgba(201, 184, 255, 0.18);
-
-  transition:
-    transform 0.12s cubic-bezier(.2, .8, .2, 1),
-    box-shadow 0.12s ease;
-}
-
-
-/* ---------------------------------------------------------
-   Ripple expands during the press
-   --------------------------------------------------------- */
-
-.glow-btn:active::after,
-.chip:active::after,
-.wedora-venue-page button[class*="bg-[#b"]:active::after,
-.wedora-venue-page button[class*="bg-[#a"]:active::after,
-.wedora-vendor-page button[class*="bg-[#b"]:active::after,
-.wedora-vendor-page button[class*="bg-[#a"]:active::after {
-  animation:
-    wedora-liquid-ripple
-    0.65s
-    cubic-bezier(.15, .75, .25, 1)
-    forwards;
-}
-
-
-/* ---------------------------------------------------------
-   Light sweeps across the liquid glass
-   --------------------------------------------------------- */
-
-.glow-btn:active::before,
-.chip:active::before,
-.wedora-venue-page button[class*="bg-[#b"]:active::before,
-.wedora-venue-page button[class*="bg-[#a"]:active::before,
-.wedora-vendor-page button[class*="bg-[#b"]:active::before,
-.wedora-vendor-page button[class*="bg-[#a"]:active::before {
-  animation:
-    wedora-liquid-light
-    0.7s
-    cubic-bezier(.2, .7, .2, 1)
-    forwards;
-}
-
-
-/* =========================================================
-   LIQUID RIPPLE ANIMATION
-   ========================================================= */
-
-@keyframes wedora-liquid-ripple {
-  0% {
-    transform:
-      translate(-50%, -50%)
-      scale(0);
-
-    opacity: 0;
-  }
-
-  12% {
-    opacity: 0.9;
-  }
-
-  55% {
-    opacity: 0.48;
-  }
-
-  100% {
-    transform:
-      translate(-50%, -50%)
-      scale(18);
-
-    opacity: 0;
-  }
-}
-
-
-/* =========================================================
-   LIQUID HIGHLIGHT ANIMATION
-   ========================================================= */
-
-@keyframes wedora-liquid-light {
-  0% {
-    left: -85%;
-    opacity: 0;
-  }
-
-  15% {
-    opacity: 0.85;
-  }
-
-  60% {
-    opacity: 0.55;
-  }
-
-  100% {
-    left: 125%;
-    opacity: 0;
-  }
-}
-
-
-/* =========================================================
-   REDUCED MOTION
+   ACCESSIBILITY / REDUCED MOTION
    ========================================================= */
 
 @media (prefers-reduced-motion: reduce) {
+
+  .glow-btn,
+  .liquid-button,
+  .chip {
+    transition: none !important;
+  }
+
   .glow-btn::before,
   .glow-btn::after,
-  .chip::before,
-  .chip::after,
-
-  .wedora-venue-page button[class*="bg-[#b"]::before,
-  .wedora-venue-page button[class*="bg-[#b"]::after,
-
-  .wedora-venue-page button[class*="bg-[#a"]::before,
-  .wedora-venue-page button[class*="bg-[#a"]::after,
-
-  .wedora-vendor-page button[class*="bg-[#b"]::before,
-  .wedora-vendor-page button[class*="bg-[#b"]::after,
-
-  .wedora-vendor-page button[class*="bg-[#a"]::before,
-  .wedora-vendor-page button[class*="bg-[#a"]::after {
+  .liquid-button::before,
+  .liquid-button::after {
     animation: none !important;
   }
 
   .glow-btn:active,
-  .chip:active,
-
-  .wedora-venue-page button[class*="bg-[#b"]:active,
-  .wedora-venue-page button[class*="bg-[#a"]:active,
-
-  .wedora-vendor-page button[class*="bg-[#b"]:active,
-  .wedora-vendor-page button[class*="bg-[#a"]:active {
-    transform: none;
+  .liquid-button:active {
+    transform: none !important;
   }
+
 }
