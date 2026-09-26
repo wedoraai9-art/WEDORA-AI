@@ -4376,8 +4376,7 @@ class VendorSearchIn(BaseModel):
 
 
 # Vendor Discovery uses its own model so the existing WEDORA chat/designer AI is untouched.
-# Gemini 2.5 Flash supports Google Search grounding on the Free Tier.
-# This model is isolated to Vendor Discovery; existing Chat/Designer AI is unchanged.
+# Gemini 2.5 Flash-Lite supports Google Search grounding on the Free Tier.
 LIVE_VENDOR_SEARCH_MODEL = "gemini-2.5-flash"
 
 
