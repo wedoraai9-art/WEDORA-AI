@@ -145,6 +145,7 @@ export const ProfileTab = ({ vendor, planDetails, onSaved }) => {
           <input ref={logoRef} type="file" accept="image/*" hidden onChange={onLogo} />
         </div>
       </div>
+      <p className="-mt-5 mb-7 ml-[6.25rem] text-xs text-[#988FA6]">Recommended logo size: 500 × 500 pixels (square) · 5 MB maximum</p>
 
       {/* Public profile cover image */}
       <div className="mb-7 rounded-3xl border border-white/80 bg-white/50 p-4 md:p-5">
@@ -167,7 +168,7 @@ export const ProfileTab = ({ vendor, planDetails, onSaved }) => {
           )}
           <input ref={backgroundRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={onBackground} />
         </div>
-        <p className="mt-2 text-xs text-[#988FA6]">JPG, PNG, or WebP · 3 MB maximum</p>
+        <p className="mt-2 text-xs text-[#988FA6]">JPG, PNG, or WebP · 3 MB maximum · Recommended size: 1600 × 500 pixels</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
