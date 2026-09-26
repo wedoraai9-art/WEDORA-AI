@@ -276,22 +276,22 @@ const WedoraVenueDiscovery = () => {
   };
 
   return (
-    <div className="wedora-venue-page min-h-screen bg-[#faf8ff] text-[#2D2638]">
+    <div className="wedora-venue-page min-h-screen bg-gradient-to-b from-[#FBF9FF] via-[#FFFCFE] to-[#F8F6FF] text-[#2D2638]">
       {/* HEADER */}
-      <header className="sticky top-0 z-40 border-b border-[#e8e1d9] bg-[#fbfaf7]/95 backdrop-blur">
+      <header className="sticky top-[82px] z-30 border-b border-[#E9E2F2] bg-[#FFFCFE]/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
 
           <button
             onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-sm text-[#6f6861] hover:text-[#302c29]"
+            className="flex items-center gap-2 text-sm text-[#756A82] hover:text-[#30283A]"
           >
             <ArrowLeft size={18} />
             Back to WEDORA
           </button>
 
           <div className="flex items-center gap-2">
-            <Sparkles size={18} className="text-[#b99768]" />
-            <span className="text-sm tracking-[0.25em] text-[#514a44]">
+            <Sparkles size={18} className="text-[#9B7CF6]" />
+            <span className="text-sm tracking-[0.25em] text-[#5F556E]">
               WEDORA AI
             </span>
           </div>
@@ -303,10 +303,15 @@ const WedoraVenueDiscovery = () => {
       {/* HERO */}
       <main>
 
-        <section className="px-6 pb-14 pt-20">
+        <section className="relative overflow-hidden px-6 pb-14 pt-12 md:pt-16">
+          <div className="pointer-events-none absolute inset-0 -z-10">
+            <div className="absolute left-[-10%] top-0 h-72 w-72 rounded-full bg-[#DCCBFF]/20 blur-[100px]" />
+            <div className="absolute right-[-8%] top-10 h-80 w-80 rounded-full bg-[#F7C6DA]/20 blur-[110px]" />
+            <div className="absolute bottom-[-20%] left-[35%] h-72 w-72 rounded-full bg-[#CBE8F7]/15 blur-[110px]" />
+          </div>
           <div className="mx-auto max-w-5xl text-center">
 
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#e3d8ca] bg-[#f7f1e9] px-4 py-2 text-xs tracking-[0.18em] text-[#8b7357]">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#E8DFF5] bg-[#F6F0FF] px-4 py-2 text-xs tracking-[0.18em] text-[#8E829F]">
               <Sparkles size={14} />
               AI VENUE DISCOVERY
             </div>
@@ -314,26 +319,26 @@ const WedoraVenueDiscovery = () => {
             <h1 className="text-4xl font-light tracking-tight md:text-6xl">
               Find the venue
               <br />
-              <span className="font-normal italic text-[#a88761]">
+              <span className="font-normal italic text-[#9B7CF6]">
                 that fits your wedding.
               </span>
             </h1>
 
-            <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-[#777069] md:text-lg">
+            <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-[#746A82] md:text-lg">
               Tell WEDORA what you're looking for.
               Search by your wedding requirements and discover matching venues.
             </p>
 
             {/* SEARCH */}
-            <div className="mx-auto mt-10 max-w-4xl rounded-[28px] border border-[#ded5ca] bg-white p-3 shadow-[0_20px_60px_rgba(70,55,40,0.08)]">
+            <div className="mx-auto mt-10 max-w-4xl rounded-[28px] border border-[#E8DFF5] bg-white p-3 shadow-[0_20px_60px_rgba(70,55,40,0.08)]">
 
               <div className="flex flex-col gap-3 md:flex-row">
 
-                <div className="flex min-h-[64px] flex-1 items-center gap-3 rounded-2xl bg-[#faf8f5] px-5">
+                <div className="flex min-h-[64px] flex-1 items-center gap-3 rounded-2xl bg-[#FBF9FD] px-5">
 
                   <Search
                     size={21}
-                    className="shrink-0 text-[#a88761]"
+                    className="shrink-0 text-[#9B7CF6]"
                   />
 
                   <input
@@ -344,12 +349,12 @@ const WedoraVenueDiscovery = () => {
                       if (e.key === 'Enter') handleSearch();
                     }}
                     placeholder="Describe your ideal wedding venue..."
-                    className="w-full bg-transparent text-[15px] outline-none placeholder:text-[#a49c94]"
+                    className="w-full bg-transparent text-[15px] outline-none placeholder:text-[#B0A5C0]"
                   />
 
                   {query && (
                     <button onClick={() => setQuery('')}>
-                      <X size={17} className="text-[#99918a]" />
+                      <X size={17} className="text-[#A198AD]" />
                     </button>
                   )}
 
@@ -357,7 +362,7 @@ const WedoraVenueDiscovery = () => {
 
                 <button
                   onClick={handleSearch}
-                  className="flex min-h-[64px] items-center justify-center gap-2 rounded-2xl bg-[#302c29] px-8 text-sm tracking-wide text-white hover:bg-[#49423d]"
+                  className="flex min-h-[64px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#D8C8FF] via-[#E8D3F4] to-[#F7C5D9] px-8 text-sm font-medium tracking-wide text-[#30283A] shadow-[0_8px_24px_rgba(155,124,246,0.16)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(155,124,246,0.22)]"
                 >
                   <Search size={18} />
                   Discover Venues
@@ -370,14 +375,14 @@ const WedoraVenueDiscovery = () => {
 
                 <button
                   onClick={() => setShowFilters(!showFilters)}
-                  className="flex items-center gap-2 rounded-full border border-[#e4ddd5] px-4 py-2 text-xs text-[#665e57]"
+                  className="flex items-center gap-2 rounded-full border border-[#e4ddd5] px-4 py-2 text-xs text-[#6B617A]"
                 >
                   <SlidersHorizontal size={14} />
                   Filters
                 </button>
 
                 {selectedType && (
-                  <span className="rounded-full bg-[#f4eee7] px-4 py-2 text-xs text-[#75634f]">
+                  <span className="rounded-full bg-[#F4EEFF] px-4 py-2 text-xs text-[#74628D]">
                     {selectedType}
                   </span>
                 )}
@@ -388,7 +393,7 @@ const WedoraVenueDiscovery = () => {
                   selectedType) && (
                   <button
                     onClick={clearSearch}
-                    className="ml-auto text-xs text-[#9a7168] hover:underline"
+                    className="ml-auto text-xs text-[#C98EAE] hover:underline"
                   >
                     Clear all
                   </button>
@@ -398,15 +403,15 @@ const WedoraVenueDiscovery = () => {
 
               {/* FILTERS */}
               {showFilters && (
-                <div className="mt-4 grid gap-3 border-t border-[#eee8e1] pt-4 md:grid-cols-3">
+                <div className="mt-4 grid gap-3 border-t border-[#EEE8F5] pt-4 md:grid-cols-3">
 
-                  <div className="rounded-2xl border border-[#e5ddd4] bg-[#fcfaf8] p-4 text-left">
-                    <label className="mb-2 block text-xs tracking-wide text-[#81776f]">
+                  <div className="rounded-2xl border border-[#E9E2F1] bg-[#FCFAFE] p-4 text-left">
+                    <label className="mb-2 block text-xs tracking-wide text-[#8E829F]">
                       LOCATION
                     </label>
 
                     <div className="flex items-center gap-2">
-                      <MapPin size={16} className="text-[#a88761]" />
+                      <MapPin size={16} className="text-[#9B7CF6]" />
 
                       <input
                         value={location}
@@ -417,13 +422,13 @@ const WedoraVenueDiscovery = () => {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-[#e5ddd4] bg-[#fcfaf8] p-4 text-left">
-                    <label className="mb-2 block text-xs tracking-wide text-[#81776f]">
+                  <div className="rounded-2xl border border-[#E9E2F1] bg-[#FCFAFE] p-4 text-left">
+                    <label className="mb-2 block text-xs tracking-wide text-[#8E829F]">
                       GUESTS
                     </label>
 
                     <div className="flex items-center gap-2">
-                      <Users size={16} className="text-[#a88761]" />
+                      <Users size={16} className="text-[#9B7CF6]" />
 
                       <input
                         type="number"
@@ -435,15 +440,15 @@ const WedoraVenueDiscovery = () => {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-[#e5ddd4] bg-[#fcfaf8] p-4 text-left">
-                    <label className="mb-2 block text-xs tracking-wide text-[#81776f]">
+                  <div className="rounded-2xl border border-[#E9E2F1] bg-[#FCFAFE] p-4 text-left">
+                    <label className="mb-2 block text-xs tracking-wide text-[#8E829F]">
                       MAXIMUM BUDGET
                     </label>
 
                     <div className="flex items-center gap-2">
                       <IndianRupee
                         size={16}
-                        className="text-[#a88761]"
+                        className="text-[#9B7CF6]"
                       />
 
                       <input
@@ -464,7 +469,7 @@ const WedoraVenueDiscovery = () => {
             {/* SUGGESTIONS */}
             <div className="mt-8">
 
-              <p className="mb-3 text-xs tracking-[0.15em] text-[#9a9189]">
+              <p className="mb-3 text-xs tracking-[0.15em] text-[#978DA4]">
                 TRY ASKING
               </p>
 
@@ -474,7 +479,7 @@ const WedoraVenueDiscovery = () => {
                   <button
                     key={suggestion}
                     onClick={() => useSuggestion(suggestion)}
-                    className="rounded-full border border-[#e3dbd2] bg-white px-4 py-2 text-xs text-[#716960] hover:border-[#cbb69d] hover:bg-[#faf6f0]"
+                    className="rounded-full border border-[#E9E1F2] bg-white px-4 py-2 text-xs text-[#756A82] hover:border-[#C8B4EA] hover:bg-[#FAF5FF]"
                   >
                     {suggestion}
                   </button>
@@ -488,12 +493,12 @@ const WedoraVenueDiscovery = () => {
         </section>
 
         {/* VENUE TYPES */}
-        <section className="border-y border-[#ebe4dc] bg-white px-6 py-14">
+        <section className="border-y border-[#EEE8F4] bg-white px-6 py-14">
 
           <div className="mx-auto max-w-6xl">
 
             <div className="mb-8 text-center">
-              <p className="text-xs tracking-[0.2em] text-[#a88761]">
+              <p className="text-xs tracking-[0.2em] text-[#9B7CF6]">
                 EXPLORE BY STYLE
               </p>
 
@@ -516,12 +521,12 @@ const WedoraVenueDiscovery = () => {
                     }
                     className={`rounded-2xl border p-6 text-center transition ${
                       active
-                        ? 'border-[#b99768] bg-[#f8f1e8]'
-                        : 'border-[#e6dfd7] bg-[#fdfbf9] hover:border-[#cdbda9]'
+                        ? 'border-[#9B7CF6] bg-[#F5EEFF]'
+                        : 'border-[#EAE4F1] bg-[#FFFDFF] hover:border-[#D2C2EE]'
                     }`}
                   >
 
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#f3ede5] text-[#a88761]">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#F2ECF8] text-[#9B7CF6]">
                       <Icon size={22} />
                     </div>
 
@@ -548,7 +553,7 @@ const WedoraVenueDiscovery = () => {
               <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
 
                 <div>
-                  <p className="text-xs tracking-[0.2em] text-[#a88761]">
+                  <p className="text-xs tracking-[0.2em] text-[#9B7CF6]">
                     WEDORA MATCHES
                   </p>
 
@@ -558,19 +563,19 @@ const WedoraVenueDiscovery = () => {
                   </h2>
                 </div>
 
-                <div className="flex items-center gap-2 text-xs text-[#837b73]">
-                  <ShieldCheck size={15} className="text-[#9c805d]" />
+                <div className="flex items-center gap-2 text-xs text-[#8B8198]">
+                  <ShieldCheck size={15} className="text-[#9B7CF6]" />
                   Venue information is continuously updated
                 </div>
 
               </div>
 
               {filteredVenues.length === 0 ? (
-                <div className="rounded-[28px] border border-[#e5ddd5] bg-white px-6 py-16 text-center">
+                <div className="rounded-[28px] border border-[#E9E2F1] bg-white px-6 py-16 text-center">
 
                   <Search
                     size={34}
-                    className="mx-auto text-[#c2b4a5]"
+                    className="mx-auto text-[#B9ACCB]"
                   />
 
                   <h3 className="mt-5 text-xl font-light">
@@ -594,9 +599,9 @@ const WedoraVenueDiscovery = () => {
                     >
 
                       {/* IMAGE PLACEHOLDER */}
-                      <div className="relative flex h-48 items-center justify-center bg-[#eee7de]">
+                      <div className="relative flex h-48 items-center justify-center bg-[#EEEAF5]">
 
-                        <div className="text-center text-[#a49687]">
+                        <div className="text-center text-[#9C91AD]">
                           <Building2
                             size={38}
                             className="mx-auto"
@@ -616,13 +621,13 @@ const WedoraVenueDiscovery = () => {
                             size={18}
                             className={
                               shortlisted.includes(venue.id)
-                                ? 'fill-[#a88761] text-[#a88761]'
-                                : 'text-[#756d66]'
+                                ? 'fill-[#9B7CF6] text-[#9B7CF6]'
+                                : 'text-[#786E85]'
                             }
                           />
                         </button>
 
-                        <div className="absolute bottom-4 left-4 rounded-full bg-white/90 px-3 py-1 text-[11px] text-[#6e655d]">
+                        <div className="absolute bottom-4 left-4 rounded-full bg-white/90 px-3 py-1 text-[11px] text-[#756A82]">
                           {venue.type}
                         </div>
 
@@ -648,7 +653,7 @@ const WedoraVenueDiscovery = () => {
 
                         <div className="mt-5 grid grid-cols-2 gap-3">
 
-                          <div className="rounded-xl bg-[#faf8f5] p-3">
+                          <div className="rounded-xl bg-[#FBF9FD] p-3">
                             <p className="text-[10px] tracking-wide text-[#978d84]">
                               CAPACITY
                             </p>
@@ -657,7 +662,7 @@ const WedoraVenueDiscovery = () => {
                             </p>
                           </div>
 
-                          <div className="rounded-xl bg-[#faf8f5] p-3">
+                          <div className="rounded-xl bg-[#FBF9FD] p-3">
                             <p className="text-[10px] tracking-wide text-[#978d84]">
                               ROOMS
                             </p>
@@ -668,7 +673,7 @@ const WedoraVenueDiscovery = () => {
 
                         </div>
 
-                        <div className="mt-3 rounded-xl bg-[#faf8f5] p-3">
+                        <div className="mt-3 rounded-xl bg-[#FBF9FD] p-3">
 
                           <p className="text-[10px] tracking-wide text-[#978d84]">
                             STARTING PRICE
@@ -685,17 +690,17 @@ const WedoraVenueDiscovery = () => {
                         {/* DATA STATUS */}
                         <div className="mt-4 flex items-center justify-between">
 
-                          <div className="flex items-center gap-1.5 text-[11px] text-[#7d756e]">
+                          <div className="flex items-center gap-1.5 text-[11px] text-[#857A91]">
 
                             {venue.status === 'Updated by WEDORA' ? (
                               <CheckCircle2
                                 size={14}
-                                className="text-[#718c72]"
+                                className="text-[#708C82]"
                               />
                             ) : (
                               <Clock3
                                 size={14}
-                                className="text-[#a88761]"
+                                className="text-[#9B7CF6]"
                               />
                             )}
 
@@ -703,7 +708,7 @@ const WedoraVenueDiscovery = () => {
 
                           </div>
 
-                          <span className="text-[10px] text-[#a09891]">
+                          <span className="text-[10px] text-[#A095AE]">
                             {venue.lastUpdated}
                           </span>
 
@@ -714,7 +719,7 @@ const WedoraVenueDiscovery = () => {
                           onClick={() =>
                             openUpdateModal(venue)
                           }
-                          className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-[#ded5ca] bg-[#fcfaf8] py-3 text-xs text-[#665d55] hover:bg-[#f6f0e8]"
+                          className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-[#E8DFF5] bg-[#FCFAFE] py-3 text-xs text-[#62586F] hover:bg-[#F4EEFF]"
                         >
                           <RefreshCw size={14} />
                           Update / Report Information
@@ -735,20 +740,20 @@ const WedoraVenueDiscovery = () => {
         )}
 
         {/* TRUST SECTION */}
-        <section className="border-t border-[#e8e1d9] bg-white px-6 py-16">
+        <section className="border-t border-[#E9E2F2] bg-white px-6 py-16">
 
           <div className="mx-auto max-w-5xl text-center">
 
             <ShieldCheck
               size={30}
-              className="mx-auto text-[#a88761]"
+              className="mx-auto text-[#9B7CF6]"
             />
 
             <h2 className="mt-4 text-2xl font-light">
               Help WEDORA keep venue information accurate.
             </h2>
 
-            <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-[#827a73]">
+            <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-[#82778E]">
               Found an outdated price, incorrect capacity, changed contact
               information or another mistake? Submit an update and WEDORA
               can use verified corrections in future searches.
@@ -762,7 +767,7 @@ const WedoraVenueDiscovery = () => {
 
       {/* UPDATE MODAL */}
       {updateVenue && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#29231f]/45 px-5 py-8 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292330]/45 px-5 py-8 backdrop-blur-sm">
 
           <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-[28px] bg-white p-7 shadow-2xl">
 
@@ -771,7 +776,7 @@ const WedoraVenueDiscovery = () => {
                 <div className="flex items-start justify-between">
 
                   <div>
-                    <p className="text-xs tracking-[0.18em] text-[#a88761]">
+                    <p className="text-xs tracking-[0.18em] text-[#9B7CF6]">
                       UPDATE VENUE INFORMATION
                     </p>
 
@@ -782,19 +787,19 @@ const WedoraVenueDiscovery = () => {
 
                   <button
                     onClick={closeUpdateModal}
-                    className="rounded-full p-2 hover:bg-[#f5f1ec]"
+                    className="rounded-full p-2 hover:bg-[#F5F0FA]"
                   >
                     <X size={19} />
                   </button>
 
                 </div>
 
-                <div className="mt-6 rounded-2xl bg-[#faf7f2] p-4">
+                <div className="mt-6 rounded-2xl bg-[#FAF6FF] p-4">
 
                   <div className="flex gap-3">
                     <AlertCircle
                       size={19}
-                      className="mt-0.5 shrink-0 text-[#a88761]"
+                      className="mt-0.5 shrink-0 text-[#9B7CF6]"
                     />
 
                     <p className="text-xs leading-5 text-[#716961]">
@@ -911,14 +916,14 @@ const WedoraVenueDiscovery = () => {
 
                   <button
                     onClick={closeUpdateModal}
-                    className="flex-1 rounded-xl border border-[#ded6ce] py-3 text-sm text-[#665d55]"
+                    className="flex-1 rounded-xl border border-[#ded6ce] py-3 text-sm text-[#62586F]"
                   >
                     Cancel
                   </button>
 
                   <button
                     onClick={submitUpdate}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#302c29] py-3 text-sm text-white"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#30283A] py-3 text-sm text-white"
                   >
                     <Send size={15} />
                     Submit Update
@@ -929,10 +934,10 @@ const WedoraVenueDiscovery = () => {
             ) : (
               <div className="py-10 text-center">
 
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#eef4ee]">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#EEF7F4]">
                   <CheckCircle2
                     size={30}
-                    className="text-[#718c72]"
+                    className="text-[#708C82]"
                   />
                 </div>
 
@@ -948,7 +953,7 @@ const WedoraVenueDiscovery = () => {
 
                 <button
                   onClick={closeUpdateModal}
-                  className="mt-7 rounded-xl bg-[#302c29] px-7 py-3 text-sm text-white"
+                  className="mt-7 rounded-xl bg-[#30283A] px-7 py-3 text-sm text-white"
                 >
                   Done
                 </button>
