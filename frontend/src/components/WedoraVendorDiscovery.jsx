@@ -721,11 +721,15 @@ const WedoraVendorDiscovery = () => {
                 </button>
 
                 <button
+                  type="button"
                   onClick={handleSearch}
-                  className="flex min-h-[64px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#D8C8FF] via-[#E8D3F4] to-[#F7C5D9] px-8 text-sm font-medium text-[#30283A] shadow-[0_8px_24px_rgba(155,124,246,0.16)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(155,124,246,0.22)] active:scale-[0.97] active:translate-y-[1px]"
+                  aria-label="Search vendors"
+                  className="group relative flex min-h-[64px] items-center justify-center rounded-full border border-white/90 bg-white/75 px-3 shadow-[0_10px_28px_rgba(155,124,246,0.12)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_rgba(155,124,246,0.18)] active:translate-y-0 active:scale-[0.985]"
                 >
-                  <Search size={18} />
-                  Search
+                  <span className="flex min-h-[46px] items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#D8C8FF] via-[#E8D3F4] to-[#BFE8F7] px-8 text-sm font-medium text-[#30283A] shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_6px_18px_rgba(155,124,246,0.14)] transition-all duration-300 ease-out group-hover:scale-[1.025] group-hover:from-[#D4C2FF] group-hover:via-[#F0D3F0] group-hover:to-[#B8E5F5] group-active:scale-[0.985]">
+                    <Search size={17} className="transition-transform duration-300 group-hover:scale-105" />
+                    <span>Search</span>
+                  </span>
                 </button>
 
               </div>
