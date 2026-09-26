@@ -36,6 +36,20 @@ const emptyPayment = {
   notes: '',
 };
 
+const emptyQuotation = (wedding) => ({
+  title: 'Wedding quotation',
+  client_name: wedding?.client_name || [wedding?.bride_name, wedding?.groom_name].filter(Boolean).join(' & '),
+  issue_date: new Date().toISOString().slice(0, 10),
+  valid_until: '',
+  line_items: [{ description: '', quantity: '1', unit: 'service', unit_price: '' }],
+  discount_type: 'amount',
+  discount_value: '0',
+  tax_percent: '0',
+  advance_amount: '0',
+  terms: '',
+  notes: '',
+});
+
 const DECORATOR_ELEMENT_CATEGORIES = [
   'General',
   'Mandap',
@@ -353,6 +367,13 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
   const [editingExpenseId, setEditingExpenseId] = useState(null);
   const [editingPaymentId, setEditingPaymentId] = useState(null);
 
+  const [quotations, setQuotations] = useState([]);
+  const [quotationsLoading, setQuotationsLoading] = useState(false);
+  const [quotationSaving, setQuotationSaving] = useState(false);
+  const [showQuotationForm, setShowQuotationForm] = useState(false);
+  const [editingQuotationId, setEditingQuotationId] = useState(null);
+  const [quotationForm, setQuotationForm] = useState(() => emptyQuotation(wedding));
+
   const [documents, setDocuments] = useState([]);
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [documentUploading, setDocumentUploading] = useState(false);
@@ -553,6 +574,7 @@ ${message}`;
       loadClients();
       loadAvailableWeddings();
       loadBudget();
+      loadQuotations();
       loadDocuments();
       loadNotifications();
       if (isDecorator) {
@@ -695,6 +717,137 @@ ${message}`;
     } finally {
       setBudgetLoading(false);
     }
+  };
+
+  const loadQuotations = async () => {
+    if (!wedding?.id) return;
+    setQuotationsLoading(true);
+    try {
+      const response = await authAxios.get(`/vendor/weddings/${wedding.id}/quotations`);
+      setQuotations(Array.isArray(response.data?.quotations) ? response.data.quotations : []);
+    } catch (error) {
+      console.error('Failed to load wedding quotations:', error);
+      setQuotations([]);
+    } finally {
+      setQuotationsLoading(false);
+    }
+  };
+
+  const resetQuotationForm = () => {
+    setQuotationForm(emptyQuotation(wedding));
+    setEditingQuotationId(null);
+    setShowQuotationForm(false);
+  };
+
+  const updateQuotationLine = (index, field, value) => {
+    setQuotationForm((current) => ({
+      ...current,
+      line_items: current.line_items.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, [field]: value } : item
+      ),
+    }));
+  };
+
+  const saveQuotation = async () => {
+    if (quotationSaving) return;
+    const lineItems = quotationForm.line_items
+      .filter((item) => String(item.description || '').trim())
+      .map((item) => ({
+        ...item,
+        description: String(item.description || '').trim(),
+        quantity: Number(item.quantity),
+        unit_price: Number(item.unit_price),
+      }));
+    if (!lineItems.length || lineItems.some((item) => !Number.isFinite(item.quantity) || item.quantity <= 0 || !Number.isFinite(item.unit_price) || item.unit_price < 0)) {
+      window.alert('Add a description, quantity, and valid price for at least one line item.');
+      return;
+    }
+    setQuotationSaving(true);
+    try {
+      const payload = {
+        ...quotationForm,
+        title: String(quotationForm.title || '').trim() || 'Quotation',
+        client_name: String(quotationForm.client_name || '').trim(),
+        line_items: lineItems,
+        discount_value: Number(quotationForm.discount_value || 0),
+        tax_percent: Number(quotationForm.tax_percent || 0),
+        advance_amount: Number(quotationForm.advance_amount || 0),
+      };
+      if (editingQuotationId) {
+        await authAxios.put(`/vendor/weddings/${wedding.id}/quotations/${editingQuotationId}`, payload);
+      } else {
+        await authAxios.post(`/vendor/weddings/${wedding.id}/quotations`, payload);
+      }
+      resetQuotationForm();
+      await loadQuotations();
+    } catch (error) {
+      console.error('Failed to save wedding quotation:', error);
+      window.alert(error.response?.data?.detail || 'Could not save quotation.');
+    } finally {
+      setQuotationSaving(false);
+    }
+  };
+
+  const editQuotation = (quotation) => {
+    setEditingQuotationId(quotation.id);
+    setQuotationForm({
+      ...emptyQuotation(wedding),
+      ...quotation,
+      line_items: Array.isArray(quotation.line_items) && quotation.line_items.length
+        ? quotation.line_items.map((item) => ({
+            description: item.description || '',
+            quantity: String(item.quantity ?? 1),
+            unit: item.unit || 'unit',
+            unit_price: String(item.unit_price ?? 0),
+          }))
+        : [{ description: '', quantity: '1', unit: 'service', unit_price: '' }],
+      discount_value: String(quotation.discount_value ?? 0),
+      tax_percent: String(quotation.tax_percent ?? 0),
+      advance_amount: String(quotation.advance_amount ?? 0),
+    });
+    setShowQuotationForm(true);
+  };
+
+  const deleteQuotation = async (quotationId) => {
+    if (!window.confirm('Delete this quotation?')) return;
+    try {
+      await authAxios.delete(`/vendor/weddings/${wedding.id}/quotations/${quotationId}`);
+      await loadQuotations();
+    } catch (error) {
+      console.error('Failed to delete wedding quotation:', error);
+      window.alert(error.response?.data?.detail || 'Could not delete quotation.');
+    }
+  };
+
+  const printQuotation = (quotation) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      window.alert('Please allow pop-ups for WEDORA to print or save this quotation as a PDF.');
+      return;
+    }
+    const safe = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[char]));
+    const rows = (quotation.line_items || []).map((item) => `
+      <tr><td>${safe(item.description)}</td><td>${safe(item.quantity)} ${safe(item.unit || '')}</td>
+      <td>₹${Number(item.unit_price || 0).toLocaleString('en-IN')}</td>
+      <td>₹${Number(item.amount || 0).toLocaleString('en-IN')}</td></tr>`).join('');
+    printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${safe(quotation.title || 'Quotation')}</title>
+      <style>body{font:14px Arial,sans-serif;color:#30283a;margin:40px}h1{font-size:26px;margin:0 0 6px}p{line-height:1.5}.muted{color:#756d7d}table{width:100%;border-collapse:collapse;margin:24px 0}th,td{text-align:left;padding:12px 8px;border-bottom:1px solid #e7dfea}th{background:#faf7ff}.totals{margin-left:auto;width:280px}.totals div{display:flex;justify-content:space-between;padding:5px}.grand{font-weight:bold;font-size:17px;border-top:1px solid #bba8c8;margin-top:6px;padding-top:10px!important}@media print{body{margin:18mm}}</style>
+      </head><body><h1>${safe(vendorBusinessName)}</h1><p class="muted">QUOTATION</p><h2>${safe(quotation.title || 'Wedding quotation')}</h2>
+      <p><strong>Client:</strong> ${safe(quotation.client_name || '—')}<br><strong>Wedding:</strong> ${safe(wedding.wedding_name || wedding.name || 'Wedding')}<br>
+      <strong>Issued:</strong> ${safe(quotation.issue_date || '—')} &nbsp; <strong>Valid until:</strong> ${safe(quotation.valid_until || '—')}</p>
+      <table><thead><tr><th>Item</th><th>Quantity</th><th>Rate</th><th>Amount</th></tr></thead><tbody>${rows}</tbody></table>
+      <div class="totals"><div><span>Subtotal</span><span>₹${Number(quotation.subtotal || 0).toLocaleString('en-IN')}</span></div>
+      <div><span>Discount</span><span>− ₹${Number(quotation.discount_amount || 0).toLocaleString('en-IN')}</span></div>
+      <div><span>Tax (${Number(quotation.tax_percent || 0)}%)</span><span>₹${Number(quotation.tax_amount || 0).toLocaleString('en-IN')}</span></div>
+      <div class="grand"><span>Total</span><span>₹${Number(quotation.total || 0).toLocaleString('en-IN')}</span></div>
+      <div><span>Advance</span><span>₹${Number(quotation.advance_amount || 0).toLocaleString('en-IN')}</span></div>
+      <div><strong>Balance</strong><strong>₹${Number(quotation.balance_amount || 0).toLocaleString('en-IN')}</strong></div></div>
+      ${quotation.terms ? `<h3>Terms</h3><p>${safe(quotation.terms).replace(/\n/g, '<br>')}</p>` : ''}
+      ${quotation.notes ? `<h3>Notes</h3><p>${safe(quotation.notes).replace(/\n/g, '<br>')}</p>` : ''}
+      <script>window.onload=()=>setTimeout(()=>window.print(),250);</script></body></html>`);
+    printWindow.document.close();
   };
 
   const loadDocuments = async () => {
@@ -1851,6 +2004,7 @@ ${message}`;
     { title: 'Tasks', description: 'Plan and track everything that needs to be done', icon: CheckSquare },
     { title: 'Clients', description: 'Manage bride, groom and client communication', icon: Users },
     { title: 'Budget & Payments', description: 'Track budget, expenses, advances and payments', icon: Wallet },
+    { title: 'Quotations', description: 'Prepare itemized client quotations and save them as PDF', icon: FileText },
     { title: 'Documents', description: 'Keep contracts, bills and important files organized', icon: FileText },
     { title: 'Notifications', description: 'Important reminders and wedding updates', icon: Bell },
     { title: 'AI Assistant', description: 'Get AI-powered help for this wedding', icon: Sparkles },
@@ -1863,6 +2017,16 @@ ${message}`;
   ];
 
   const budget = budgetData.budget || {};
+  const quotationSubtotal = (quotationForm.line_items || []).reduce(
+    (sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unit_price) || 0), 0
+  );
+  const quotationDiscount = quotationForm.discount_type === 'percent'
+    ? quotationSubtotal * (Number(quotationForm.discount_value) || 0) / 100
+    : Number(quotationForm.discount_value) || 0;
+  const quotationTaxable = Math.max(0, quotationSubtotal - Math.min(quotationDiscount, quotationSubtotal));
+  const quotationTax = quotationTaxable * (Number(quotationForm.tax_percent) || 0) / 100;
+  const quotationTotal = quotationTaxable + quotationTax;
+  const quotationBalance = Math.max(0, quotationTotal - (Number(quotationForm.advance_amount) || 0));
 
   return (
     <div className="min-h-screen bg-[#fcf9ff] px-4 pt-28 pb-6 md:px-8 md:pt-32 text-[#2D2638]">
@@ -2019,6 +2183,8 @@ ${message}`;
                 ? "Manage client details and communication for this wedding."
                 : activeModule === "Budget & Payments"
                 ? "Track budget, expenses, advances and payments for this wedding."
+                : activeModule === "Quotations"
+                ? "Create, save, update and print client quotations for this wedding."
                 : activeModule === "Documents"
                 ? "Keep contracts, bills and important files organized for this wedding."
                 : "Wedding overview and important details."}
@@ -2490,6 +2656,84 @@ ${message}`;
                     </div>
                   </>
                 )}
+              </div>
+            )}
+
+            {/* QUOTATIONS MODULE */}
+            {activeModule === "Quotations" && (
+              <div className="mt-4 space-y-5" data-testid="wedding-quotations">
+                <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <p className="text-sm text-[#8B8194]">Client Estimates</p>
+                    <h4 className="text-lg font-semibold text-[#3F3748] mt-1">Wedding Quotations</h4>
+                    <p className="text-sm text-[#6B6175] mt-1">Add line items, discount, tax, advance and terms. Print or save a quotation as PDF.</p>
+                  </div>
+                  <button type="button" onClick={() => { setQuotationForm(emptyQuotation(wedding)); setEditingQuotationId(null); setShowQuotationForm(true); }} className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadcf5]"><Plus className="inline w-4 h-4 mr-1" />New Quotation</button>
+                </div>
+
+                {showQuotationForm && (
+                  <div className="rounded-xl border border-[#eadff2] bg-white p-5 space-y-4" data-testid="quotation-form">
+                    <div className="flex items-center justify-between gap-3"><div><p className="text-sm text-[#8B8194]">{editingQuotationId ? 'Update saved quotation' : 'New quotation'}</p><h4 className="text-lg font-semibold text-[#3F3748] mt-1">Quotation Details</h4></div><button type="button" onClick={resetQuotationForm} className="rounded-xl px-3 py-2 text-sm text-[#8B8194]">Close</button></div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <label className="text-xs text-[#8B8194]">Quotation title<input value={quotationForm.title} onChange={(event) => setQuotationForm({ ...quotationForm, title: event.target.value })} maxLength={160} className="mt-1 w-full rounded-lg border border-[#eadff2] px-3 py-2 text-sm text-[#3F3748]" placeholder="Wedding services quotation" /></label>
+                      <label className="text-xs text-[#8B8194]">Client name<input value={quotationForm.client_name} onChange={(event) => setQuotationForm({ ...quotationForm, client_name: event.target.value })} maxLength={160} className="mt-1 w-full rounded-lg border border-[#eadff2] px-3 py-2 text-sm text-[#3F3748]" placeholder="Client name" /></label>
+                      <label className="text-xs text-[#8B8194]">Issue date<input type="date" value={quotationForm.issue_date || ''} onChange={(event) => setQuotationForm({ ...quotationForm, issue_date: event.target.value })} className="mt-1 w-full rounded-lg border border-[#eadff2] px-3 py-2 text-sm text-[#3F3748]" /></label>
+                      <label className="text-xs text-[#8B8194]">Valid until<input type="date" value={quotationForm.valid_until || ''} onChange={(event) => setQuotationForm({ ...quotationForm, valid_until: event.target.value })} className="mt-1 w-full rounded-lg border border-[#eadff2] px-3 py-2 text-sm text-[#3F3748]" /></label>
+                    </div>
+
+                    <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4">
+                      <div className="flex items-center justify-between gap-3 mb-3"><div><p className="text-sm font-semibold text-[#3F3748]">Line Items</p><p className="text-xs text-[#8B8194] mt-1">Add each service or product and its price.</p></div><button type="button" onClick={() => setQuotationForm({ ...quotationForm, line_items: [...quotationForm.line_items, { description: '', quantity: '1', unit: 'service', unit_price: '' }] })} className="rounded-lg bg-white px-3 py-2 text-xs text-[#8B6AA8]"><Plus className="inline w-3.5 h-3.5 mr-1" />Add line</button></div>
+                      <div className="space-y-2">
+                        {quotationForm.line_items.map((item, index) => (
+                          <div key={index} className="grid grid-cols-1 sm:grid-cols-[minmax(160px,1fr)_90px_100px_130px_40px] gap-2 items-center">
+                            <input value={item.description} onChange={(event) => updateQuotationLine(index, 'description', event.target.value)} maxLength={240} placeholder="Description" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm" />
+                            <input type="number" min="0.001" step="0.001" value={item.quantity} onChange={(event) => updateQuotationLine(index, 'quantity', event.target.value)} placeholder="Qty" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm" />
+                            <input value={item.unit} onChange={(event) => updateQuotationLine(index, 'unit', event.target.value)} maxLength={40} placeholder="Unit" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm" />
+                            <input type="number" min="0" step="0.01" value={item.unit_price} onChange={(event) => updateQuotationLine(index, 'unit_price', event.target.value)} placeholder="Price (₹)" className="rounded-lg border border-[#eadff2] px-3 py-2 text-sm" />
+                            <button type="button" aria-label="Remove line item" disabled={quotationForm.line_items.length <= 1} onClick={() => setQuotationForm({ ...quotationForm, line_items: quotationForm.line_items.filter((_, itemIndex) => itemIndex !== index) })} className="rounded-lg bg-[#fff1f4] px-2 py-2 text-red-400 disabled:opacity-40"><Trash2 className="w-4 h-4 mx-auto" /></button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="text-xs text-[#8B8194]">Discount type<select value={quotationForm.discount_type} onChange={(event) => setQuotationForm({ ...quotationForm, discount_type: event.target.value })} className="mt-1 w-full rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-sm"><option value="amount">Fixed amount (₹)</option><option value="percent">Percentage (%)</option></select></label>
+                        <label className="text-xs text-[#8B8194]">Discount<input type="number" min="0" step="0.01" value={quotationForm.discount_value} onChange={(event) => setQuotationForm({ ...quotationForm, discount_value: event.target.value })} className="mt-1 w-full rounded-lg border border-[#eadff2] px-3 py-2 text-sm" /></label>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="text-xs text-[#8B8194]">Tax (%)<input type="number" min="0" max="100" step="0.01" value={quotationForm.tax_percent} onChange={(event) => setQuotationForm({ ...quotationForm, tax_percent: event.target.value })} className="mt-1 w-full rounded-lg border border-[#eadff2] px-3 py-2 text-sm" /></label>
+                        <label className="text-xs text-[#8B8194]">Advance (₹)<input type="number" min="0" step="0.01" value={quotationForm.advance_amount} onChange={(event) => setQuotationForm({ ...quotationForm, advance_amount: event.target.value })} className="mt-1 w-full rounded-lg border border-[#eadff2] px-3 py-2 text-sm" /></label>
+                      </div>
+                      <label className="text-xs text-[#8B8194] md:col-span-2">Terms<textarea rows="3" maxLength={5000} value={quotationForm.terms} onChange={(event) => setQuotationForm({ ...quotationForm, terms: event.target.value })} placeholder="Payment schedule, inclusions, cancellation or other terms" className="mt-1 w-full rounded-lg border border-[#eadff2] px-3 py-2 text-sm" /></label>
+                      <label className="text-xs text-[#8B8194] md:col-span-2">Notes<textarea rows="2" maxLength={2000} value={quotationForm.notes} onChange={(event) => setQuotationForm({ ...quotationForm, notes: event.target.value })} className="mt-1 w-full rounded-lg border border-[#eadff2] px-3 py-2 text-sm" /></label>
+                    </div>
+
+                    <div className="ml-auto max-w-sm rounded-xl bg-[#faf7ff] p-4 space-y-1 text-sm">
+                      <div className="flex justify-between"><span>Subtotal</span><span>{formatCurrency(quotationSubtotal)}</span></div>
+                      <div className="flex justify-between"><span>Discount</span><span>− {formatCurrency(Math.min(quotationDiscount, quotationSubtotal))}</span></div>
+                      <div className="flex justify-between"><span>Tax ({Number(quotationForm.tax_percent) || 0}%)</span><span>{formatCurrency(quotationTax)}</span></div>
+                      <div className="flex justify-between border-t border-[#eadff2] pt-2 font-semibold"><span>Total</span><span>{formatCurrency(quotationTotal)}</span></div>
+                      <div className="flex justify-between"><span>Advance</span><span>{formatCurrency(quotationForm.advance_amount)}</span></div>
+                      <div className="flex justify-between font-medium"><span>Balance</span><span>{formatCurrency(quotationBalance)}</span></div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 justify-end"><button type="button" onClick={resetQuotationForm} className="rounded-xl px-4 py-2 text-sm text-[#8B8194]">Cancel</button><button type="button" onClick={saveQuotation} disabled={quotationSaving} className="rounded-xl bg-[#8B6AA8] px-4 py-2 text-sm font-medium text-white disabled:opacity-60">{quotationSaving ? 'Saving...' : editingQuotationId ? 'Update Quotation' : 'Save Quotation'}</button></div>
+                  </div>
+                )}
+
+                <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                  <div className="flex items-center justify-between"><div><p className="text-sm text-[#8B8194]">Saved for this wedding</p><h4 className="text-lg font-semibold text-[#3F3748] mt-1">Your Quotations</h4></div><span className="text-sm text-[#8B8194]">{quotations.length}</span></div>
+                  {quotationsLoading ? <p className="mt-4 text-sm text-[#8B8194]">Loading quotations...</p> : quotations.length ? (
+                    <div className="mt-4 space-y-3">
+                      {quotations.map((quotation) => (
+                        <div key={quotation.id} className="rounded-xl border border-[#eadff2] bg-white p-4 flex flex-col md:flex-row md:items-center gap-3">
+                          <div className="flex-1 min-w-0"><p className="text-sm font-medium text-[#3F3748]">{quotation.title || 'Quotation'}</p><p className="text-xs text-[#8B8194] mt-1">{quotation.client_name || 'No client name'} · {quotation.line_items?.length || 0} line items{quotation.valid_until ? ` · Valid until ${quotation.valid_until}` : ''}</p><p className="text-xs text-[#8B8194] mt-1">Total {formatCurrency(quotation.total)} · Advance {formatCurrency(quotation.advance_amount)} · Balance {formatCurrency(quotation.balance_amount)}</p></div>
+                          <div className="flex flex-wrap gap-2"><button type="button" onClick={() => printQuotation(quotation)} className="rounded-lg bg-[#eaf7ff] px-3 py-1.5 text-sm text-[#557c9a]"><Download className="inline w-3.5 h-3.5 mr-1" />PDF</button><button type="button" onClick={() => editQuotation(quotation)} className="rounded-lg bg-[#f4eafa] px-3 py-1.5 text-sm text-[#8B6AA8]"><Edit3 className="inline w-3.5 h-3.5 mr-1" />Edit</button><button type="button" onClick={() => deleteQuotation(quotation.id)} className="rounded-lg bg-[#fff1f4] px-3 py-1.5 text-sm text-red-400"><Trash2 className="inline w-3.5 h-3.5 mr-1" />Delete</button></div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : <p className="mt-4 text-sm text-[#8B8194]">No quotations saved for this wedding yet.</p>}
+                </div>
               </div>
             )}
 
