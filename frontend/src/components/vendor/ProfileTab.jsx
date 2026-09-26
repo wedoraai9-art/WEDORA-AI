@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { apiVendorUpdate, apiUploadLogo, apiDeleteLogo, apiAIGenerateProfile, fmtApiError } from '@/lib/auth';
+import { apiVendorUpdate, apiUploadLogo, apiDeleteLogo, apiAIGenerateProfile, authAxios, fmtApiError } from '@/lib/auth';
 import { toast } from 'sonner';
 import { Sparkles, Upload, Trash2 } from 'lucide-react';
 
@@ -21,6 +21,8 @@ export const ProfileTab = ({ vendor, planDetails, onSaved }) => {
   const [aiDraft, setAiDraft] = useState('');
   const [aiSuggestions, setAiSuggestions] = useState(null);
   const logoRef = useRef(null);
+  const backgroundRef = useRef(null);
+  const [backgroundBusy, setBackgroundBusy] = useState(false);
 
   useEffect(() => {
     setForm({ ...vendor, years_experience: vendor.years_experience ?? '', starting_price: vendor.starting_price ?? '' });
@@ -38,7 +40,7 @@ export const ProfileTab = ({ vendor, planDetails, onSaved }) => {
         starting_price: Number(form.starting_price) || 0,
         services: servicesText.split(/[\n,]/).map((service) => service.trim()).filter(Boolean),
       };
-      delete payload.id; delete payload.slug; delete payload.plan; delete payload.email; delete payload.plan_badge; delete payload.plan_label; delete payload.is_featured; delete payload.created_at; delete payload.portfolio; delete payload.logo;
+      delete payload.id; delete payload.slug; delete payload.plan; delete payload.email; delete payload.plan_badge; delete payload.plan_label; delete payload.is_featured; delete payload.created_at; delete payload.portfolio; delete payload.logo; delete payload.profile_background;
       const r = await apiVendorUpdate(payload);
       toast.success('Profile saved');
       onSaved && onSaved(r.vendor);
@@ -55,6 +57,48 @@ export const ProfileTab = ({ vendor, planDetails, onSaved }) => {
       toast.success('Logo updated');
       onSaved && onSaved();
     } catch (err) { toast.error(fmtApiError(err.response?.data?.detail, 'Upload failed')); }
+  };
+
+  const onBackground = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error('Choose a JPG, PNG, or WebP image.');
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      toast.error('Choose an image that is 3 MB or smaller.');
+      return;
+    }
+
+    const body = new FormData();
+    body.append('file', file);
+    setBackgroundBusy(true);
+    try {
+      const response = await authAxios.post('/vendor/upload/profile-background', body);
+      setForm((current) => ({ ...current, profile_background: response?.data?.profile_background || current.profile_background }));
+      toast.success('Profile background updated');
+      onSaved && onSaved();
+    } catch (err) {
+      toast.error(fmtApiError(err.response?.data?.detail, 'Background upload failed'));
+    } finally {
+      setBackgroundBusy(false);
+    }
+  };
+
+  const removeBackground = async () => {
+    setBackgroundBusy(true);
+    try {
+      await authAxios.delete('/vendor/profile-background');
+      setForm((current) => ({ ...current, profile_background: null }));
+      toast.success('Profile background removed');
+      onSaved && onSaved();
+    } catch (err) {
+      toast.error(fmtApiError(err.response?.data?.detail, 'Could not remove the background'));
+    } finally {
+      setBackgroundBusy(false);
+    }
   };
 
   const genAI = async () => {
@@ -100,6 +144,30 @@ export const ProfileTab = ({ vendor, planDetails, onSaved }) => {
           )}
           <input ref={logoRef} type="file" accept="image/*" hidden onChange={onLogo} />
         </div>
+      </div>
+
+      {/* Public profile cover image */}
+      <div className="mb-7 rounded-3xl border border-white/80 bg-white/50 p-4 md:p-5">
+        <p className={labelCls}>Public profile background</p>
+        <p className="mt-1 text-sm text-[#6B617A]">Add a wide cover photo behind your public business profile.</p>
+        <div
+          className="mt-4 h-36 md:h-48 rounded-2xl border border-white/80 bg-gradient-to-br from-[#E9DDFC] via-[#FFF5FA] to-[#DFF5FA] bg-cover bg-center"
+          style={form.profile_background ? { backgroundImage: `url("${form.profile_background}")` } : undefined}
+          role="img"
+          aria-label={form.profile_background ? 'Current public profile background' : 'Background image preview'}
+        />
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button type="button" onClick={() => backgroundRef.current?.click()} disabled={backgroundBusy} className="chip !text-xs inline-flex items-center gap-1.5 disabled:opacity-60">
+            <Upload className="w-3.5 h-3.5" /> {backgroundBusy ? 'Uploading…' : form.profile_background ? 'Change background' : 'Upload background'}
+          </button>
+          {form.profile_background && (
+            <button type="button" onClick={removeBackground} disabled={backgroundBusy} className="chip !text-xs inline-flex items-center gap-1.5 text-red-400 disabled:opacity-60">
+              <Trash2 className="w-3.5 h-3.5" /> Remove background
+            </button>
+          )}
+          <input ref={backgroundRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={onBackground} />
+        </div>
+        <p className="mt-2 text-xs text-[#988FA6]">JPG, PNG, or WebP · 3 MB maximum</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
