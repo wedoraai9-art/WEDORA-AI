@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   apiVendorLeads,
   apiUpdateLead,
+  authAxios,
   fmtApiError,
 } from '@/lib/auth';
 import { toast } from 'sonner';
@@ -17,6 +18,9 @@ import {
   Clock,
   FileText,
   ChevronDown,
+  Pencil,
+  Save,
+  X,
 } from 'lucide-react';
 
 const LEAD_STAGES = [
@@ -53,6 +57,9 @@ export const LeadsTab = ({ vendor }) => {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState(null);
+  const [savingDetails, setSavingDetails] = useState(false);
 
   const isPro = String(vendor?.plan || 'free').toLowerCase() === 'pro';
 
@@ -100,6 +107,52 @@ export const LeadsTab = ({ vendor }) => {
     if (!phone) return '#';
     const message = encodeURIComponent(`Hi ${lead?.name || 'there'}, this is ${vendor?.business_name || 'a WEDORA vendor'} from WEDORA — thanks for your inquiry!`);
     return `https://wa.me/${phone}?text=${message}`;
+  };
+
+  const startEditing = (lead) => {
+    setEditingId(lead.id);
+    setEditForm({
+      lead_source: lead.lead_source || lead.source || '',
+      event_date: lead.event_date || lead.wedding_date || '',
+      budget: lead.budget ?? '',
+      city: lead.city || lead.location || '',
+      guest_count: lead.guest_count ?? lead.guests ?? '',
+      required_service: lead.required_service || lead.requirements || lead.requirement || '',
+      notes: lead.notes || '',
+      follow_up_date: lead.follow_up_date || lead.followup_date || '',
+    });
+  };
+
+  const saveLeadDetails = async (event, leadId) => {
+    event.preventDefault();
+    if (!editForm || savingDetails) return;
+
+    const details = {
+      ...editForm,
+      budget: editForm.budget === '' ? null : Number(editForm.budget),
+      guest_count: editForm.guest_count === '' ? null : Number(editForm.guest_count),
+    };
+    if (
+      (details.budget !== null && (!Number.isFinite(details.budget) || details.budget < 0)) ||
+      (details.guest_count !== null && (!Number.isInteger(details.guest_count) || details.guest_count < 0))
+    ) {
+      toast.error('Enter a valid budget and guest count.');
+      return;
+    }
+
+    setSavingDetails(true);
+    try {
+      const response = await authAxios.patch(`/vendor/leads/${leadId}`, details);
+      const savedLead = response?.data || details;
+      setLeads((currentLeads) => currentLeads.map((lead) => lead.id === leadId ? { ...lead, ...savedLead } : lead));
+      setEditingId(null);
+      setEditForm(null);
+      toast.success('Lead details saved');
+    } catch (error) {
+      toast.error(fmtApiError(error?.response?.data?.detail, 'Could not save lead details'));
+    } finally {
+      setSavingDetails(false);
+    }
   };
 
   const newLeadCount = leads.filter((lead) => (lead.status || 'new') === 'new').length;
@@ -195,7 +248,54 @@ export const LeadsTab = ({ vendor }) => {
                       <a data-testid={`lead-whatsapp-${lead.id}`} href={getWhatsAppUrl(lead)} target="_blank" rel="noreferrer" onClick={(event) => { if (!lead.phone) { event.preventDefault(); toast.error('This lead does not have a WhatsApp number.'); } }} className="chip !text-xs inline-flex items-center gap-1.5">
                         <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
                       </a>
+                      {editingId !== lead.id && (
+                        <button type="button" onClick={() => startEditing(lead)} className="chip !text-xs inline-flex items-center gap-1.5">
+                          <Pencil className="w-3.5 h-3.5" /> Edit details
+                        </button>
+                      )}
                     </div>
+
+                    {editingId === lead.id && editForm && (
+                      <form onSubmit={(event) => saveLeadDetails(event, lead.id)} className="mt-5 rounded-2xl border border-[#eadff2] bg-[#faf7ff]/80 p-4 md:p-5">
+                        <div className="flex items-center justify-between gap-3 mb-4">
+                          <h5 className="font-heading font-semibold text-sm text-[#3F3748]">Lead details</h5>
+                          <button type="button" onClick={() => { setEditingId(null); setEditForm(null); }} className="text-xs text-[#8B8194] inline-flex items-center gap-1">
+                            <X className="w-3.5 h-3.5" /> Cancel
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                          <label className="text-xs text-[#6B617A]">Lead source
+                            <input value={editForm.lead_source} onChange={(event) => setEditForm({ ...editForm, lead_source: event.target.value })} placeholder="e.g. WEDORA, Instagram" className="mt-1 w-full rounded-xl border border-[#eadff2] bg-white px-3 py-2 text-sm text-[#3F3748]" />
+                          </label>
+                          <label className="text-xs text-[#6B617A]">Wedding date
+                            <input type="date" value={editForm.event_date} onChange={(event) => setEditForm({ ...editForm, event_date: event.target.value })} className="mt-1 w-full rounded-xl border border-[#eadff2] bg-white px-3 py-2 text-sm text-[#3F3748]" />
+                          </label>
+                          <label className="text-xs text-[#6B617A]">Budget (₹)
+                            <input type="number" min="0" step="0.01" value={editForm.budget} onChange={(event) => setEditForm({ ...editForm, budget: event.target.value })} placeholder="Budget" className="mt-1 w-full rounded-xl border border-[#eadff2] bg-white px-3 py-2 text-sm text-[#3F3748]" />
+                          </label>
+                          <label className="text-xs text-[#6B617A]">Location
+                            <input value={editForm.city} onChange={(event) => setEditForm({ ...editForm, city: event.target.value })} placeholder="City or area" className="mt-1 w-full rounded-xl border border-[#eadff2] bg-white px-3 py-2 text-sm text-[#3F3748]" />
+                          </label>
+                          <label className="text-xs text-[#6B617A]">Guest count
+                            <input type="number" min="0" step="1" value={editForm.guest_count} onChange={(event) => setEditForm({ ...editForm, guest_count: event.target.value })} placeholder="Number of guests" className="mt-1 w-full rounded-xl border border-[#eadff2] bg-white px-3 py-2 text-sm text-[#3F3748]" />
+                          </label>
+                          <label className="text-xs text-[#6B617A]">Requirements
+                            <input value={editForm.required_service} onChange={(event) => setEditForm({ ...editForm, required_service: event.target.value })} placeholder="Services they need" className="mt-1 w-full rounded-xl border border-[#eadff2] bg-white px-3 py-2 text-sm text-[#3F3748]" />
+                          </label>
+                          <label className="text-xs text-[#6B617A]">Follow-up date
+                            <input type="date" value={editForm.follow_up_date} onChange={(event) => setEditForm({ ...editForm, follow_up_date: event.target.value })} className="mt-1 w-full rounded-xl border border-[#eadff2] bg-white px-3 py-2 text-sm text-[#3F3748]" />
+                          </label>
+                          <label className="text-xs text-[#6B617A] sm:col-span-2 lg:col-span-4">Private notes
+                            <textarea rows="3" value={editForm.notes} onChange={(event) => setEditForm({ ...editForm, notes: event.target.value })} placeholder="Add your private notes about this enquiry" className="mt-1 w-full rounded-xl border border-[#eadff2] bg-white px-3 py-2 text-sm text-[#3F3748]" />
+                          </label>
+                        </div>
+                        <div className="mt-4 flex justify-end">
+                          <button type="submit" disabled={savingDetails} className="rounded-xl bg-[#8B68A5] px-4 py-2 text-sm font-medium text-white inline-flex items-center gap-2 disabled:opacity-60">
+                            <Save className="w-4 h-4" /> {savingDetails ? 'Saving…' : 'Save details'}
+                          </button>
+                        </div>
+                      </form>
+                    )}
                   </div>
                 );
               })}
