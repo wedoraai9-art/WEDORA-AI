@@ -502,6 +502,7 @@ async def auth_me(authorization: str = Header(None)):
 
 # ================= PASSWORD RESET =================
 PASSWORD_RESET_TTL_MINUTES = int(os.environ.get("PASSWORD_RESET_TTL_MINUTES", "30"))
+REVIEW_INVITE_TTL_DAYS = 30
 FRONTEND_URL = (
     os.environ.get("FRONTEND_URL", "https://wedora-ai.wedoraai9.workers.dev")
     .strip()
@@ -578,6 +579,51 @@ def _send_password_reset_email_sync(to_email: str, reset_url: str) -> None:
             f"Brevo email API returned HTTP {response.status_code}: {response.text[:500]}"
         )
 
+
+
+def _send_review_invite_email_sync(
+    to_email: str,
+    vendor_name: str,
+    wedding_name: str,
+    review_url: str,
+) -> None:
+    safe_vendor = html_escape(vendor_name or "your WEDORA vendor")
+    safe_wedding = html_escape(wedding_name or "your wedding")
+    safe_url = html_escape(review_url)
+    payload = {
+        "sender": {"email": EMAIL_FROM, "name": "WEDORA AI"},
+        "to": [{"email": to_email}],
+        "subject": f"Share your experience with {vendor_name or 'your WEDORA vendor'}",
+        "textContent": (
+            f"Please share your experience with {vendor_name or 'your WEDORA vendor'} "
+            f"for {wedding_name or 'your wedding'}.\n\n"
+            f"Open this one-time link within {REVIEW_INVITE_TTL_DAYS} days:\n{review_url}\n\n"
+            "Your review will appear as a verified WEDORA wedding review after you submit it."
+        ),
+        "htmlContent": f"""
+        <html><body style="font-family:Arial,sans-serif;color:#2D2638;line-height:1.6;">
+          <h2>Share your WEDORA experience</h2>
+          <p><strong>{safe_vendor}</strong> invited you to review their work for <strong>{safe_wedding}</strong>.</p>
+          <p>Your review will be marked as verified after you submit it through this personal link.</p>
+          <p><a href="{safe_url}" style="display:inline-block;padding:12px 20px;border-radius:10px;background:#8B68A5;color:#ffffff;text-decoration:none;">Write a review</a></p>
+          <p>This one-time link expires in {REVIEW_INVITE_TTL_DAYS} days. If you did not expect this message, you can ignore it.</p>
+        </body></html>
+        """,
+    }
+    response = http_requests.post(
+        "https://api.brevo.com/v3/smtp/email",
+        headers={
+            "accept": "application/json",
+            "api-key": BREVO_API_KEY,
+            "content-type": "application/json",
+        },
+        json=payload,
+        timeout=20,
+    )
+    if response.status_code >= 400:
+        raise RuntimeError(
+            f"Brevo email API returned HTTP {response.status_code}: {response.text[:500]}"
+        )
 
 
 @api_router.post("/auth/forgot-password")
@@ -931,6 +977,16 @@ class VendorClientUpdateIn(BaseModel):
 class VendorClientCommunicationIn(BaseModel):
     channel: str = "Note"
     message: str
+
+
+class VendorReviewInviteIn(BaseModel):
+    wedding_id: str
+
+
+class PublicReviewConfirmIn(BaseModel):
+    token: str
+    rating: int = Field(..., ge=1, le=5)
+    review: str
 
 
 class WeddingDocumentUpdateIn(BaseModel):
@@ -1813,6 +1869,84 @@ async def vendor_delete_client(client_id: str, authorization: str = Header(None)
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Client not found.")
     return {"success": True}
+
+
+@api_router.post("/vendor/clients/{client_id}/review-invite")
+async def vendor_send_review_invite(
+    client_id: str,
+    payload: VendorReviewInviteIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    if not _brevo_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="Review email is not configured yet. Please contact WEDORA support.",
+        )
+
+    client = await db.vendor_clients.find_one(
+        {"id": client_id, "vendor_id": vendor["id"]}, {"_id": 0}
+    )
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found.")
+    client_email = str(client.get("email") or "").strip().lower()
+    if not client_email or not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", client_email):
+        raise HTTPException(status_code=400, detail="Add a valid client email before requesting a review.")
+
+    wedding_ids = _clean_wedding_ids(client.get("wedding_ids"))
+    if payload.wedding_id not in wedding_ids:
+        raise HTTPException(status_code=400, detail="This client is not linked to that wedding.")
+    wedding = await _get_vendor_wedding(payload.wedding_id, vendor["id"])
+
+    raw_token = secrets.token_urlsafe(32)
+    now = datetime.now(timezone.utc)
+    invite = {
+        "id": str(uuid.uuid4()),
+        "vendor_id": vendor["id"],
+        "vendor_slug": vendor.get("slug", ""),
+        "client_id": client_id,
+        "client_name": client.get("name") or "WEDORA client",
+        "client_email": client_email,
+        "wedding_id": wedding["id"],
+        "wedding_name": wedding.get("wedding_name") or wedding.get("name") or "Wedding",
+        "token_hash": _hash_reset_token(raw_token),
+        "created_at": now.isoformat(),
+        "expires_at": (now + timedelta(days=REVIEW_INVITE_TTL_DAYS)).isoformat(),
+        "used_at": None,
+    }
+    await db.vendor_review_invites.update_many(
+        {
+            "vendor_id": vendor["id"],
+            "client_id": client_id,
+            "wedding_id": wedding["id"],
+            "used_at": None,
+        },
+        {"$set": {"used_at": now.isoformat(), "invalidated_at": now.isoformat()}},
+    )
+    await db.vendor_review_invites.insert_one(invite.copy())
+
+    review_url = (
+        f"{FRONTEND_URL}/vendor/{vendor.get('slug', '')}"
+        f"?review_token={raw_token}"
+    )
+    try:
+        await asyncio.to_thread(
+            _send_review_invite_email_sync,
+            client_email,
+            vendor.get("business_name") or "WEDORA vendor",
+            invite["wedding_name"],
+            review_url,
+        )
+    except Exception:
+        logging.exception("WEDORA client review invitation email failed")
+        await db.vendor_review_invites.update_one(
+            {"id": invite["id"], "used_at": None},
+            {"$set": {"used_at": datetime.now(timezone.utc).isoformat(), "delivery_failed": True}},
+        )
+        raise HTTPException(status_code=502, detail="Could not send the review email. Please try again later.")
+
+    return {"success": True, "message": f"Review invitation sent to {client_email}."}
 
 
 @api_router.post("/vendor/clients/{client_id}/communications")
@@ -4068,11 +4202,102 @@ async def marketplace_vendors(
     return {"vendors": vendors}
 
 
+async def _get_valid_vendor_review_invite(raw_token: str):
+    token = str(raw_token or "").strip()
+    if not token or len(token) > 200:
+        raise HTTPException(status_code=400, detail="This review link is invalid or expired.")
+    invite = await db.vendor_review_invites.find_one(
+        {"token_hash": _hash_reset_token(token), "used_at": None},
+        {"_id": 0},
+    )
+    if not invite:
+        raise HTTPException(status_code=400, detail="This review link has already been used or is invalid.")
+    try:
+        expires_at = datetime.fromisoformat(str(invite.get("expires_at", "")).replace("Z", "+00:00"))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="This review link is invalid or expired.")
+    if expires_at <= datetime.now(timezone.utc):
+        raise HTTPException(status_code=410, detail="This review link has expired.")
+    return invite
+
+
+@api_router.get("/marketplace/review-invitation")
+async def marketplace_review_invitation(token: str = Query(...)):
+    invite = await _get_valid_vendor_review_invite(token)
+    vendor = await db.vendors.find_one(
+        {"id": invite["vendor_id"]}, {"_id": 0, "business_name": 1}
+    )
+    return {
+        "client_name": invite.get("client_name") or "",
+        "wedding_name": invite.get("wedding_name") or "Wedding",
+        "vendor_name": (vendor or {}).get("business_name") or "WEDORA vendor",
+    }
+
+
+@api_router.post("/marketplace/reviews")
+async def marketplace_submit_review(payload: PublicReviewConfirmIn):
+    invite = await _get_valid_vendor_review_invite(payload.token)
+    review_text = str(payload.review or "").strip()
+    if len(review_text) < 10:
+        raise HTTPException(status_code=400, detail="Please write at least 10 characters.")
+    if len(review_text) > 1200:
+        raise HTTPException(status_code=400, detail="Please keep your review under 1,200 characters.")
+
+    now = datetime.now(timezone.utc).isoformat()
+    use_result = await db.vendor_review_invites.update_one(
+        {"id": invite["id"], "used_at": None},
+        {"$set": {"used_at": now}},
+    )
+    if use_result.modified_count == 0:
+        raise HTTPException(status_code=409, detail="This review link has already been used.")
+
+    review = {
+        "id": str(uuid.uuid4()),
+        "invite_id": invite["id"],
+        "vendor_id": invite["vendor_id"],
+        "vendor_slug": invite.get("vendor_slug", ""),
+        "client_id": invite["client_id"],
+        "wedding_id": invite["wedding_id"],
+        "wedding_name": invite.get("wedding_name") or "Wedding",
+        "reviewer_name": invite.get("client_name") or "WEDORA client",
+        "rating": int(payload.rating),
+        "review": review_text,
+        "verified": True,
+        "created_at": now,
+    }
+    await db.vendor_reviews.insert_one(review.copy())
+    return {"success": True, "message": "Thank you. Your verified WEDORA wedding review has been published."}
+
+
 @api_router.get("/marketplace/vendors/{slug}")
 async def marketplace_vendor_profile(slug: str):
     vendor = await db.vendors.find_one({"slug": slug}, {"_id": 0})
     if not vendor:
         raise HTTPException(status_code=404, detail="Vendor profile not found")
+
+    review_docs = await db.vendor_reviews.find(
+        {"vendor_id": vendor["id"]}, {"_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+    ratings = [int(item.get("rating", 0)) for item in review_docs if 1 <= int(item.get("rating", 0)) <= 5]
+    verified_weddings = {
+        item.get("wedding_id") for item in review_docs
+        if item.get("verified") is True and item.get("wedding_id")
+    }
+    vendor["reviews"] = [
+        {
+            "id": item.get("id"),
+            "reviewer_name": item.get("reviewer_name") or "WEDORA client",
+            "wedding_name": item.get("wedding_name") or "Wedding",
+            "rating": item.get("rating", 0),
+            "review": item.get("review", ""),
+            "verified": item.get("verified") is True,
+            "created_at": item.get("created_at"),
+        }
+        for item in review_docs[:20]
+    ]
+    vendor["review_count"] = len(ratings)
+    vendor["average_rating"] = round(sum(ratings) / len(ratings), 1) if ratings else 0
+    vendor["verified_wedding_count"] = len(verified_weddings)
     return vendor
 
 
