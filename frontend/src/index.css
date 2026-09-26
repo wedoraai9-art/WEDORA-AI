@@ -225,9 +225,31 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: linear-gradient(#C9B8FF, #F7B7D8); border-radius: 9999px; }
 
-/* Keep the vendor dashboard tabs' horizontal scrollbar slim. */
+/* Keep the vendor dashboard tabs scrollbar visible, inset, and medium-thin. */
+.liquid-glass[data-testid="dashboard-tabs"] {
+  scrollbar-width: auto;
+  scrollbar-color: #D8AFE9 transparent;
+}
+
 .liquid-glass[data-testid="dashboard-tabs"]::-webkit-scrollbar {
-  height: 4px;
+  height: 12px;
+}
+
+.liquid-glass[data-testid="dashboard-tabs"]::-webkit-scrollbar-track {
+  background: transparent;
+  margin-left: 14px;
+  margin-right: 14px;
+}
+
+.liquid-glass[data-testid="dashboard-tabs"]::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, #C9B8FF, #F7B7D8);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 9999px;
+  cursor: grab;
+}
+
+.liquid-glass[data-testid="dashboard-tabs"]::-webkit-scrollbar-thumb:active {
+  cursor: grabbing;
 }
 
 /* Thin scroll for chat area */
