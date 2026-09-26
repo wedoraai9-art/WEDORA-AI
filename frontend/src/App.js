@@ -51,9 +51,9 @@ import WeddingTransportation from '@/components/WeddingTransportation';
 import WedoraVenueDiscovery from '@/components/WedoraVenueDiscovery';
 import WedoraVendorDiscovery from '@/components/WedoraVendorDiscovery';
 
-const INTRO_TOTAL_DURATION = 15000;
-const INTRO_STAR_TRAVEL_START = 14350;
-const INTRO_STAR_TRAVEL_DURATION = 500;
+const INTRO_TOTAL_DURATION = 16200;
+const INTRO_STAR_TRAVEL_START = 13900;
+const INTRO_STAR_TRAVEL_DURATION = 1700;
 const REDUCED_INTRO_DURATION = 1200;
 
 const shouldPlayIntro = (pathname) =>
@@ -210,19 +210,56 @@ const AppContent = () => {
         targetRect.width / startRect.width
       );
 
+      const keyframes = [
+        {
+          transform: 'translate3d(0, 0, 0) scale(1.08) rotate(0deg)',
+          opacity: 1,
+          offset: 0,
+        },
+        {
+          transform: 'translate3d(0, 0, 0) scale(1.28) rotate(-8deg)',
+          opacity: 1,
+          offset: 0.08,
+        },
+        {
+          transform:
+            `translate3d(${moveX * 0.08}px, ${moveY * 0.12}px, 0) ` +
+            'scale(1.18) rotate(10deg)',
+          opacity: 1,
+          offset: 0.2,
+        },
+        {
+          transform:
+            `translate3d(${moveX * 0.28}px, ${moveY * 0.42}px, 0) ` +
+            'scale(1.08) rotate(-14deg)',
+          opacity: 0.99,
+          offset: 0.42,
+        },
+        {
+          transform:
+            `translate3d(${moveX * 0.56}px, ${moveY * 0.68}px, 0) ` +
+            'scale(1.02) rotate(12deg)',
+          opacity: 0.98,
+          offset: 0.64,
+        },
+        {
+          transform:
+            `translate3d(${moveX * 0.82}px, ${moveY * 0.88}px, 0) ` +
+            'scale(0.98) rotate(-7deg)',
+          opacity: 0.97,
+          offset: 0.84,
+        },
+        {
+          transform:
+            `translate3d(${moveX}px, ${moveY}px, 0) ` +
+            `scale(${targetScale}) rotate(0deg)`,
+          opacity: 0.96,
+          offset: 1,
+        },
+      ];
+
       starAnimationRef.current = introStar.animate(
-        [
-          {
-            transform: 'translate3d(0, 0, 0) scale(1)',
-            opacity: 1,
-          },
-          {
-            transform:
-              `translate3d(${moveX}px, ${moveY}px, 0) ` +
-              `scale(${targetScale})`,
-            opacity: 0.94,
-          },
-        ],
+        keyframes,
         {
           duration: INTRO_STAR_TRAVEL_DURATION,
           easing: 'cubic-bezier(.22, .72, .22, 1)',
@@ -504,7 +541,7 @@ const AppContent = () => {
 
             .wedora-intro-scene--final {
               --scene-delay: 11.2s;
-              --scene-duration: 3.75s;
+              --scene-duration: 5s;
             }
 
             .wedora-intro-scene-content {
@@ -885,15 +922,27 @@ const AppContent = () => {
                 );
               transform:
                 translate3d(0, 0, 0)
-                scale(1);
+                scale(.72);
               transform-origin: center;
               will-change: transform, opacity;
+              opacity: 0;
               animation:
+                wedora-intro-star-pop
+                1.15s
+                cubic-bezier(.18, .8, .2, 1)
+                12.15s
+                both,
                 wedora-intro-star-glow
                 1.5s
                 ease-in-out
+                12.95s
                 infinite
                 alternate;
+            }
+
+            .wedora-intro-star-traveling
+              .wedora-intro-fly-star {
+              animation: none;
             }
 
             .wedora-intro-final-label {
@@ -1065,6 +1114,42 @@ const AppContent = () => {
                 transform:
                   translateY(-10px)
                   scale(1.01);
+              }
+            }
+
+            @keyframes wedora-intro-star-pop {
+              0% {
+                opacity: 0;
+                transform:
+                  translate3d(0, 8px, 0)
+                  scale(.38)
+                  rotate(-22deg);
+                filter:
+                  drop-shadow(0 0 0 rgba(255, 116, 158, 0))
+                  drop-shadow(0 0 0 rgba(96, 212, 255, 0));
+              }
+
+              45% {
+                opacity: 1;
+                transform:
+                  translate3d(0, -4px, 0)
+                  scale(1.34)
+                  rotate(8deg);
+              }
+
+              70% {
+                transform:
+                  translate3d(0, 2px, 0)
+                  scale(.94)
+                  rotate(-5deg);
+              }
+
+              100% {
+                opacity: 1;
+                transform:
+                  translate3d(0, 0, 0)
+                  scale(1.08)
+                  rotate(0deg);
               }
             }
 
@@ -1298,6 +1383,11 @@ const AppContent = () => {
               .wedora-intro-progress::before {
                 animation: none;
                 transition: none;
+              }
+
+              .wedora-intro-fly-star {
+                opacity: 1;
+                transform: none;
               }
             }
           `}</style>
