@@ -3,7 +3,6 @@ import { HERO } from '@/constants/testIds';
 import { sendChatStream, apiChatHistory } from '@/lib/aiService';
 import {
   ArrowUp,
-  Sparkles,
   RefreshCw,
   Plus,
   RotateCw,
@@ -75,12 +74,6 @@ export const ChatInterface = ({ initialPromptRef }) => {
 
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
-  const sparkleRef = useRef(null);
-  const pointerFrameRef = useRef(null);
-  const returnAnimationRef = useRef(null);
-  const pointerFollowingRef = useRef(false);
-  const pointerTargetRef = useRef({ x: 0, y: 0 });
-  const lastPointerRef = useRef({ x: 0, y: 0 });
   const lastUserMsgRef = useRef('');
 
   useEffect(() => {
@@ -105,148 +98,6 @@ export const ChatInterface = ({ initialPromptRef }) => {
     el.style.height = 'auto';
     el.style.height = Math.min(el.scrollHeight, 180) + 'px';
   }, [input]);
-
-  // Let the search sparkle follow the mouse across the homepage, then return.
-  useEffect(() => {
-    const sparkle = sparkleRef.current;
-    const pageSurface = document.querySelector('.App');
-
-    if (!sparkle || !pageSurface) return undefined;
-
-    const prefersReducedMotion =
-      window.matchMedia &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    if (prefersReducedMotion) return undefined;
-
-    const setPointerPosition = (x, y) => {
-      sparkle.style.setProperty('--wedora-pointer-x', `${x}px`);
-      sparkle.style.setProperty('--wedora-pointer-y', `${y}px`);
-
-      const deltaX = x - lastPointerRef.current.x;
-      const rotation = Math.max(-10, Math.min(10, deltaX * 0.18));
-
-      sparkle.style.setProperty(
-        '--wedora-star-rotation',
-        `${rotation}deg`
-      );
-      lastPointerRef.current = { x, y };
-    };
-
-    const schedulePointerPosition = () => {
-      if (pointerFrameRef.current !== null) return;
-
-      pointerFrameRef.current = window.requestAnimationFrame(() => {
-        pointerFrameRef.current = null;
-
-        const { x, y } = pointerTargetRef.current;
-        setPointerPosition(x, y);
-      });
-    };
-
-    const handlePointerMove = (event) => {
-      if (event.pointerType !== 'mouse') return;
-
-      // The intro overlay handles the pointer until it has finished.
-      if (document.querySelector('.wedora-intro-screen')) return;
-
-      if (!pointerFollowingRef.current) {
-        if (returnAnimationRef.current) {
-          returnAnimationRef.current.cancel();
-          returnAnimationRef.current = null;
-        }
-
-        const startRect = sparkle.getBoundingClientRect();
-        const startX = startRect.left + startRect.width / 2;
-        const startY = startRect.top + startRect.height / 2;
-
-        pointerFollowingRef.current = true;
-        sparkle.classList.add('wedora-search-sparkle-following');
-        sparkle.style.setProperty('--wedora-pointer-x', `${startX}px`);
-        sparkle.style.setProperty('--wedora-pointer-y', `${startY}px`);
-        sparkle.style.setProperty('--wedora-star-rotation', '0deg');
-        lastPointerRef.current = { x: startX, y: startY };
-      }
-
-      pointerTargetRef.current = {
-        x: event.clientX,
-        y: event.clientY,
-      };
-      schedulePointerPosition();
-    };
-
-    const returnSparkleToSearch = () => {
-      if (!pointerFollowingRef.current) return;
-
-      if (pointerFrameRef.current !== null) {
-        window.cancelAnimationFrame(pointerFrameRef.current);
-        pointerFrameRef.current = null;
-      }
-
-      const pointer = pointerTargetRef.current;
-      setPointerPosition(pointer.x, pointer.y);
-
-      const rotation =
-        parseFloat(
-          sparkle.style.getPropertyValue('--wedora-star-rotation')
-        ) || 0;
-
-      pointerFollowingRef.current = false;
-      sparkle.classList.remove('wedora-search-sparkle-following');
-      sparkle.style.setProperty('--wedora-star-rotation', '0deg');
-
-      const homeRect = sparkle.getBoundingClientRect();
-      const homeCenterX = homeRect.left + homeRect.width / 2;
-      const homeCenterY = homeRect.top + homeRect.height / 2;
-      const returnX = pointer.x - homeCenterX;
-      const returnY = pointer.y - homeCenterY;
-
-      if (sparkle.animate) {
-        returnAnimationRef.current = sparkle.animate(
-          [
-            {
-              transform:
-                `translate3d(${returnX}px, ${returnY}px, 0) ` +
-                `rotate(${rotation}deg) scale(1.24)`,
-              filter: 'drop-shadow(0 0 10px rgba(201, 184, 255, .72))',
-            },
-            {
-              transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)',
-              filter: 'drop-shadow(0 0 0 rgba(201, 184, 255, 0))',
-            },
-          ],
-          {
-            duration: 560,
-            easing: 'cubic-bezier(.2, .75, .25, 1)',
-          }
-        );
-
-        returnAnimationRef.current.onfinish = () => {
-          returnAnimationRef.current = null;
-        };
-      }
-    };
-
-    pageSurface.addEventListener('pointerenter', handlePointerMove);
-    pageSurface.addEventListener('pointermove', handlePointerMove);
-    pageSurface.addEventListener('pointerleave', returnSparkleToSearch);
-
-    return () => {
-      pageSurface.removeEventListener('pointerenter', handlePointerMove);
-      pageSurface.removeEventListener('pointermove', handlePointerMove);
-      pageSurface.removeEventListener('pointerleave', returnSparkleToSearch);
-
-      if (pointerFrameRef.current !== null) {
-        window.cancelAnimationFrame(pointerFrameRef.current);
-      }
-
-      if (returnAnimationRef.current) {
-        returnAnimationRef.current.cancel();
-      }
-
-      sparkle.classList.remove('wedora-search-sparkle-following');
-    };
-  }, []);
 
   const send = async (textArg) => {
     const text = (textArg ?? input).trim();
@@ -420,35 +271,70 @@ export const ChatInterface = ({ initialPromptRef }) => {
         }
 
         .wedora-search-sparkle {
-          --wedora-star-rotation: 0deg;
           position: relative;
+          display: block;
           flex: none;
-          transform: rotate(var(--wedora-star-rotation)) scale(1);
+          width: 1.25rem;
+          height: 1.25rem;
           transform-origin: center;
-          will-change: transform, left, top;
+          overflow: visible;
+          filter:
+            drop-shadow(0 0 3px rgba(241, 132, 153, .38))
+            drop-shadow(0 0 7px rgba(207, 168, 210, .30))
+            drop-shadow(0 0 11px rgba(135, 221, 245, .24));
+          animation: wedora-search-sparkle-breathe 2.8s ease-in-out infinite;
         }
 
-        .wedora-search-sparkle-following {
-          position: fixed !important;
-          z-index: 80;
-          top: var(--wedora-pointer-y);
-          left: var(--wedora-pointer-x);
-          pointer-events: none;
-          transform:
-            translate(-50%, -50%)
-            rotate(var(--wedora-star-rotation))
-            scale(1.24);
-          filter: drop-shadow(0 0 10px rgba(201, 184, 255, .72));
-          transition:
-            top 130ms linear,
-            left 130ms linear,
-            transform 180ms ease-out,
-            filter 180ms ease-out;
+        .wedora-search-sparkle-stop-pink {
+          animation: wedora-sparkle-pink 3.6s ease-in-out infinite;
+        }
+
+        .wedora-search-sparkle-stop-lavender {
+          animation: wedora-sparkle-lavender 3.6s ease-in-out infinite;
+        }
+
+        .wedora-search-sparkle-stop-blue {
+          animation: wedora-sparkle-blue 3.6s ease-in-out infinite;
+        }
+
+        @keyframes wedora-search-sparkle-breathe {
+          0%, 100% {
+            transform: scale(1);
+            filter:
+              drop-shadow(0 0 3px rgba(241, 132, 153, .34))
+              drop-shadow(0 0 7px rgba(207, 168, 210, .26))
+              drop-shadow(0 0 11px rgba(135, 221, 245, .20));
+          }
+          50% {
+            transform: scale(1.06);
+            filter:
+              drop-shadow(0 0 5px rgba(241, 132, 153, .52))
+              drop-shadow(0 0 10px rgba(207, 168, 210, .40))
+              drop-shadow(0 0 15px rgba(135, 221, 245, .34));
+          }
+        }
+
+        @keyframes wedora-sparkle-pink {
+          0%, 100% { stop-color: #F18499; }
+          50% { stop-color: #E99BAF; }
+        }
+
+        @keyframes wedora-sparkle-lavender {
+          0%, 100% { stop-color: #CFA8D2; }
+          50% { stop-color: #BFA8E8; }
+        }
+
+        @keyframes wedora-sparkle-blue {
+          0%, 100% { stop-color: #87DDF5; }
+          50% { stop-color: #A6D0E9; }
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .wedora-search-sparkle-following {
-            transition: none;
+          .wedora-search-sparkle,
+          .wedora-search-sparkle-stop-pink,
+          .wedora-search-sparkle-stop-lavender,
+          .wedora-search-sparkle-stop-blue {
+            animation: none;
           }
         }
       `}</style>
@@ -622,11 +508,55 @@ export const ChatInterface = ({ initialPromptRef }) => {
       {/* Search input */}
       <div className="liquid-glass-strong rounded-[28px] pl-5 pr-2 py-2 flex items-center gap-3 gradient-border">
         <span className="wedora-search-sparkle-slot" aria-hidden="true">
-          <Sparkles
-            ref={sparkleRef}
+          <svg
             data-wedora-search-sparkle
-            className="wedora-search-sparkle w-5 h-5 text-[#C9B8FF]"
-          />
+            className="wedora-search-sparkle"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <defs>
+              <linearGradient
+                id="wedora-search-sparkle-gradient"
+                x1="2"
+                y1="2"
+                x2="22"
+                y2="22"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop
+                  offset="0"
+                  className="wedora-search-sparkle-stop-pink"
+                  stopColor="#F18499"
+                />
+                <stop
+                  offset="0.5"
+                  className="wedora-search-sparkle-stop-lavender"
+                  stopColor="#CFA8D2"
+                />
+                <stop
+                  offset="1"
+                  className="wedora-search-sparkle-stop-blue"
+                  stopColor="#87DDF5"
+                />
+              </linearGradient>
+            </defs>
+
+            <path
+              d="M12 3L13.35 8.65L19 10L13.35 11.35L12 17L10.65 11.35L5 10L10.65 8.65L12 3Z"
+              stroke="url(#wedora-search-sparkle-gradient)"
+              strokeWidth="1.65"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M19 15L19.55 17.45L22 18L19.55 18.55L19 21L18.45 18.55L16 18L18.45 17.45L19 15Z"
+              stroke="url(#wedora-search-sparkle-gradient)"
+              strokeWidth="1.35"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </span>
         <textarea
           ref={inputRef}
