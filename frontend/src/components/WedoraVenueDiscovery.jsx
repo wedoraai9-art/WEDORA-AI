@@ -277,33 +277,21 @@ const WedoraVenueDiscovery = () => {
 
   return (
     <div className="wedora-venue-page min-h-screen bg-gradient-to-b from-[#FBF9FF] via-[#FFFCFE] to-[#F8F6FF] text-[#2D2638]">
-      {/* HEADER */}
-      <header className="sticky top-[82px] z-30 border-b border-[#E9E2F2] bg-[#FFFCFE]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-
-          <button
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-sm text-[#756A82] hover:text-[#30283A]"
-          >
-            <ArrowLeft size={18} />
-            Back to WEDORA
-          </button>
-
-          <div className="flex items-center gap-2">
-            <Sparkles size={18} className="text-[#9B7CF6]" />
-            <span className="text-sm tracking-[0.25em] text-[#5F556E]">
-              WEDORA AI
-            </span>
-          </div>
-
-          <div className="w-[120px]" />
-        </div>
-      </header>
+      {/* TRANSPARENT BACK CONTROL */}
+      <div className="relative z-20 mx-auto max-w-7xl px-6 pt-4 md:pt-5">
+        <button
+          onClick={() => navigate('/')}
+          className="inline-flex items-center gap-2 rounded-full px-2 py-2 text-sm text-[#756A82] transition-all duration-200 hover:bg-white/55 hover:text-[#30283A] active:scale-[0.97] active:translate-y-[1px]"
+        >
+          <ArrowLeft size={18} />
+          Back to WEDORA
+        </button>
+      </div>
 
       {/* HERO */}
       <main>
 
-        <section className="relative overflow-hidden px-6 pb-14 pt-12 md:pt-16">
+        <section className="relative overflow-hidden px-6 pb-14 pt-5 md:pt-7">
           <div className="pointer-events-none absolute inset-0 -z-10">
             <div className="absolute left-[-10%] top-0 h-72 w-72 rounded-full bg-[#DCCBFF]/20 blur-[100px]" />
             <div className="absolute right-[-8%] top-10 h-80 w-80 rounded-full bg-[#F7C6DA]/20 blur-[110px]" />
