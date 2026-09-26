@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 
 const STORAGE_KEY = 'wedora_venue_updates';
+const VENUE_SEARCH_API = 'https://wedora-ai.onrender.com/api/venues/search';
 
 const venueTypes = [
   { name: 'Palace', icon: Crown },
@@ -100,6 +101,10 @@ const WedoraVenueDiscovery = () => {
   const [showFilters, setShowFilters] = useState(false);
 
   const [searched, setSearched] = useState(false);
+  const [liveVenues, setLiveVenues] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  const [searchSources, setSearchSources] = useState([]);
   const [shortlisted, setShortlisted] = useState([]);
 
   const [updateVenue, setUpdateVenue] = useState(null);
@@ -120,7 +125,11 @@ const WedoraVenueDiscovery = () => {
   };
 
   const mergedVenues = useMemo(() => {
-    return sampleVenues.map((venue) => {
+    // Before a search, keep the existing sample records for the page preview.
+    // After a search, only live web results are shown.
+    const sourceVenues = searched ? liveVenues : sampleVenues;
+
+    return sourceVenues.map((venue) => {
       const venueUpdates = savedUpdates.filter(
         (item) => item.venueId === venue.id && item.status === 'Approved'
       );
@@ -157,7 +166,7 @@ const WedoraVenueDiscovery = () => {
 
       return updatedVenue;
     });
-  }, [savedUpdates]);
+  }, [searched, liveVenues, savedUpdates]);
 
   // Convert natural-language searches into the same filters used by
   // the venue database. This makes searches such as
@@ -250,79 +259,66 @@ const WedoraVenueDiscovery = () => {
   const filteredVenues = useMemo(() => {
     if (!searched) return [];
 
-    const searchText = query.toLowerCase().trim();
+    // The backend performs natural-language matching against live Tavily web
+    // results. Keep the frontend as a presentation layer so we do not
+    // accidentally throw away valid nationwide matches.
+    return mergedVenues;
+  }, [searched, mergedVenues]);
 
-    return mergedVenues.filter((venue) => {
-      const matchesLocation =
-        !parsedSearch.location ||
-        venue.city.toLowerCase().includes(parsedSearch.location.toLowerCase()) ||
-        venue.location.toLowerCase().includes(parsedSearch.location.toLowerCase());
-
-      const matchesGuests =
-        !parsedSearch.guests ||
-        venue.capacity >= Number(parsedSearch.guests);
-
-      const matchesBudget =
-        !parsedSearch.budget ||
-        venue.startingPrice <= Number(parsedSearch.budget);
-
-      const matchesRooms =
-        !parsedSearch.rooms ||
-        venue.rooms >= Number(parsedSearch.rooms);
-
-      const matchesType =
-        !parsedSearch.type ||
-        venue.type.toLowerCase() === parsedSearch.type.toLowerCase();
-
-      // Only use the free-text query as a fallback when it does not contain
-      // structured search information. Structured terms are already handled
-      // above, so "Outdoor venue near Jaipur under ₹5 lakh" can match the
-      // actual venue record.
-      const structuredSearchDetected =
-        Boolean(parsedSearch.location) ||
-        Boolean(parsedSearch.guests) ||
-        Boolean(parsedSearch.budget) ||
-        Boolean(parsedSearch.type) ||
-        Boolean(parsedSearch.rooms);
-
-      const searchableText = `
-        ${venue.name}
-        ${venue.city}
-        ${venue.type}
-        ${venue.location}
-      `.toLowerCase();
-
-      const matchesFreeText =
-        !searchText ||
-        structuredSearchDetected ||
-        searchableText.includes(searchText);
-
-      return (
-        matchesLocation &&
-        matchesGuests &&
-        matchesBudget &&
-        matchesRooms &&
-        matchesType &&
-        matchesFreeText
-      );
-    });
-  }, [searched, mergedVenues, parsedSearch, query]);
-
-  const handleSearch = () => {
+  const handleSearch = async () => {
     setSearched(true);
+    setSearchLoading(true);
+    setSearchError('');
+    setLiveVenues([]);
+    setSearchSources([]);
 
-    // Move the user to the results after the search button is pressed.
-    // A short delay allows React to render the results first.
-    window.setTimeout(() => {
-      const results = document.getElementById('venue-results');
+    // Every field below is optional. A plain natural-language query is enough.
+    // Venue Discovery remains free for the user; no subscription check is made here.
+    const payload = {
+      query: query.trim(),
+      location: parsedSearch.location || location || null,
+      guests: parsedSearch.guests ? Number(parsedSearch.guests) : guests ? Number(guests) : null,
+      budget: parsedSearch.budget ? Number(parsedSearch.budget) : budget ? Number(budget) : null,
+      venue_type: parsedSearch.type || selectedType || null,
+      rooms: parsedSearch.rooms ? Number(parsedSearch.rooms) : null,
+    };
 
-      if (results) {
-        results.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-        });
+    try {
+      const response = await fetch(VENUE_SEARCH_API, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'omit',
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.detail || `Venue search failed (${response.status})`);
       }
-    }, 80);
+
+      setLiveVenues(Array.isArray(data.results) ? data.results : []);
+      setSearchSources(Array.isArray(data.sources) ? data.sources : []);
+    } catch (error) {
+      console.error('WEDORA live venue search failed:', error);
+      setSearchError(error.message || 'Unable to search live venue data right now.');
+      setLiveVenues([]);
+    } finally {
+      setSearchLoading(false);
+
+      window.setTimeout(() => {
+        const results = document.getElementById('venue-results');
+
+        if (results) {
+          results.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+          });
+        }
+      }, 80);
+    }
   };
 
   const useSuggestion = (suggestion) => {
@@ -337,6 +333,10 @@ const WedoraVenueDiscovery = () => {
     setBudget('');
     setSelectedType('');
     setSearched(false);
+    setLiveVenues([]);
+    setSearchLoading(false);
+    setSearchError('');
+    setSearchSources([]);
   };
 
   const toggleShortlist = (venueId) => {
@@ -414,7 +414,7 @@ const WedoraVenueDiscovery = () => {
 
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#E8DFF5] bg-[#F6F0FF] px-4 py-2 text-xs tracking-[0.18em] text-[#8E829F]">
               <Sparkles size={14} />
-              AI VENUE DISCOVERY
+              FREE VENUE DISCOVERY
             </div>
 
             <h1 className="text-4xl font-light tracking-tight md:text-6xl">
@@ -427,7 +427,7 @@ const WedoraVenueDiscovery = () => {
 
             <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-[#746A82] md:text-lg">
               Tell WEDORA what you're looking for.
-              Search by your wedding requirements and discover matching venues.
+              Search the public web for wedding venues across India — completely free to search.
             </p>
 
             {/* SEARCH */}
@@ -471,7 +471,11 @@ const WedoraVenueDiscovery = () => {
 
               </div>
 
-              {/* FILTER BUTTON */}
+              <p className="mt-3 px-2 text-[11px] text-[#9A90A6]">
+                Free to search • No PRO plan or payment required for venue discovery
+              </p>
+
+              {/* OPTIONAL FILTERS — NEVER REQUIRED TO SEARCH */}
               <div className="mt-3 flex flex-wrap items-center gap-2 px-2">
 
                 <button
@@ -479,7 +483,7 @@ const WedoraVenueDiscovery = () => {
                   className="flex items-center gap-2 rounded-full border border-[#e4ddd5] px-4 py-2 text-xs text-[#6B617A]"
                 >
                   <SlidersHorizontal size={14} />
-                  Filters
+                  Filters <span className="text-[10px] opacity-70">(optional)</span>
                 </button>
 
                 {selectedType && (
@@ -508,7 +512,7 @@ const WedoraVenueDiscovery = () => {
 
                   <div className="rounded-2xl border border-[#E9E2F1] bg-[#FCFAFE] p-4 text-left">
                     <label className="mb-2 block text-xs tracking-wide text-[#8E829F]">
-                      LOCATION
+                      LOCATION <span className="ml-1 normal-case tracking-normal opacity-70">(optional)</span>
                     </label>
 
                     <div className="flex items-center gap-2">
@@ -525,7 +529,7 @@ const WedoraVenueDiscovery = () => {
 
                   <div className="rounded-2xl border border-[#E9E2F1] bg-[#FCFAFE] p-4 text-left">
                     <label className="mb-2 block text-xs tracking-wide text-[#8E829F]">
-                      GUESTS
+                      GUESTS <span className="ml-1 normal-case tracking-normal opacity-70">(optional)</span>
                     </label>
 
                     <div className="flex items-center gap-2">
@@ -543,7 +547,7 @@ const WedoraVenueDiscovery = () => {
 
                   <div className="rounded-2xl border border-[#E9E2F1] bg-[#FCFAFE] p-4 text-left">
                     <label className="mb-2 block text-xs tracking-wide text-[#8E829F]">
-                      MAXIMUM BUDGET
+                      MAXIMUM BUDGET <span className="ml-1 normal-case tracking-normal opacity-70">(optional)</span>
                     </label>
 
                     <div className="flex items-center gap-2">
@@ -665,13 +669,44 @@ const WedoraVenueDiscovery = () => {
                 </div>
 
                 <div className="flex items-center gap-2 text-xs text-[#8B8198]">
-                  <ShieldCheck size={15} className="text-[#9B7CF6]" />
-                  Venue information is continuously updated
+                  {searchLoading ? (
+                    <>
+                      <RefreshCw size={15} className="animate-spin text-[#9B7CF6]" />
+                      Searching live web data across India…
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck size={15} className="text-[#9B7CF6]" />
+                      Live web results • checked just now
+                    </>
+                  )}
                 </div>
 
               </div>
 
-              {filteredVenues.length === 0 ? (
+              {searchLoading ? (
+                <div className="rounded-[28px] border border-[#E9E2F1] bg-white px-6 py-16 text-center">
+                  <RefreshCw size={34} className="mx-auto animate-spin text-[#9B7CF6]" />
+                  <h3 className="mt-5 text-xl font-light">Searching India’s live venue data</h3>
+                  <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#817971]">
+                    WEDORA is searching the public web and matching venues to your requirements.
+                  </p>
+                </div>
+              ) : searchError ? (
+                <div className="rounded-[28px] border border-[#F0D9E2] bg-white px-6 py-16 text-center">
+                  <AlertCircle size={34} className="mx-auto text-[#C98EAE]" />
+                  <h3 className="mt-5 text-xl font-light">Live venue search needs attention</h3>
+                  <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-[#817971]">
+                    {searchError}
+                  </p>
+                  <button
+                    onClick={handleSearch}
+                    className="mt-6 rounded-full bg-[#2D2638] px-5 py-3 text-xs text-white"
+                  >
+                    Try again
+                  </button>
+                </div>
+              ) : filteredVenues.length === 0 ? (
                 <div className="rounded-[28px] border border-[#E9E2F1] bg-white px-6 py-16 text-center">
 
                   <Search
@@ -781,9 +816,9 @@ const WedoraVenueDiscovery = () => {
                           </p>
 
                           <p className="mt-1 text-lg font-medium">
-                            ₹{Number(
-                              venue.startingPrice
-                            ).toLocaleString('en-IN')}
+                            {Number(venue.startingPrice) > 0
+                              ? `₹${Number(venue.startingPrice).toLocaleString('en-IN')}`
+                              : venue.priceLabel || 'Price on request'}
                           </p>
 
                         </div>
@@ -815,6 +850,23 @@ const WedoraVenueDiscovery = () => {
 
                         </div>
 
+                        {venue.description && (
+                          <p className="mt-4 text-xs leading-5 text-[#817971]">
+                            {venue.description}
+                          </p>
+                        )}
+
+                        {venue.sourceUrl && (
+                          <a
+                            href={venue.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-4 inline-flex text-[11px] text-[#8D73C8] hover:underline"
+                          >
+                            View source: {venue.source || 'Web source'} ↗
+                          </a>
+                        )}
+
                         {/* UPDATE BUTTON */}
                         <button
                           onClick={() =>
@@ -832,6 +884,25 @@ const WedoraVenueDiscovery = () => {
 
                   ))}
 
+                </div>
+              )}
+
+              {!searchLoading && !searchError && searchSources.length > 0 && (
+                <div className="mt-8 rounded-2xl border border-[#E9E2F1] bg-white/80 p-5">
+                  <p className="text-[10px] tracking-[0.18em] text-[#9B7CF6]">WEB SOURCES USED</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {searchSources.slice(0, 8).map((source) => (
+                      <a
+                        key={source.url}
+                        href={source.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-full border border-[#E8DFF5] bg-[#FCFAFE] px-3 py-2 text-[11px] text-[#756A82] hover:bg-[#F4EEFF]"
+                      >
+                        {source.title} ↗
+                      </a>
+                    ))}
+                  </div>
                 </div>
               )}
 
