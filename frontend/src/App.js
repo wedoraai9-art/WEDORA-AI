@@ -56,8 +56,19 @@ const INTRO_STAR_TRAVEL_START = 15200;
 const INTRO_STAR_TRAVEL_DURATION = 3200;
 const REDUCED_INTRO_DURATION = 1200;
 
-const shouldPlayIntro = (pathname) =>
-  pathname === '/' && typeof window !== 'undefined';
+const INTRO_SEEN_KEY = 'wedora_intro_seen';
+
+const shouldPlayIntro = (pathname) => {
+  if (pathname !== '/' || typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    return sessionStorage.getItem(INTRO_SEEN_KEY) !== 'true';
+  } catch {
+    return true;
+  }
+};
 
 const getReducedMotionPreference = () =>
   typeof window !== 'undefined' &&
@@ -155,6 +166,16 @@ const AppContent = () => {
   );
 
   const [starTraveling, setStarTraveling] = useState(false);
+
+  useEffect(() => {
+    if (isHomePage && introActive && typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem(INTRO_SEEN_KEY, 'true');
+      } catch {
+        // Ignore storage failures; the intro can still complete normally.
+      }
+    }
+  }, [isHomePage, introActive]);
 
   useEffect(() => {
     if (!isHomePage) {
