@@ -397,6 +397,8 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
   const [invoicePaymentForm, setInvoicePaymentForm] = useState({
     amount: '', payment_date: new Date().toISOString().slice(0, 10), payment_method: 'Other', notes: '',
   });
+  const [profitLoss, setProfitLoss] = useState(null);
+  const [profitLossLoading, setProfitLossLoading] = useState(false);
 
   const [documents, setDocuments] = useState([]);
   const [documentsLoading, setDocumentsLoading] = useState(false);
@@ -609,6 +611,12 @@ ${message}`;
       }
     }
   }, [wedding?.id]);
+
+  useEffect(() => {
+    if (activeModule === 'Profit & Loss' && wedding?.id) {
+      loadProfitLoss();
+    }
+  }, [activeModule, wedding?.id]);
 
   if (!wedding) {
     return (
@@ -855,6 +863,22 @@ ${message}`;
       setInvoices([]);
     } finally {
       setInvoicesLoading(false);
+    }
+  };
+
+  const loadProfitLoss = async () => {
+    if (!wedding?.id) return;
+    setProfitLossLoading(true);
+    try {
+      const response = await authAxios.get('/vendor/profit-loss', {
+        params: { wedding_id: wedding.id },
+      });
+      setProfitLoss(response.data || null);
+    } catch (error) {
+      console.error('Failed to load wedding profit and loss:', error);
+      window.alert(error.response?.data?.detail || 'Could not load the wedding Profit & Loss report.');
+    } finally {
+      setProfitLossLoading(false);
     }
   };
 
@@ -2186,6 +2210,7 @@ ${message}`;
     { title: 'Tasks', description: 'Plan and track everything that needs to be done', icon: CheckSquare },
     { title: 'Clients', description: 'Manage bride, groom and client communication', icon: Users },
     { title: 'Budget & Payments', description: 'Track budget, expenses, advances and payments', icon: Wallet },
+    { title: 'Profit & Loss', description: 'Review this wedding’s income, expenses and net profit', icon: Wallet },
     { title: 'Quotations', description: 'Prepare itemized client quotations and save them as PDF', icon: FileText },
     { title: 'Invoices & Receipts', description: 'Track client invoices, payments and printable receipts', icon: FileText },
     { title: 'Documents', description: 'Keep contracts, bills and important files organized', icon: FileText },
@@ -2375,6 +2400,8 @@ ${message}`;
                 ? "Manage client details and communication for this wedding."
                 : activeModule === "Budget & Payments"
                 ? "Track budget, expenses, advances and payments for this wedding."
+                : activeModule === "Profit & Loss"
+                ? "Review money received and expenses recorded for this wedding."
                 : activeModule === "Quotations"
                 ? "Create, save, update and print client quotations for this wedding."
                 : activeModule === "Invoices & Receipts"
@@ -2850,6 +2877,46 @@ ${message}`;
                     </div>
                   </>
                 )}
+              </div>
+            )}
+
+            {/* PROFIT & LOSS MODULE */}
+            {activeModule === "Profit & Loss" && (
+              <div className="mt-4 space-y-5" data-testid="wedding-profit-loss">
+                <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div><p className="text-sm text-[#8B8194]">Wedding Report</p><h4 className="text-lg font-semibold text-[#3F3748] mt-1">Profit & Loss · {wedding.wedding_name || wedding.name || 'Wedding'}</h4><p className="text-sm text-[#6B6175] mt-1">Based on payments received and expenses recorded for this wedding.</p></div>
+                  <button type="button" onClick={loadProfitLoss} disabled={profitLossLoading} className="rounded-xl bg-white border border-[#eadff2] px-4 py-2 text-sm text-[#8B6AA8] disabled:opacity-60">{profitLossLoading ? 'Updating…' : 'Refresh report'}</button>
+                </div>
+
+                {profitLossLoading ? (
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-8 text-center text-sm text-[#8B8194]">Loading wedding report…</div>
+                ) : profitLoss ? (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                      <div className="rounded-xl border border-[#eadff2] bg-white p-4"><p className="text-xs text-[#8B8194]">Payments Received</p><p className="text-xl font-semibold text-[#3F3748] mt-1">{formatCurrency(profitLoss.income)}</p></div>
+                      <div className="rounded-xl border border-[#eadff2] bg-white p-4"><p className="text-xs text-[#8B8194]">Recorded Expenses</p><p className="text-xl font-semibold text-[#3F3748] mt-1">{formatCurrency(profitLoss.expenses)}</p></div>
+                      <div className="rounded-xl border border-[#eadff2] bg-white p-4"><p className="text-xs text-[#8B8194]">Net Profit</p><p className={`text-xl font-semibold mt-1 ${Number(profitLoss.net_profit) < 0 ? 'text-red-500' : 'text-[#3F3748]'}`}>{formatCurrency(profitLoss.net_profit)}</p></div>
+                      <div className="rounded-xl border border-[#eadff2] bg-white p-4"><p className="text-xs text-[#8B8194]">Invoice Balance Due</p><p className="text-xl font-semibold text-[#3F3748] mt-1">{formatCurrency(profitLoss.invoice_balance_due)}</p></div>
+                    </div>
+
+                    <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5">
+                      <p className="text-sm text-[#8B8194]">Monthly Summary</p>
+                      <h4 className="text-lg font-semibold text-[#3F3748] mt-1">This wedding by month</h4>
+                      {profitLoss.by_month?.length ? (
+                        <div className="mt-4 overflow-x-auto rounded-xl border border-[#eadff2] bg-white">
+                          <table className="w-full min-w-[560px] text-left">
+                            <thead><tr className="border-b border-[#eadff2] bg-[#faf7ff] text-xs text-[#8B8194]"><th className="px-4 py-3 font-medium">Month</th><th className="px-4 py-3 font-medium">Received</th><th className="px-4 py-3 font-medium">Expenses</th><th className="px-4 py-3 font-medium">Net Profit</th></tr></thead>
+                            <tbody>{profitLoss.by_month.map((row) => <tr key={row.month} className="border-b border-[#f0e8f5] last:border-b-0"><td className="px-4 py-3 text-sm text-[#3F3748]">{row.month === 'Undated' ? 'Date not set' : new Date(`${row.month}-01T00:00:00`).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</td><td className="px-4 py-3 text-sm text-[#6B6175]">{formatCurrency(row.income)}</td><td className="px-4 py-3 text-sm text-[#6B6175]">{formatCurrency(row.expenses)}</td><td className="px-4 py-3 text-sm font-medium text-[#3F3748]">{formatCurrency(row.net_profit)}</td></tr>)}</tbody>
+                          </table>
+                        </div>
+                      ) : <p className="mt-3 text-sm text-[#8B8194]">No payments or expenses have been recorded for this wedding yet.</p>}
+                    </div>
+
+                    {profitLoss.expenses_by_category?.length > 0 && (
+                      <div className="rounded-xl border border-[#eadff2] bg-white p-5"><p className="text-sm text-[#8B8194]">Expenses</p><h4 className="text-lg font-semibold text-[#3F3748] mt-1">By Category</h4><div className="mt-3 space-y-2">{profitLoss.expenses_by_category.map((item) => <div key={item.category} className="flex justify-between gap-3 rounded-lg bg-[#faf7ff] px-3 py-2 text-sm"><span className="text-[#6B6175]">{item.category}</span><span className="font-medium text-[#3F3748]">{formatCurrency(item.amount)}</span></div>)}</div></div>
+                    )}
+                  </>
+                ) : <p className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-5 text-sm text-[#8B8194]">No Profit & Loss data available yet.</p>}
               </div>
             )}
 
