@@ -92,6 +92,7 @@ const IntroSparkle = React.forwardRef((props, ref) => (
         <stop offset="100%" stopColor="#98B7FF" />
       </linearGradient>
     </defs>
+
     <path d="M12 3 13.9 8.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3Z" />
     <path d="M5 3v4" />
     <path d="M7 5H3" />
@@ -107,10 +108,18 @@ const Home = () => {
 
   const handlePrompt = (text) => {
     const el = document.querySelector('#hero');
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    if (el) {
+      el.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }
 
     setTimeout(() => {
-      if (chatPromptRef.current) chatPromptRef.current(text);
+      if (chatPromptRef.current) {
+        chatPromptRef.current(text);
+      }
     }, 500);
   };
 
@@ -123,7 +132,9 @@ const Home = () => {
       <BudgetPlanner />
       <VenueDiscovery />
       <PromptExamples onPrompt={handlePrompt} />
-      <FinalCTA onStart={() => handlePrompt('Help me plan my dream wedding.')} />
+      <FinalCTA
+        onStart={() => handlePrompt('Help me plan my dream wedding.')}
+      />
       <Footer />
     </div>
   );
@@ -132,22 +143,30 @@ const Home = () => {
 const AppContent = () => {
   const location = useLocation();
   const isHomePage = location.pathname === '/';
+
   const introStarRef = useRef(null);
   const starAnimationRef = useRef(null);
 
   const [prefersReducedMotion] = useState(getReducedMotionPreference);
+
   const [introActive, setIntroActive] = useState(() =>
     shouldPlayIntro(location.pathname)
   );
+
   const [starTraveling, setStarTraveling] = useState(false);
 
   useEffect(() => {
     if (!isHomePage) {
-      if (introActive) setIntroActive(false);
+      if (introActive) {
+        setIntroActive(false);
+      }
+
       return undefined;
     }
 
-    if (!introActive) return undefined;
+    if (!introActive) {
+      return undefined;
+    }
 
     if (prefersReducedMotion) {
       const reducedTimer = window.setTimeout(() => {
@@ -161,24 +180,31 @@ const AppContent = () => {
       setStarTraveling(true);
 
       const introStar = introStarRef.current;
+
       const searchStar = document.querySelector(
         '.wedora-search-sparkle-home, [data-wedora-search-sparkle]'
       );
 
-      if (!introStar || !searchStar || !introStar.animate) return;
+      if (!introStar || !searchStar || !introStar.animate) {
+        return;
+      }
 
       const startRect = introStar.getBoundingClientRect();
       const targetRect = searchStar.getBoundingClientRect();
 
-      if (!startRect.width || !targetRect.width) return;
+      if (!startRect.width || !targetRect.width) {
+        return;
+      }
 
       const startCenterX = startRect.left + startRect.width / 2;
       const startCenterY = startRect.top + startRect.height / 2;
+
       const targetCenterX = targetRect.left + targetRect.width / 2;
       const targetCenterY = targetRect.top + targetRect.height / 2;
 
       const moveX = targetCenterX - startCenterX;
       const moveY = targetCenterY - startCenterY;
+
       const targetScale = Math.min(
         1,
         targetRect.width / startRect.width
@@ -218,7 +244,11 @@ const AppContent = () => {
         starAnimationRef.current = null;
       }
     };
-  }, [introActive, isHomePage, prefersReducedMotion]);
+  }, [
+    introActive,
+    isHomePage,
+    prefersReducedMotion,
+  ]);
 
   const finishIntroEarly = () => {
     setIntroActive(false);
@@ -231,67 +261,114 @@ const AppContent = () => {
 
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/wedding-planning" element={<WeddingPlanner />} />
+
+          <Route
+            path="/wedding-planning"
+            element={<WeddingPlanner />}
+          />
+
           <Route
             path="/wedding-planning/checklist"
             element={<WeddingChecklist />}
           />
+
           <Route
             path="/wedding-planning/timeline"
             element={<WeddingTimeline />}
           />
+
           <Route
             path="/wedding-planning/guests"
             element={<WeddingGuests />}
           />
+
           <Route
             path="/wedding-planning/budget"
             element={<WeddingBudget />}
           />
+
           <Route
             path="/wedding-planning/venue"
             element={<WeddingVenuePlanning />}
           />
+
           <Route
             path="/wedding-planning/photography"
             element={<WeddingPhotography />}
           />
+
           <Route
             path="/wedding-planning/catering"
             element={<WeddingCatering />}
           />
+
           <Route
             path="/wedding-planning/couple"
             element={<WeddingCouple />}
           />
+
           <Route
             path="/wedding-planning/transportation"
             element={<WeddingTransportation />}
           />
+
           <Route
             path="/venue-discovery"
             element={<WedoraVenueDiscovery />}
           />
+
           <Route
             path="/vendor-discovery"
             element={<WedoraVendorDiscovery />}
           />
-          <Route path="/for-vendors" element={<VendorLanding />} />
-          <Route path="/vendor/auth" element={<VendorAuth />} />
-          <Route path="/vendor/dashboard" element={<VendorDashboard />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/marketplace" element={<Marketplace />} />
-          <Route path="/vendor/:slug" element={<VendorPublicProfile />} />
-          <Route path="/share/:shareId" element={<SharePage />} />
+
+          <Route
+            path="/for-vendors"
+            element={<VendorLanding />}
+          />
+
+          <Route
+            path="/vendor/auth"
+            element={<VendorAuth />}
+          />
+
+          <Route
+            path="/vendor/dashboard"
+            element={<VendorDashboard />}
+          />
+
+          <Route
+            path="/admin/dashboard"
+            element={<AdminDashboard />}
+          />
+
+          <Route
+            path="/marketplace"
+            element={<Marketplace />}
+          />
+
+          <Route
+            path="/vendor/:slug"
+            element={<VendorPublicProfile />}
+          />
+
+          <Route
+            path="/share/:shareId"
+            element={<SharePage />}
+          />
         </Routes>
       </div>
 
       {introActive && (
         <div
           className={`wedora-intro-screen ${
-            starTraveling ? 'wedora-intro-star-traveling' : ''
+            starTraveling
+              ? 'wedora-intro-star-traveling'
+              : ''
           } ${
-            prefersReducedMotion ? 'wedora-intro-screen-reduced' : ''
+            prefersReducedMotion
+              ? 'wedora-intro-screen-reduced'
+              : ''
           }`}
           role="status"
           aria-label="Welcome to WEDORA AI"
@@ -306,9 +383,21 @@ const AppContent = () => {
               overflow: hidden;
               color: #2D2638;
               background:
-                radial-gradient(ellipse at 14% 22%, rgba(201, 184, 255, .34), transparent 43%),
-                radial-gradient(ellipse at 82% 24%, rgba(247, 183, 216, .32), transparent 44%),
-                radial-gradient(ellipse at 54% 90%, rgba(169, 232, 255, .38), transparent 48%),
+                radial-gradient(
+                  ellipse at 14% 22%,
+                  rgba(201, 184, 255, .34),
+                  transparent 43%
+                ),
+                radial-gradient(
+                  ellipse at 82% 24%,
+                  rgba(247, 183, 216, .32),
+                  transparent 44%
+                ),
+                radial-gradient(
+                  ellipse at 54% 90%,
+                  rgba(169, 232, 255, .38),
+                  transparent 48%
+                ),
                 #fffdfd;
               isolation: isolate;
               animation: wedora-intro-screen-in .55s ease-out both;
@@ -330,7 +419,9 @@ const AppContent = () => {
                   transparent 280deg
                 );
               filter: blur(46px);
-              animation: wedora-intro-light-drift 9s ease-in-out infinite alternate;
+              animation:
+                wedora-intro-light-drift
+                9s ease-in-out infinite alternate;
             }
 
             .wedora-intro-screen::after {
@@ -340,7 +431,11 @@ const AppContent = () => {
               z-index: -1;
               pointer-events: none;
               background:
-                radial-gradient(ellipse at center, transparent 38%, rgba(255, 255, 255, .3) 100%);
+                radial-gradient(
+                  ellipse at center,
+                  transparent 38%,
+                  rgba(255, 255, 255, .3) 100%
+                );
             }
 
             .wedora-intro-skip {
@@ -357,7 +452,9 @@ const AppContent = () => {
               font-size: 12px;
               cursor: pointer;
               backdrop-filter: blur(12px);
-              transition: background .2s ease, color .2s ease;
+              transition:
+                background .2s ease,
+                color .2s ease;
             }
 
             .wedora-intro-skip:hover {
@@ -377,7 +474,12 @@ const AppContent = () => {
               place-items: center;
               padding: 56px 24px 78px;
               opacity: 0;
-              animation: wedora-intro-scene-sequence var(--scene-duration) cubic-bezier(.2, .75, .2, 1) var(--scene-delay) both;
+              animation:
+                wedora-intro-scene-sequence
+                var(--scene-duration)
+                cubic-bezier(.2, .75, .2, 1)
+                var(--scene-delay)
+                both;
             }
 
             .wedora-intro-scene--brand {
@@ -412,19 +514,89 @@ const AppContent = () => {
             }
 
             .wedora-intro-kicker {
-              margin: 0 0 14px;
-              color: #8C809B;
+              margin: 0 0 18px;
+              color: #9B91A8;
               font-size: 11px;
-              font-weight: 600;
-              letter-spacing: .28em;
+              font-weight: 500;
+              letter-spacing: .34em;
               line-height: 1.5;
               text-transform: uppercase;
+            }
+
+            /*
+             * OPENING INTRO TYPOGRAPHY
+             * Styled to match the second reference image.
+             */
+            .wedora-intro-scene--brand
+              .wedora-intro-scene-content {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+            }
+
+            .wedora-intro-scene--brand
+              .wedora-intro-kicker {
+              margin-bottom: 38px;
+              color: #9B91A8;
+              font-size: clamp(9px, 1vw, 12px);
+              font-weight: 500;
+              letter-spacing: .36em;
+              line-height: 1.4;
+            }
+
+            .wedora-intro-scene--brand
+              .wedora-intro-title {
+              margin: 0;
+              color: #2F2939;
+              font-family:
+                Georgia,
+                'Times New Roman',
+                serif;
+              font-size: clamp(48px, 8vw, 108px);
+              font-weight: 400;
+              letter-spacing: -.055em;
+              line-height: .98;
+            }
+
+            .wedora-intro-scene--brand
+              .wedora-intro-title em {
+              display: block;
+              margin-top: 8px;
+              background:
+                linear-gradient(
+                  105deg,
+                  #F18499 0%,
+                  #E99BAF 20%,
+                  #CFA8D2 47%,
+                  #A6D0E9 70%,
+                  #87DDF5 100%
+                );
+              background-clip: text;
+              -webkit-background-clip: text;
+              color: transparent;
+              font-family:
+                Georgia,
+                'Times New Roman',
+                serif;
+              font-size: .92em;
+              font-style: italic;
+              font-weight: 400;
+              letter-spacing: -.055em;
+            }
+
+            .wedora-intro-scene--brand
+              .wedora-intro-description {
+              display: none;
             }
 
             .wedora-intro-title {
               margin: 0;
               color: #30283D;
-              font-family: Georgia, 'Times New Roman', serif;
+              font-family:
+                Georgia,
+                'Times New Roman',
+                serif;
               font-size: clamp(35px, 6vw, 72px);
               font-weight: 400;
               letter-spacing: -.045em;
@@ -433,7 +605,14 @@ const AppContent = () => {
 
             .wedora-intro-title em {
               display: inline-block;
-              background: linear-gradient(105deg, #F18499 2%, #D7A8D4 46%, #86DDF4 76%, #9BB4FF 100%);
+              background:
+                linear-gradient(
+                  105deg,
+                  #F18499 2%,
+                  #D7A8D4 46%,
+                  #86DDF4 76%,
+                  #9BB4FF 100%
+                );
               background-clip: text;
               -webkit-background-clip: text;
               color: transparent;
@@ -459,7 +638,11 @@ const AppContent = () => {
               box-shadow:
                 0 22px 70px rgba(150, 126, 182, .16),
                 0 0 34px rgba(255, 255, 255, .72);
-              animation: wedora-intro-logo-arrive 1.1s cubic-bezier(.18, .76, .2, 1) both;
+              animation:
+                wedora-intro-logo-arrive
+                1.1s
+                cubic-bezier(.18, .76, .2, 1)
+                both;
             }
 
             .wedora-intro-brand-name {
@@ -473,7 +656,8 @@ const AppContent = () => {
 
             .wedora-intro-feature-row {
               display: grid;
-              grid-template-columns: repeat(3, minmax(0, 1fr));
+              grid-template-columns:
+                repeat(3, minmax(0, 1fr));
               gap: 14px;
               max-width: 840px;
               margin: 32px auto 0;
@@ -485,7 +669,8 @@ const AppContent = () => {
               border: 1px solid rgba(255, 255, 255, .83);
               border-radius: 24px;
               background: rgba(255, 255, 255, .48);
-              box-shadow: 0 18px 50px rgba(148, 132, 164, .1);
+              box-shadow:
+                0 18px 50px rgba(148, 132, 164, .1);
               text-align: left;
               backdrop-filter: blur(16px);
             }
@@ -498,7 +683,12 @@ const AppContent = () => {
               place-items: center;
               border: 1px solid rgba(255, 255, 255, .9);
               border-radius: 14px;
-              background: linear-gradient(135deg, rgba(247, 183, 216, .45), rgba(169, 232, 255, .48));
+              background:
+                linear-gradient(
+                  135deg,
+                  rgba(247, 183, 216, .45),
+                  rgba(169, 232, 255, .48)
+                );
               color: #725E82;
             }
 
@@ -524,7 +714,8 @@ const AppContent = () => {
 
             .wedora-intro-discovery-cards {
               display: grid;
-              grid-template-columns: repeat(2, minmax(0, 1fr));
+              grid-template-columns:
+                repeat(2, minmax(0, 1fr));
               gap: 16px;
               max-width: 740px;
               margin: 32px auto 0;
@@ -540,18 +731,21 @@ const AppContent = () => {
               border: 1px solid rgba(255, 255, 255, .85);
               border-radius: 26px;
               background: rgba(255, 255, 255, .5);
-              box-shadow: 0 18px 50px rgba(148, 132, 164, .1);
+              box-shadow:
+                0 18px 50px rgba(148, 132, 164, .1);
               backdrop-filter: blur(16px);
             }
 
-            .wedora-intro-discovery-card .wedora-intro-feature-icon {
+            .wedora-intro-discovery-card
+              .wedora-intro-feature-icon {
               width: 48px;
               height: 48px;
               margin: 0;
               flex: none;
             }
 
-            .wedora-intro-discovery-card .wedora-intro-feature-icon svg {
+            .wedora-intro-discovery-card
+              .wedora-intro-feature-icon svg {
               width: 22px;
               height: 22px;
             }
@@ -577,7 +771,8 @@ const AppContent = () => {
               border: 1px solid rgba(255, 255, 255, .86);
               border-radius: 28px;
               background: rgba(255, 255, 255, .5);
-              box-shadow: 0 22px 64px rgba(148, 132, 164, .13);
+              box-shadow:
+                0 22px 64px rgba(148, 132, 164, .13);
               text-align: left;
               backdrop-filter: blur(18px);
             }
@@ -588,7 +783,8 @@ const AppContent = () => {
               justify-content: space-between;
               gap: 16px;
               padding: 4px 6px 16px;
-              border-bottom: 1px solid rgba(152, 143, 166, .13);
+              border-bottom:
+                1px solid rgba(152, 143, 166, .13);
             }
 
             .wedora-intro-vendor-panel-title {
@@ -619,7 +815,8 @@ const AppContent = () => {
 
             .wedora-intro-vendor-tools {
               display: grid;
-              grid-template-columns: repeat(3, minmax(0, 1fr));
+              grid-template-columns:
+                repeat(3, minmax(0, 1fr));
               gap: 10px;
               padding-top: 14px;
             }
@@ -668,7 +865,8 @@ const AppContent = () => {
               border: 1px solid rgba(255, 255, 255, .86);
               border-radius: 28px;
               object-fit: cover;
-              box-shadow: 0 18px 56px rgba(150, 126, 182, .15);
+              box-shadow:
+                0 18px 56px rgba(150, 126, 182, .15);
             }
 
             .wedora-intro-fly-star {
@@ -679,12 +877,23 @@ const AppContent = () => {
               height: 36px;
               overflow: visible;
               filter:
-                drop-shadow(0 0 7px rgba(255, 116, 158, .72))
-                drop-shadow(0 0 14px rgba(96, 212, 255, .66));
-              transform: translate3d(0, 0, 0) scale(1);
+                drop-shadow(
+                  0 0 7px rgba(255, 116, 158, .72)
+                )
+                drop-shadow(
+                  0 0 14px rgba(96, 212, 255, .66)
+                );
+              transform:
+                translate3d(0, 0, 0)
+                scale(1);
               transform-origin: center;
               will-change: transform, opacity;
-              animation: wedora-intro-star-glow 1.5s ease-in-out infinite alternate;
+              animation:
+                wedora-intro-star-glow
+                1.5s
+                ease-in-out
+                infinite
+                alternate;
             }
 
             .wedora-intro-final-label {
@@ -700,7 +909,8 @@ const AppContent = () => {
               text-transform: uppercase;
             }
 
-            .wedora-intro-final-label span + span::before {
+            .wedora-intro-final-label
+              span + span::before {
               margin-right: 8px;
               color: #E9A8BE;
               content: '•';
@@ -720,11 +930,22 @@ const AppContent = () => {
               display: block;
               width: 100%;
               height: 100%;
-              background: linear-gradient(90deg, #F28FA9, #D7AAD7, #8DDEF4, #98B7FF);
+              background:
+                linear-gradient(
+                  90deg,
+                  #F28FA9,
+                  #D7AAD7,
+                  #8DDEF4,
+                  #98B7FF
+                );
               content: '';
               transform: scaleX(0);
               transform-origin: left;
-              animation: wedora-intro-progress-fill ${INTRO_TOTAL_DURATION}ms linear both;
+              animation:
+                wedora-intro-progress-fill
+                ${INTRO_TOTAL_DURATION}ms
+                linear
+                both;
             }
 
             .wedora-intro-reduced-card {
@@ -734,7 +955,8 @@ const AppContent = () => {
               border: 1px solid rgba(255, 255, 255, .82);
               border-radius: 28px;
               background: rgba(255, 255, 255, .58);
-              box-shadow: 0 22px 65px rgba(148, 132, 164, .14);
+              box-shadow:
+                0 22px 65px rgba(148, 132, 164, .14);
               text-align: center;
               backdrop-filter: blur(18px);
             }
@@ -750,7 +972,10 @@ const AppContent = () => {
             .wedora-intro-reduced-card h1 {
               margin: 0;
               color: #30283D;
-              font-family: Georgia, 'Times New Roman', serif;
+              font-family:
+                Georgia,
+                'Times New Roman',
+                serif;
               font-size: 34px;
               font-weight: 400;
             }
@@ -762,30 +987,50 @@ const AppContent = () => {
               line-height: 1.55;
             }
 
-            .wedora-intro-star-traveling .wedora-intro-final-lockup {
+            .wedora-intro-star-traveling
+              .wedora-intro-final-lockup {
               opacity: 1;
             }
 
             @keyframes wedora-intro-screen-in {
-              from { opacity: 0; }
-              to { opacity: 1; }
+              from {
+                opacity: 0;
+              }
+
+              to {
+                opacity: 1;
+              }
             }
 
             @keyframes wedora-intro-light-drift {
-              from { transform: rotate(-6deg) scale(.98); }
-              to { transform: rotate(8deg) scale(1.04); }
+              from {
+                transform:
+                  rotate(-6deg)
+                  scale(.98);
+              }
+
+              to {
+                transform:
+                  rotate(8deg)
+                  scale(1.04);
+              }
             }
 
             @keyframes wedora-intro-logo-arrive {
               0% {
                 opacity: 0;
                 filter: blur(10px);
-                transform: translateY(14px) scale(.92);
+                transform:
+                  translateY(14px)
+                  scale(.92);
               }
+
               100% {
                 opacity: 1;
                 filter: blur(0);
-                transform: translateY(0) scale(1);
+                transform:
+                  translateY(0)
+                  scale(1);
               }
             }
 
@@ -793,40 +1038,62 @@ const AppContent = () => {
               0% {
                 opacity: 0;
                 filter: blur(8px);
-                transform: translateY(18px) scale(.99);
+                transform:
+                  translateY(18px)
+                  scale(.99);
               }
+
               14% {
                 opacity: 1;
                 filter: blur(0);
-                transform: translateY(0) scale(1);
+                transform:
+                  translateY(0)
+                  scale(1);
               }
+
               76% {
                 opacity: 1;
                 filter: blur(0);
-                transform: translateY(0) scale(1);
+                transform:
+                  translateY(0)
+                  scale(1);
               }
+
               100% {
                 opacity: 0;
                 filter: blur(5px);
-                transform: translateY(-10px) scale(1.01);
+                transform:
+                  translateY(-10px)
+                  scale(1.01);
               }
             }
 
             @keyframes wedora-intro-star-glow {
               from {
                 filter:
-                  drop-shadow(0 0 5px rgba(255, 116, 158, .62))
-                  drop-shadow(0 0 10px rgba(96, 212, 255, .48));
+                  drop-shadow(
+                    0 0 5px rgba(255, 116, 158, .62)
+                  )
+                  drop-shadow(
+                    0 0 10px rgba(96, 212, 255, .48)
+                  );
               }
+
               to {
                 filter:
-                  drop-shadow(0 0 9px rgba(255, 116, 158, .9))
-                  drop-shadow(0 0 16px rgba(96, 212, 255, .78));
+                  drop-shadow(
+                    0 0 9px rgba(255, 116, 158, .9)
+                  )
+                  drop-shadow(
+                    0 0 16px rgba(96, 212, 255, .78)
+                  );
               }
             }
 
             @keyframes wedora-intro-progress-fill {
-              to { transform: scaleX(1); }
+              to {
+                transform: scaleX(1);
+              }
             }
 
             @media (max-width: 700px) {
@@ -910,6 +1177,24 @@ const AppContent = () => {
                 max-width: 520px;
                 font-size: 13px;
               }
+
+              .wedora-intro-scene--brand
+                .wedora-intro-kicker {
+                margin-bottom: 28px;
+                font-size: 9px;
+                letter-spacing: .27em;
+              }
+
+              .wedora-intro-scene--brand
+                .wedora-intro-title {
+                font-size: clamp(43px, 12vw, 72px);
+                letter-spacing: -.05em;
+              }
+
+              .wedora-intro-scene--brand
+                .wedora-intro-title em {
+                margin-top: 6px;
+              }
             }
 
             @media (max-width: 420px) {
@@ -962,6 +1247,17 @@ const AppContent = () => {
               .wedora-intro-vendor-panel {
                 max-width: 310px;
               }
+
+              .wedora-intro-scene--brand
+                .wedora-intro-title {
+                font-size: 43px;
+              }
+
+              .wedora-intro-scene--brand
+                .wedora-intro-kicker {
+                max-width: 280px;
+                line-height: 1.6;
+              }
             }
 
             .wedora-intro-screen-reduced {
@@ -973,19 +1269,23 @@ const AppContent = () => {
               filter: blur(34px);
             }
 
-            .wedora-intro-screen-reduced .wedora-intro-scenes {
+            .wedora-intro-screen-reduced
+              .wedora-intro-scenes {
               display: none;
             }
 
-            .wedora-intro-screen-reduced .wedora-intro-reduced-card {
+            .wedora-intro-screen-reduced
+              .wedora-intro-reduced-card {
               display: block;
             }
 
-            .wedora-intro-screen-reduced .wedora-intro-progress {
+            .wedora-intro-screen-reduced
+              .wedora-intro-progress {
               display: none;
             }
 
-            .wedora-intro-screen-reduced .wedora-intro-skip {
+            .wedora-intro-screen-reduced
+              .wedora-intro-skip {
               display: none;
             }
 
@@ -1006,37 +1306,45 @@ const AppContent = () => {
             className="wedora-intro-scenes"
             aria-hidden="true"
           >
-            <section className="wedora-intro-scene wedora-intro-scene--brand">
+            {/* =====================================================
+                OPENING INTRO — MATCHES SECOND REFERENCE IMAGE
+               ===================================================== */}
+            <section
+              className="
+                wedora-intro-scene
+                wedora-intro-scene--brand
+              "
+            >
               <div className="wedora-intro-scene-content">
-                <img
-                  className="wedora-intro-brand-logo"
-                  src="/WEDORA.jpg"
-                  alt=""
-                />
-                <p className="wedora-intro-brand-name">WEDORA AI</p>
                 <p className="wedora-intro-kicker">
-                  Your wedding companion
+                  YOUR AI WEDDING COMPANION
                 </p>
+
                 <h1 className="wedora-intro-title">
-                  Make room for
+                  Your Wedding.
                   <br />
-                  <em>the moments that matter.</em>
+                  <em>Reimagined by AI.</em>
                 </h1>
-                <p className="wedora-intro-description">
-                  One thoughtful platform for couples planning their day and
-                  the wedding professionals bringing it to life.
-                </p>
               </div>
             </section>
 
-            <section className="wedora-intro-scene wedora-intro-scene--couples">
+            <section
+              className="
+                wedora-intro-scene
+                wedora-intro-scene--couples
+              "
+            >
               <div className="wedora-intro-scene-content">
-                <p className="wedora-intro-kicker">For couples</p>
+                <p className="wedora-intro-kicker">
+                  For couples
+                </p>
+
                 <h2 className="wedora-intro-title">
                   Plan the day.
                   <br />
                   <em>Enjoy the journey.</em>
                 </h2>
+
                 <p className="wedora-intro-description">
                   Shape your plans, explore design ideas, and keep your budget
                   in view—all in one place.
@@ -1047,9 +1355,11 @@ const AppContent = () => {
                     <div className="wedora-intro-feature-icon">
                       <Sparkles />
                     </div>
+
                     <h3 className="wedora-intro-feature-title">
                       AI wedding planning
                     </h3>
+
                     <p className="wedora-intro-feature-copy">
                       Turn your ideas into a clearer plan.
                     </p>
@@ -1059,9 +1369,11 @@ const AppContent = () => {
                     <div className="wedora-intro-feature-icon">
                       <Palette />
                     </div>
+
                     <h3 className="wedora-intro-feature-title">
                       AI design ideas
                     </h3>
+
                     <p className="wedora-intro-feature-copy">
                       Explore the look and feel of your day.
                     </p>
@@ -1071,9 +1383,11 @@ const AppContent = () => {
                     <div className="wedora-intro-feature-icon">
                       <Wallet />
                     </div>
+
                     <h3 className="wedora-intro-feature-title">
                       Wedding budget
                     </h3>
+
                     <p className="wedora-intro-feature-copy">
                       Keep spending and plans together.
                     </p>
@@ -1082,14 +1396,23 @@ const AppContent = () => {
               </div>
             </section>
 
-            <section className="wedora-intro-scene wedora-intro-scene--discover">
+            <section
+              className="
+                wedora-intro-scene
+                wedora-intro-scene--discover
+              "
+            >
               <div className="wedora-intro-scene-content">
-                <p className="wedora-intro-kicker">Find your people and place</p>
+                <p className="wedora-intro-kicker">
+                  Find your people and place
+                </p>
+
                 <h2 className="wedora-intro-title">
                   The right team.
                   <br />
                   <em>The right setting.</em>
                 </h2>
+
                 <p className="wedora-intro-description">
                   Explore wedding venues and discover vendors through the
                   WEDORA marketplace.
@@ -1100,8 +1423,10 @@ const AppContent = () => {
                     <div className="wedora-intro-feature-icon">
                       <MapPin />
                     </div>
+
                     <div>
                       <h3>Venue discovery</h3>
+
                       <p>
                         Browse places that fit your celebration and plans.
                       </p>
@@ -1112,8 +1437,10 @@ const AppContent = () => {
                     <div className="wedora-intro-feature-icon">
                       <Store />
                     </div>
+
                     <div>
                       <h3>Vendor marketplace</h3>
+
                       <p>
                         Explore vendor profiles, services, and verified reviews.
                       </p>
@@ -1123,14 +1450,23 @@ const AppContent = () => {
               </div>
             </section>
 
-            <section className="wedora-intro-scene wedora-intro-scene--vendors">
+            <section
+              className="
+                wedora-intro-scene
+                wedora-intro-scene--vendors
+              "
+            >
               <div className="wedora-intro-scene-content">
-                <p className="wedora-intro-kicker">For wedding professionals</p>
+                <p className="wedora-intro-kicker">
+                  For wedding professionals
+                </p>
+
                 <h2 className="wedora-intro-title">
                   Your business,
                   <br />
                   <em>beautifully in sync.</em>
                 </h2>
+
                 <p className="wedora-intro-description">
                   Keep client relationships, wedding work, and payments moving
                   from one vendor workspace.
@@ -1141,33 +1477,59 @@ const AppContent = () => {
                     <span className="wedora-intro-vendor-panel-title">
                       Vendor Command Center
                     </span>
-                    <span className="wedora-intro-live-pill">Your work, organized</span>
+
+                    <span className="wedora-intro-live-pill">
+                      Your work, organized
+                    </span>
                   </div>
 
                   <div className="wedora-intro-vendor-tools">
                     <div className="wedora-intro-vendor-tool">
                       <CalendarDays />
-                      <strong>Calendar & tasks</strong>
-                      <span>Deadlines and wedding work</span>
+
+                      <strong>
+                        Calendar & tasks
+                      </strong>
+
+                      <span>
+                        Deadlines and wedding work
+                      </span>
                     </div>
 
                     <div className="wedora-intro-vendor-tool">
                       <Check />
-                      <strong>Leads & client CRM</strong>
-                      <span>Follow-ups and client notes</span>
+
+                      <strong>
+                        Leads & client CRM
+                      </strong>
+
+                      <span>
+                        Follow-ups and client notes
+                      </span>
                     </div>
 
                     <div className="wedora-intro-vendor-tool">
                       <FileText />
-                      <strong>Quotes & invoices</strong>
-                      <span>Payments and receipts</span>
+
+                      <strong>
+                        Quotes & invoices
+                      </strong>
+
+                      <span>
+                        Payments and receipts
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
             </section>
 
-            <section className="wedora-intro-scene wedora-intro-scene--final">
+            <section
+              className="
+                wedora-intro-scene
+                wedora-intro-scene--final
+              "
+            >
               <div className="wedora-intro-scene-content">
                 <div className="wedora-intro-final-lockup">
                   <img
@@ -1175,19 +1537,23 @@ const AppContent = () => {
                     src="/WEDORA.jpg"
                     alt=""
                   />
+
                   <IntroSparkle
                     ref={introStarRef}
                     className="wedora-intro-fly-star"
                   />
                 </div>
+
                 <p className="wedora-intro-kicker">
                   From first idea to the wedding day
                 </p>
+
                 <h2 className="wedora-intro-title">
                   One celebration.
                   <br />
                   <em>Every detail in place.</em>
                 </h2>
+
                 <div className="wedora-intro-final-label">
                   <span>For couples</span>
                   <span>For wedding professionals</span>
@@ -1197,8 +1563,15 @@ const AppContent = () => {
           </div>
 
           <div className="wedora-intro-reduced-card">
-            <img src="/WEDORA.jpg" alt="" />
-            <h1>Welcome to WEDORA AI</h1>
+            <img
+              src="/WEDORA.jpg"
+              alt=""
+            />
+
+            <h1>
+              Welcome to WEDORA AI
+            </h1>
+
             <p>
               Wedding planning, design, discovery, and business tools in one
               place.
@@ -1210,10 +1583,17 @@ const AppContent = () => {
             className="wedora-intro-skip"
             onClick={finishIntroEarly}
           >
-            Skip intro <ArrowRight size={14} aria-hidden="true" />
+            Skip intro
+            <ArrowRight
+              size={14}
+              aria-hidden="true"
+            />
           </button>
 
-          <div className="wedora-intro-progress" aria-hidden="true" />
+          <div
+            className="wedora-intro-progress"
+            aria-hidden="true"
+          />
         </div>
       )}
 
