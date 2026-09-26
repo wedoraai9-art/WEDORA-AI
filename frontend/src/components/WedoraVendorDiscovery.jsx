@@ -279,7 +279,7 @@ const WedoraVendorDiscovery = () => {
    <div className="wedora-vendor-page min-h-screen bg-gradient-to-b from-[#FBF9FF] via-[#FFFCFE] to-[#F8F6FF] text-[#2D2638]">
 
       {/* TRANSPARENT BACK CONTROL */}
-      <div className="relative z-20 mx-auto max-w-7xl px-6 pt-4 md:pt-5">
+      <div className="relative z-20 mx-auto max-w-7xl px-6 pt-[112px] md:pt-[120px]">
         <button
           onClick={() => navigate('/')}
           className="inline-flex items-center gap-2 rounded-full px-2 py-2 text-sm text-[#756A82] transition-all duration-200 hover:bg-white/55 hover:text-[#30283A] active:scale-[0.97] active:translate-y-[1px]"
