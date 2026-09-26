@@ -4375,7 +4375,9 @@ class VendorSearchIn(BaseModel):
     category: Optional[str] = None
 
 
-LIVE_VENDOR_SEARCH_MODEL = os.environ.get("GEMINI_VENDOR_SEARCH_MODEL", "gemini-3.8-flash")
+# Vendor Discovery uses its own model so the existing WEDORA chat/designer AI is untouched.
+# Gemini 2.5 Flash-Lite supports Google Search grounding on the Free Tier.
+LIVE_VENDOR_SEARCH_MODEL = "gemini-2.5-flash-lite"
 
 
 def _clean_web_url(value: str) -> str:
