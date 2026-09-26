@@ -64,19 +64,23 @@ const fmtWhen = (ts) => {
     : d.toLocaleDateString([], { day: 'numeric', month: 'short' });
 };
 
-const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-
 export const ChatInterface = ({ initialPromptRef }) => {
-  const [messages, setMessages] = useState([]); // {role, content, error?}
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const [sessions, setSessions] = useState(loadSessions);
   const [loadingHistory, setLoadingHistory] = useState(false);
+
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
   const sparkleRef = useRef(null);
+  const pointerFrameRef = useRef(null);
+  const returnAnimationRef = useRef(null);
+  const pointerFollowingRef = useRef(false);
+  const pointerTargetRef = useRef({ x: 0, y: 0 });
+  const lastPointerRef = useRef({ x: 0, y: 0 });
   const lastUserMsgRef = useRef('');
 
   useEffect(() => {
@@ -102,46 +106,147 @@ export const ChatInterface = ({ initialPromptRef }) => {
     el.style.height = Math.min(el.scrollHeight, 180) + 'px';
   }, [input]);
 
-  const handleSearchPointerMove = (event) => {
-    if (
-      event.pointerType &&
-      event.pointerType !== 'mouse' &&
-      event.pointerType !== 'pen'
-    ) {
-      return;
-    }
-
+  // Let the search sparkle follow the mouse across the homepage, then return.
+  useEffect(() => {
     const sparkle = sparkleRef.current;
-    if (!sparkle) return;
+    const pageSurface = document.querySelector('.App');
 
-    const currentX =
-      parseFloat(sparkle.style.getPropertyValue('--wedora-star-x')) || 0;
-    const currentY =
-      parseFloat(sparkle.style.getPropertyValue('--wedora-star-y')) || 0;
+    if (!sparkle || !pageSurface) return undefined;
 
-    const sparkleRect = sparkle.getBoundingClientRect();
-    const sparkleCenterX = sparkleRect.left + sparkleRect.width / 2 - currentX;
-    const sparkleCenterY = sparkleRect.top + sparkleRect.height / 2 - currentY;
+    const prefersReducedMotion =
+      window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const moveX = clamp((event.clientX - sparkleCenterX) * 0.3, -34, 34);
-    const moveY = clamp((event.clientY - sparkleCenterY) * 0.3, -30, 22);
-    const rotate = clamp(moveX * 0.16, -6, 6);
+    if (prefersReducedMotion) return undefined;
 
-    sparkle.style.setProperty('--wedora-star-x', `${moveX}px`);
-    sparkle.style.setProperty('--wedora-star-y', `${moveY}px`);
-    sparkle.style.setProperty('--wedora-star-rotation', `${rotate}deg`);
-    sparkle.classList.add('wedora-search-sparkle-active');
-  };
+    const setPointerPosition = (x, y) => {
+      sparkle.style.setProperty('--wedora-pointer-x', `${x}px`);
+      sparkle.style.setProperty('--wedora-pointer-y', `${y}px`);
 
-  const resetSearchSparkle = () => {
-    const sparkle = sparkleRef.current;
-    if (!sparkle) return;
+      const deltaX = x - lastPointerRef.current.x;
+      const rotation = Math.max(-10, Math.min(10, deltaX * 0.18));
 
-    sparkle.style.setProperty('--wedora-star-x', '0px');
-    sparkle.style.setProperty('--wedora-star-y', '0px');
-    sparkle.style.setProperty('--wedora-star-rotation', '0deg');
-    sparkle.classList.remove('wedora-search-sparkle-active');
-  };
+      sparkle.style.setProperty(
+        '--wedora-star-rotation',
+        `${rotation}deg`
+      );
+      lastPointerRef.current = { x, y };
+    };
+
+    const schedulePointerPosition = () => {
+      if (pointerFrameRef.current !== null) return;
+
+      pointerFrameRef.current = window.requestAnimationFrame(() => {
+        pointerFrameRef.current = null;
+
+        const { x, y } = pointerTargetRef.current;
+        setPointerPosition(x, y);
+      });
+    };
+
+    const handlePointerMove = (event) => {
+      if (event.pointerType !== 'mouse') return;
+
+      // The intro overlay handles the pointer until it has finished.
+      if (document.querySelector('.wedora-intro-screen')) return;
+
+      if (!pointerFollowingRef.current) {
+        if (returnAnimationRef.current) {
+          returnAnimationRef.current.cancel();
+          returnAnimationRef.current = null;
+        }
+
+        const startRect = sparkle.getBoundingClientRect();
+        const startX = startRect.left + startRect.width / 2;
+        const startY = startRect.top + startRect.height / 2;
+
+        pointerFollowingRef.current = true;
+        sparkle.classList.add('wedora-search-sparkle-following');
+        sparkle.style.setProperty('--wedora-pointer-x', `${startX}px`);
+        sparkle.style.setProperty('--wedora-pointer-y', `${startY}px`);
+        sparkle.style.setProperty('--wedora-star-rotation', '0deg');
+        lastPointerRef.current = { x: startX, y: startY };
+      }
+
+      pointerTargetRef.current = {
+        x: event.clientX,
+        y: event.clientY,
+      };
+      schedulePointerPosition();
+    };
+
+    const returnSparkleToSearch = () => {
+      if (!pointerFollowingRef.current) return;
+
+      if (pointerFrameRef.current !== null) {
+        window.cancelAnimationFrame(pointerFrameRef.current);
+        pointerFrameRef.current = null;
+      }
+
+      const pointer = pointerTargetRef.current;
+      setPointerPosition(pointer.x, pointer.y);
+
+      const rotation =
+        parseFloat(
+          sparkle.style.getPropertyValue('--wedora-star-rotation')
+        ) || 0;
+
+      pointerFollowingRef.current = false;
+      sparkle.classList.remove('wedora-search-sparkle-following');
+      sparkle.style.setProperty('--wedora-star-rotation', '0deg');
+
+      const homeRect = sparkle.getBoundingClientRect();
+      const homeCenterX = homeRect.left + homeRect.width / 2;
+      const homeCenterY = homeRect.top + homeRect.height / 2;
+      const returnX = pointer.x - homeCenterX;
+      const returnY = pointer.y - homeCenterY;
+
+      if (sparkle.animate) {
+        returnAnimationRef.current = sparkle.animate(
+          [
+            {
+              transform:
+                `translate3d(${returnX}px, ${returnY}px, 0) ` +
+                `rotate(${rotation}deg) scale(1.24)`,
+              filter: 'drop-shadow(0 0 10px rgba(201, 184, 255, .72))',
+            },
+            {
+              transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)',
+              filter: 'drop-shadow(0 0 0 rgba(201, 184, 255, 0))',
+            },
+          ],
+          {
+            duration: 560,
+            easing: 'cubic-bezier(.2, .75, .25, 1)',
+          }
+        );
+
+        returnAnimationRef.current.onfinish = () => {
+          returnAnimationRef.current = null;
+        };
+      }
+    };
+
+    pageSurface.addEventListener('pointerenter', handlePointerMove);
+    pageSurface.addEventListener('pointermove', handlePointerMove);
+    pageSurface.addEventListener('pointerleave', returnSparkleToSearch);
+
+    return () => {
+      pageSurface.removeEventListener('pointerenter', handlePointerMove);
+      pageSurface.removeEventListener('pointermove', handlePointerMove);
+      pageSurface.removeEventListener('pointerleave', returnSparkleToSearch);
+
+      if (pointerFrameRef.current !== null) {
+        window.cancelAnimationFrame(pointerFrameRef.current);
+      }
+
+      if (returnAnimationRef.current) {
+        returnAnimationRef.current.cancel();
+      }
+
+      sparkle.classList.remove('wedora-search-sparkle-following');
+    };
+  }, []);
 
   const send = async (textArg) => {
     const text = (textArg ?? input).trim();
@@ -201,12 +306,10 @@ export const ChatInterface = ({ initialPromptRef }) => {
   const retry = async () => {
     if (!lastUserMsgRef.current || sending) return;
 
-    // Remove trailing error assistant and re-send using last user message
     setMessages((m) => {
       if (!m.length) return m;
       const copy = [...m];
 
-      // Pop the errored assistant
       if (
         copy[copy.length - 1]?.role === 'assistant' &&
         copy[copy.length - 1]?.error
@@ -214,7 +317,6 @@ export const ChatInterface = ({ initialPromptRef }) => {
         copy.pop();
       }
 
-      // Pop the last user (we're re-sending it)
       if (copy[copy.length - 1]?.role === 'user') copy.pop();
 
       return copy;
@@ -238,10 +340,12 @@ export const ChatInterface = ({ initialPromptRef }) => {
 
     try {
       const { messages: msgs } = await apiChatHistory(sid);
-      setMessages((msgs || []).map((m) => ({
-        role: m.role,
-        content: m.content,
-      })));
+      setMessages(
+        (msgs || []).map((m) => ({
+          role: m.role,
+          content: m.content,
+        }))
+      );
       setSessionId(sid);
       lastUserMsgRef.current =
         [...(msgs || [])].reverse().find((m) => m.role === 'user')?.content ||
@@ -305,36 +409,45 @@ export const ChatInterface = ({ initialPromptRef }) => {
   return (
     <div className="w-full max-w-3xl mx-auto">
       <style>{`
-        .wedora-search-sparkle {
-          --wedora-star-x: 0px;
-          --wedora-star-y: 0px;
-          --wedora-star-rotation: 0deg;
-          --wedora-star-scale: 1;
+        .wedora-search-sparkle-slot {
           position: relative;
-          z-index: 2;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
           flex: none;
-          transform:
-            translate3d(
-              var(--wedora-star-x),
-              var(--wedora-star-y),
-              0
-            )
-            rotate(var(--wedora-star-rotation))
-            scale(var(--wedora-star-scale));
-          transform-origin: center;
-          transition:
-            transform 240ms cubic-bezier(.2, .75, .25, 1),
-            filter 240ms ease;
-          will-change: transform;
+          width: 1.25rem;
+          height: 1.25rem;
         }
 
-        .wedora-search-sparkle-active {
-          --wedora-star-scale: 1.18;
-          filter: drop-shadow(0 0 8px rgba(201, 184, 255, .72));
+        .wedora-search-sparkle {
+          --wedora-star-rotation: 0deg;
+          position: relative;
+          flex: none;
+          transform: rotate(var(--wedora-star-rotation)) scale(1);
+          transform-origin: center;
+          will-change: transform, left, top;
+        }
+
+        .wedora-search-sparkle-following {
+          position: fixed !important;
+          z-index: 80;
+          top: var(--wedora-pointer-y);
+          left: var(--wedora-pointer-x);
+          pointer-events: none;
+          transform:
+            translate(-50%, -50%)
+            rotate(var(--wedora-star-rotation))
+            scale(1.24);
+          filter: drop-shadow(0 0 10px rgba(201, 184, 255, .72));
+          transition:
+            top 130ms linear,
+            left 130ms linear,
+            transform 180ms ease-out,
+            filter 180ms ease-out;
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .wedora-search-sparkle {
+          .wedora-search-sparkle-following {
             transition: none;
           }
         }
@@ -383,7 +496,7 @@ export const ChatInterface = ({ initialPromptRef }) => {
         </div>
       </div>
 
-      {/* History drawer (slide-over) */}
+      {/* History drawer */}
       {showHistory && (
         <div
           className="fixed inset-0 z-[70]"
@@ -506,19 +619,15 @@ export const ChatInterface = ({ initialPromptRef }) => {
         </div>
       )}
 
-      {/* Apple liquid glass input (textarea) */}
-      <div
-        data-wedora-search-bar
-        onPointerMove={handleSearchPointerMove}
-        onPointerLeave={resetSearchSparkle}
-        className="liquid-glass-strong rounded-[28px] pl-5 pr-2 py-2 flex items-center gap-3 gradient-border"
-      >
-        <Sparkles
-          ref={sparkleRef}
-          data-wedora-search-sparkle
-          aria-hidden="true"
-          className="wedora-search-sparkle w-5 h-5 text-[#C9B8FF] shrink-0"
-        />
+      {/* Search input */}
+      <div className="liquid-glass-strong rounded-[28px] pl-5 pr-2 py-2 flex items-center gap-3 gradient-border">
+        <span className="wedora-search-sparkle-slot" aria-hidden="true">
+          <Sparkles
+            ref={sparkleRef}
+            data-wedora-search-sparkle
+            className="wedora-search-sparkle w-5 h-5 text-[#C9B8FF]"
+          />
+        </span>
         <textarea
           ref={inputRef}
           data-testid={HERO.chatInput}
