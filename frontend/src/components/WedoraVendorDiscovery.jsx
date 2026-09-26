@@ -234,16 +234,180 @@ const WedoraVendorDiscovery = () => {
   const [selectedVendor, setSelectedVendor] = useState(null);
   const [shortlisted, setShortlisted] = useState([]);
 
+  // Understand natural-language vendor searches such as:
+  // "photographer in Delhi", "decorator near Udaipur",
+  // "makeup artist in Delhi" or "caterer in Mumbai".
+  const parsedSearch = useMemo(() => {
+    const text = query.toLowerCase().trim();
+
+    let parsedCity = city === 'All India' ? '' : city;
+    let parsedCategory =
+      category === 'All Categories' ? '' : category;
+
+    const knownCities = [
+      'Jaipur',
+      'Delhi',
+      'Mumbai',
+      'Udaipur',
+      'Jodhpur',
+      'Goa',
+      'Bengaluru',
+      'Hyderabad',
+      'Kolkata',
+      'Chandigarh',
+    ];
+
+    // Detect city from the sentence when the dropdown is still "All India".
+    if (!parsedCity) {
+      const foundCity = knownCities.find((item) =>
+        text.includes(item.toLowerCase())
+      );
+
+      if (foundCity) {
+        parsedCity = foundCity;
+      }
+    }
+
+    // Detect vendor category from natural language.
+    if (!parsedCategory) {
+      const categoryAliases = [
+        {
+          category: 'Wedding Planner',
+          keywords: [
+            'planner',
+            'planning',
+            'wedding planner',
+            'event planner',
+          ],
+        },
+        {
+          category: 'Decorator',
+          keywords: [
+            'decorator',
+            'decoration',
+            'decor',
+            'wedding decor',
+            'stage decor',
+            'mandap decor',
+          ],
+        },
+        {
+          category: 'Photographer',
+          keywords: [
+            'photographer',
+            'photography',
+            'candid',
+            'photo',
+            'pre-wedding photography',
+          ],
+        },
+        {
+          category: 'Caterer',
+          keywords: [
+            'caterer',
+            'catering',
+            'food',
+            'wedding food',
+          ],
+        },
+        {
+          category: 'Makeup Artist',
+          keywords: [
+            'makeup',
+            'make up',
+            'makeup artist',
+            'bridal makeup',
+            'beauty artist',
+          ],
+        },
+        {
+          category: 'Mehndi Artist',
+          keywords: [
+            'mehndi',
+            'henna',
+          ],
+        },
+        {
+          category: 'Florist',
+          keywords: [
+            'florist',
+            'flowers',
+            'floral',
+            'flower decor',
+          ],
+        },
+        {
+          category: 'DJ & Entertainment',
+          keywords: [
+            'dj',
+            'entertainment',
+            'live music',
+            'music',
+            'sangeet',
+          ],
+        },
+        {
+          category: 'Venue',
+          keywords: [
+            'venue',
+            'wedding venue',
+          ],
+        },
+        {
+          category: 'Invitation Designer',
+          keywords: [
+            'invitation',
+            'invitations',
+            'invitation designer',
+            'wedding cards',
+          ],
+        },
+        {
+          category: 'Bridal Wear',
+          keywords: [
+            'bridal wear',
+            'bridal dress',
+            'bridal lehenga',
+            'bridal clothing',
+          ],
+        },
+        {
+          category: 'Groom Wear',
+          keywords: [
+            'groom wear',
+            'sherwani',
+            'groom outfit',
+          ],
+        },
+      ];
+
+      const foundCategory = categoryAliases.find((item) =>
+        item.keywords.some((keyword) => text.includes(keyword))
+      );
+
+      if (foundCategory) {
+        parsedCategory = foundCategory.category;
+      }
+    }
+
+    return {
+      city: parsedCity,
+      category: parsedCategory,
+    };
+  }, [query, city, category]);
+
   const filteredVendors = useMemo(() => {
     const search = query.toLowerCase().trim();
 
     return sampleVendors.filter((vendor) => {
       const matchesCity =
-        city === 'All India' || vendor.city === city;
+        !parsedSearch.city ||
+        vendor.city.toLowerCase() === parsedSearch.city.toLowerCase();
 
       const matchesCategory =
-        category === 'All Categories' ||
-        vendor.category === category;
+        !parsedSearch.category ||
+        vendor.category.toLowerCase() ===
+          parsedSearch.category.toLowerCase();
 
       const searchableText = `
         ${vendor.name}
@@ -254,12 +418,40 @@ const WedoraVendorDiscovery = () => {
         ${vendor.services.join(' ')}
       `.toLowerCase();
 
-      const matchesSearch =
-        !search || searchableText.includes(search);
+      // If the sentence contains structured information such as a city
+      // or category, those filters handle the search. We don't require
+      // the complete sentence to literally exist in the vendor profile.
+      const structuredSearchDetected =
+        Boolean(parsedSearch.city) ||
+        Boolean(parsedSearch.category);
 
-      return matchesCity && matchesCategory && matchesSearch;
+      const matchesSearch =
+        !search ||
+        structuredSearchDetected ||
+        searchableText.includes(search);
+
+      return (
+        matchesCity &&
+        matchesCategory &&
+        matchesSearch
+      );
     });
-  }, [query, city, category]);
+  }, [query, parsedSearch]);
+
+  const handleSearch = () => {
+    // Keep the natural-language query in the input and update results.
+    // Then move the user directly to the vendor results.
+    window.setTimeout(() => {
+      const results = document.getElementById('vendor-results');
+
+      if (results) {
+        results.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      }
+    }, 80);
+  };
 
   const toggleShortlist = (vendorId) => {
     setShortlisted((current) =>
@@ -334,6 +526,11 @@ const WedoraVendorDiscovery = () => {
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleSearch();
+                      }
+                    }}
                     placeholder="Search photographer, decorator, caterer..."
                     className="w-full bg-transparent text-[15px] outline-none placeholder:text-[#B0A5C0]"
                   />
@@ -377,7 +574,8 @@ const WedoraVendorDiscovery = () => {
                 </button>
 
                 <button
-                  className="flex min-h-[64px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#D8C8FF] via-[#E8D3F4] to-[#F7C5D9] px-8 text-sm font-medium text-[#30283A] shadow-[0_8px_24px_rgba(155,124,246,0.16)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(155,124,246,0.22)] active:scale-[0.97] active:translate-y-[1px] transition-transform duration-150 active:scale-[0.97] active:translate-y-[1px]"
+                  onClick={handleSearch}
+                  className="flex min-h-[64px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#D8C8FF] via-[#E8D3F4] to-[#F7C5D9] px-8 text-sm font-medium text-[#30283A] shadow-[0_8px_24px_rgba(155,124,246,0.16)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(155,124,246,0.22)] active:scale-[0.97] active:translate-y-[1px]"
                 >
                   <Search size={18} />
                   Search
@@ -491,7 +689,10 @@ const WedoraVendorDiscovery = () => {
         </section>
 
         {/* RESULTS */}
-        <section className="px-6 py-16">
+        <section
+          id="vendor-results"
+          className="scroll-mt-24 px-6 py-16"
+        >
 
           <div className="mx-auto max-w-7xl">
 
