@@ -765,7 +765,18 @@ class VendorUpdateIn(BaseModel):
 
 
 class VendorLeadUpdateIn(BaseModel):
-    status: str
+    status: Optional[str] = None
+    lead_source: Optional[str] = None
+    source: Optional[str] = None
+    event_date: Optional[str] = None
+    budget: Optional[float] = None
+    city: Optional[str] = None
+    location: Optional[str] = None
+    guest_count: Optional[int] = None
+    required_service: Optional[str] = None
+    requirements: Optional[str] = None
+    notes: Optional[str] = None
+    follow_up_date: Optional[str] = None
 
 
 class VendorPlanIn(BaseModel):
@@ -1316,14 +1327,42 @@ async def vendor_update_lead(
     vendor = await _ensure_vendor_profile(user)
     _require_vendor_lead_access(vendor)
 
+    update_fields = payload.dict(exclude_unset=True)
+    if "source" in update_fields and "lead_source" not in update_fields:
+        update_fields["lead_source"] = update_fields.pop("source")
+    else:
+        update_fields.pop("source", None)
+    if "location" in update_fields and "city" not in update_fields:
+        update_fields["city"] = update_fields.pop("location")
+    else:
+        update_fields.pop("location", None)
+    if "requirements" in update_fields and "required_service" not in update_fields:
+        update_fields["required_service"] = update_fields.pop("requirements")
+    else:
+        update_fields.pop("requirements", None)
+
+    if "status" in update_fields:
+        update_fields["status"] = str(update_fields["status"] or "").strip().lower()
+        allowed_statuses = {
+            "new", "contacted", "proposal_sent", "negotiation",
+            "confirmed", "lost", "closed",
+        }
+        if update_fields["status"] not in allowed_statuses:
+            raise HTTPException(status_code=400, detail="Choose a valid lead stage")
+
+    for field_name in (
+        "lead_source", "event_date", "city", "required_service", "notes", "follow_up_date"
+    ):
+        if field_name in update_fields and update_fields[field_name] is not None:
+            update_fields[field_name] = str(update_fields[field_name]).strip()
+
+    if not update_fields:
+        raise HTTPException(status_code=400, detail="No lead details were provided")
+    update_fields["updated_at"] = datetime.now(timezone.utc).isoformat()
+
     result = await db.vendor_leads.update_one(
         {"id": lead_id, "vendor_id": vendor["id"]},
-        {
-            "$set": {
-                "status": payload.status,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            }
-        },
+        {"$set": update_fields},
     )
 
     if result.matched_count == 0:
@@ -4043,6 +4082,14 @@ async def marketplace_create_lead(payload: dict):
         "message": payload.get("message", ""),
         "event_date": payload.get("event_date", ""),
         "city": payload.get("city", ""),
+        "lead_source": payload.get("lead_source") or payload.get("source") or "WEDORA marketplace",
+        "budget": payload.get("budget", 0),
+        "guest_count": payload.get("guest_count", 0),
+        "required_service": payload.get("required_service") or payload.get("requirements", ""),
+        "functions": payload.get("functions", ""),
+        "theme": payload.get("theme", ""),
+        "notes": "",
+        "follow_up_date": "",
         "status": "new",
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
