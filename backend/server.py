@@ -4368,6 +4368,296 @@ async def marketplace_create_lead(payload: dict):
     return lead
 
 
+# ================= LIVE VENDOR DISCOVERY =================
+class VendorSearchIn(BaseModel):
+    query: str = ""
+    location: Optional[str] = None
+    category: Optional[str] = None
+
+
+LIVE_VENDOR_SEARCH_MODEL = os.environ.get("GEMINI_VENDOR_SEARCH_MODEL", "gemini-3.8-flash")
+
+
+def _clean_web_url(value: str) -> str:
+    value = str(value or "").strip()
+    if not value:
+        return ""
+    if not value.startswith(("http://", "https://")):
+        return ""
+    try:
+        parsed = urlparse(value)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            return ""
+        return value
+    except Exception:
+        return ""
+
+
+def _normalise_vendor_key(name: str, city: str = "") -> str:
+    raw = f"{name}|{city}".lower()
+    return re.sub(r"[^a-z0-9]+", "", raw)
+
+
+def _source_url_from_grounding(grounding: dict, candidate_urls: list[str]) -> str:
+    """Return a URL only when it is present in Gemini grounding metadata."""
+    candidate_set = {_clean_web_url(url) for url in candidate_urls if _clean_web_url(url)}
+    candidate_set.discard("")
+
+    chunks = grounding.get("groundingChunks") or []
+    for chunk in chunks:
+        web = chunk.get("web") or {}
+        url = _clean_web_url(web.get("uri"))
+        if url and (not candidate_set or url in candidate_set):
+            return url
+
+    # If Gemini returned a source but the model omitted its URL, do not invent one.
+    return ""
+
+
+@api_router.post("/vendors/search")
+async def search_vendors(payload: VendorSearchIn):
+    """Live India-wide wedding vendor discovery using Gemini + Google Search grounding.
+
+    Public web listings are discovery results, not WEDORA-verified vendors.
+    Vendors registered in WEDORA are merged separately and marked verified.
+    """
+    if not GEMINI_API_KEY:
+        raise HTTPException(status_code=503, detail="Gemini API is not configured on the server")
+
+    query = (payload.query or "").strip()
+    location = (payload.location or "").strip()
+    category = (payload.category or "").strip()
+
+    if not query and not location and not category:
+        raise HTTPException(status_code=400, detail="Please provide a vendor search, city, or category")
+
+    search_scope = location or "India"
+    category_text = category or "any wedding-related vendor category"
+    query_text = query or "wedding vendors"
+
+    discovery_prompt = f"""
+You are WEDORA AI's live wedding vendor discovery engine for India.
+
+Search the LIVE PUBLIC WEB using Google Search grounding and return real businesses only.
+Do not invent, guess, hallucinate, or fabricate vendor names, phone numbers, ratings,
+review counts, prices, addresses, Instagram handles, websites, or experience.
+If a field is not publicly available, return an empty string or 0.
+
+Search scope: {search_scope}
+Requested category: {category_text}
+User search: {query_text}
+
+Find strong relevant matches for wedding planning and wedding services, including:
+Wedding Planner, Decorator, Photographer, Videographer, Caterer, Makeup Artist,
+Mehndi Artist, Florist, DJ & Entertainment, Sangeet Choreographer, Invitation Designer,
+Bridal Wear, Groom Wear, Jewellery, Wedding Cake, Transportation, Tent & Event Rentals,
+Furniture, Lighting & Sound, Pandit & Ceremony Services, Photobooth, Wedding Gifts & Favors,
+Honeymoon & Travel, Destination Wedding Services, and Venue.
+
+Prefer official business websites and reputable public business/directories. Use multiple
+independent search queries when useful. If a business is outside the requested city or
+category, do not include it unless it is clearly relevant to the user's search.
+
+Return ONLY valid JSON in exactly this shape:
+{{
+  "vendors": [
+    {{
+      "name": "",
+      "category": "",
+      "city": "",
+      "state": "",
+      "experience": "",
+      "rating": 0,
+      "reviews": 0,
+      "phone": "",
+      "instagram": "",
+      "website": "",
+      "address": "",
+      "description": "",
+      "services": [],
+      "price_range": "",
+      "portfolio": [],
+      "source_name": "",
+      "source_url": ""
+    }}
+  ]
+}}
+
+Rules:
+- Return up to 15 strong matches, not filler.
+- Never make a vendor up just to reach 15 results.
+- Never label a public web business as WEDORA Verified.
+- source_url must be a real URL supported by the Google Search grounding results.
+- Keep source_name short, such as the official site or directory name.
+- Ratings/review counts must only be included when clearly shown by a public source.
+- Keep phone numbers only when publicly displayed by the source.
+- Keep price_range blank when pricing is not publicly shown.
+- Services must be concise strings.
+- Portfolio must contain only public image URLs that the search result actually provides; otherwise use [].
+"""
+
+    request_body = {
+        "contents": [{"role": "user", "parts": [{"text": discovery_prompt}]}],
+        "tools": [{"google_search": {}}],
+        "generationConfig": {
+            "temperature": 0.1,
+            "responseMimeType": "application/json",
+        },
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=45.0) as http:
+            response = await http.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/{LIVE_VENDOR_SEARCH_MODEL}:generateContent",
+                params={"key": GEMINI_API_KEY},
+                json=request_body,
+            )
+            response.raise_for_status()
+            data = response.json()
+    except httpx.HTTPStatusError as exc:
+        detail = exc.response.text[:600]
+        logging.exception("Live vendor search Gemini HTTP error")
+        raise HTTPException(status_code=502, detail=f"Vendor search provider error: {detail}")
+    except Exception as exc:
+        logging.exception("Live vendor search request failed")
+        raise HTTPException(status_code=502, detail=f"Vendor search failed: {str(exc)}")
+
+    candidates = []
+    grounding = {}
+    for candidate in data.get("candidates") or []:
+        grounding = candidate.get("groundingMetadata") or grounding
+        for part in (candidate.get("content") or {}).get("parts") or []:
+            text = part.get("text")
+            if text:
+                candidates.append(text)
+
+    raw_text = "\n".join(candidates).strip()
+    if not raw_text:
+        raise HTTPException(status_code=502, detail="Vendor search returned no usable results")
+
+    try:
+        match = re.search(r"\{[\s\S]*\}", raw_text)
+        if not match:
+            raise ValueError("No JSON object returned")
+        parsed = jsonlib.loads(match.group(0))
+    except Exception as exc:
+        logging.exception("Could not parse live vendor search JSON")
+        raise HTTPException(status_code=502, detail=f"Vendor search returned invalid data: {str(exc)}")
+
+    raw_vendors = parsed.get("vendors") if isinstance(parsed, dict) else []
+    if not isinstance(raw_vendors, list):
+        raw_vendors = []
+
+    # Collect grounded source URLs so the API can expose only traceable sources.
+    grounded_sources = []
+    for chunk in grounding.get("groundingChunks") or []:
+        web = chunk.get("web") or {}
+        url = _clean_web_url(web.get("uri"))
+        title = str(web.get("title") or "Web source").strip()
+        if url and not any(item["url"] == url for item in grounded_sources):
+            grounded_sources.append({"name": title, "url": url})
+
+    # Load WEDORA's own registered vendors for the same search and mark only these
+    # records as WEDORA Verified.
+    vendor_filter = {}
+    if location and location.lower() != "all india":
+        vendor_filter["city"] = {"$regex": f"^{re.escape(location)}$", "$options": "i"}
+    if category and category.lower() != "all categories":
+        vendor_filter["category"] = {"$regex": re.escape(category), "$options": "i"}
+
+    registered = await db.vendors.find(vendor_filter, {"_id": 0}).limit(50).to_list(50)
+
+    results = []
+    seen = set()
+
+    def add_result(item: dict, *, verified: bool, source_name: str = "", source_url: str = ""):
+        name = str(item.get("business_name") or item.get("name") or "").strip()
+        city = str(item.get("city") or "").strip()
+        if not name:
+            return
+        key = _normalise_vendor_key(name, city)
+        if key in seen:
+            return
+        seen.add(key)
+
+        resolved_source_url = _clean_web_url(source_url)
+        if not resolved_source_url:
+            resolved_source_url = _source_url_from_grounding(
+                grounding,
+                [str(item.get("website") or ""), str(item.get("source_url") or "")],
+            )
+
+        results.append({
+            "id": str(item.get("id") or f"web-{uuid.uuid4().hex[:12]}"),
+            "name": name,
+            "category": str(item.get("category") or "Wedding Vendor").strip(),
+            "role": str(item.get("category") or "Wedding Vendor").strip(),
+            "city": city,
+            "state": str(item.get("state") or "").strip(),
+            "experience": str(item.get("experience") or item.get("years_experience") or "").strip(),
+            "years_experience": item.get("years_experience") or None,
+            "rating": item.get("rating") or 0,
+            "reviews": item.get("reviews") or 0,
+            "phone": str(item.get("phone") or "").strip(),
+            "instagram": str(item.get("instagram") or "").strip(),
+            "website": str(item.get("website") or "").strip(),
+            "websiteUrl": str(item.get("website") or "").strip(),
+            "address": str(item.get("address") or item.get("location") or "").strip(),
+            "description": str(item.get("description") or item.get("about") or "").strip(),
+            "services": item.get("services") if isinstance(item.get("services"), list) else [],
+            "priceRange": str(item.get("price_range") or item.get("priceRange") or "").strip(),
+            "price_range": str(item.get("price_range") or item.get("priceRange") or "").strip(),
+            "portfolio": item.get("portfolio") if isinstance(item.get("portfolio"), list) else [],
+            "verified": bool(verified),
+            "wedora_verified": bool(verified),
+            "publicListing": not verified,
+            "sourceName": source_name or str(item.get("source_name") or "").strip(),
+            "sourceUrl": resolved_source_url,
+            "lastChecked": datetime.now(timezone.utc).isoformat(),
+        })
+
+    for vendor in registered:
+        add_result(vendor, verified=True, source_name="WEDORA")
+
+    for vendor in raw_vendors:
+        # Never trust the model's verification flag.
+        source_url = _clean_web_url(vendor.get("source_url"))
+        if source_url and not any(src["url"] == source_url for src in grounded_sources):
+            source_url = ""
+        add_result(
+            vendor,
+            verified=False,
+            source_name=str(vendor.get("source_name") or "Public web source").strip(),
+            source_url=source_url,
+        )
+
+    results = results[:15]
+
+    # Cache discovery results separately from the WEDORA vendor directory. This lets
+    # the product improve discovery later without treating web listings as registered vendors.
+    try:
+        await db.vendor_discovery_cache.insert_one({
+            "query": query,
+            "location": location,
+            "category": category,
+            "results": results,
+            "sources": grounded_sources[:20],
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+    except Exception:
+        logging.exception("Vendor discovery cache write failed")
+
+    return {
+        "results": results,
+        "sources": grounded_sources[:20],
+        "query": query,
+        "location": location,
+        "category": category,
+        "count": len(results),
+        "lastChecked": datetime.now(timezone.utc).isoformat(),
+    }
+
+
 # ================= VENUES & VENDORS =================
 @api_router.get("/venues")
 async def get_venues():
