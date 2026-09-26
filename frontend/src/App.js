@@ -51,9 +51,9 @@ import WeddingTransportation from '@/components/WeddingTransportation';
 import WedoraVenueDiscovery from '@/components/WedoraVenueDiscovery';
 import WedoraVendorDiscovery from '@/components/WedoraVendorDiscovery';
 
-const INTRO_TOTAL_DURATION = 18200;
-const INTRO_STAR_TRAVEL_START = 15000;
-const INTRO_STAR_TRAVEL_DURATION = 2600;
+const INTRO_TOTAL_DURATION = 18600;
+const INTRO_STAR_TRAVEL_START = 15200;
+const INTRO_STAR_TRAVEL_DURATION = 3200;
 const REDUCED_INTRO_DURATION = 1200;
 
 const shouldPlayIntro = (pathname) =>
@@ -221,46 +221,53 @@ const AppContent = () => {
 
       const keyframes = [
         {
-          transform: 'translate3d(0, 0, 0) scale(.55) rotate(-18deg)',
+          transform: 'translate3d(0, 0, 0) scale(.62) rotate(-18deg)',
           opacity: 0,
           offset: 0,
         },
         {
-          transform: 'translate3d(0, -18px, 0) scale(1.45) rotate(8deg)',
+          transform: 'translate3d(0, -12px, 0) scale(1.65) rotate(10deg)',
           opacity: 1,
-          offset: 0.08,
+          offset: 0.07,
         },
         {
           transform:
-            `translate3d(${moveX * 0.10}px, ${moveY * 0.12 - 18}px, 0) ` +
-            'scale(1.22) rotate(-10deg)',
+            `translate3d(${moveX * 0.06}px, ${moveY * 0.08 - 26}px, 0) ` +
+            'scale(1.38) rotate(-7deg)',
           opacity: 1,
-          offset: 0.22,
+          offset: 0.16,
         },
         {
           transform:
-            `translate3d(${moveX * 0.32}px, ${moveY * 0.38 + 12}px, 0) ` +
-            'scale(1.10) rotate(14deg)',
+            `translate3d(${moveX * 0.20}px, ${moveY * 0.25 + 8}px, 0) ` +
+            'scale(1.22) rotate(9deg)',
           opacity: 1,
-          offset: 0.46,
+          offset: 0.34,
         },
         {
           transform:
-            `translate3d(${moveX * 0.58}px, ${moveY * 0.66 - 8}px, 0) ` +
-            'scale(1.02) rotate(-12deg)',
+            `translate3d(${moveX * 0.43}px, ${moveY * 0.52 - 10}px, 0) ` +
+            'scale(1.10) rotate(-8deg)',
           opacity: 1,
-          offset: 0.68,
+          offset: 0.56,
         },
         {
           transform:
-            `translate3d(${moveX * 0.82}px, ${moveY * 0.87 + 4}px, 0) ` +
-            'scale(.92) rotate(8deg)',
+            `translate3d(${moveX * 0.70}px, ${moveY * 0.76 + 5}px, 0) ` +
+            'scale(.98) rotate(6deg)',
           opacity: 1,
-          offset: 0.86,
+          offset: 0.76,
         },
         {
           transform:
-            `translate3d(${moveX}px, ${moveY}px, 0) scale(.88) rotate(0deg)`,
+            `translate3d(${moveX * 0.90}px, ${moveY * 0.92}px, 0) ` +
+            'scale(.90) rotate(-3deg)',
+          opacity: 1,
+          offset: 0.91,
+        },
+        {
+          transform:
+            `translate3d(${moveX}px, ${moveY}px, 0) scale(.84) rotate(0deg)`,
           opacity: 1,
           offset: 1,
         },
@@ -270,7 +277,7 @@ const AppContent = () => {
         keyframes,
         {
           duration: INTRO_STAR_TRAVEL_DURATION,
-          easing: 'cubic-bezier(.16, .78, .18, 1)',
+          easing: 'cubic-bezier(.22, .75, .18, 1)',
           fill: 'forwards',
         }
       );
@@ -470,17 +477,30 @@ const AppContent = () => {
             /* During the star handoff, let the real homepage appear underneath
                so the journey reads as one continuous transition. */
             .wedora-intro-star-traveling {
-              background: rgba(255, 253, 253, .24);
+              background: rgba(255, 253, 253, .02);
+              transition: background 1.05s cubic-bezier(.22, .7, .2, 1);
             }
 
             .wedora-intro-star-traveling::before {
-              opacity: .16;
-              transition: opacity .85s ease;
+              opacity: 0;
+              transition: opacity 1.05s cubic-bezier(.22, .7, .2, 1);
             }
 
             .wedora-intro-star-traveling::after {
-              opacity: .12;
-              transition: opacity .85s ease;
+              opacity: 0;
+              transition: opacity 1.05s cubic-bezier(.22, .7, .2, 1);
+            }
+
+            /* The final frame holds perfectly still, then fades away once the
+               star has popped free. The homepage is revealed underneath while
+               the independent travelling star remains above both layers. */
+            .wedora-intro-star-traveling
+              .wedora-intro-scene--final {
+              animation:
+                wedora-intro-final-handoff
+                1.15s
+                cubic-bezier(.22, .72, .18, 1)
+                both;
             }
 
             .wedora-intro-screen::before {
@@ -1152,6 +1172,7 @@ const AppContent = () => {
               opacity: 1;
             }
 
+
             @keyframes wedora-intro-screen-in {
               from {
                 opacity: 0;
@@ -1225,6 +1246,26 @@ const AppContent = () => {
                 transform:
                   translateY(-10px)
                   scale(1.01);
+              }
+            }
+
+            @keyframes wedora-intro-final-handoff {
+              0% {
+                opacity: 1;
+                filter: blur(0);
+                transform: translateY(0) scale(1);
+              }
+
+              28% {
+                opacity: .92;
+                filter: blur(.15px);
+                transform: translateY(-1px) scale(1.002);
+              }
+
+              100% {
+                opacity: 0;
+                filter: blur(3px);
+                transform: translateY(-6px) scale(1.008);
               }
             }
 
