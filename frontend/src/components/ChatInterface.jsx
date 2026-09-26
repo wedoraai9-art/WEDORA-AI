@@ -1,7 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { HERO } from '@/constants/testIds';
 import { sendChatStream, apiChatHistory } from '@/lib/aiService';
-import { ArrowUp, Sparkles, RefreshCw, Plus, RotateCw, Share2, History, Trash2, X } from 'lucide-react';
+import {
+  ArrowUp,
+  Sparkles,
+  RefreshCw,
+  Plus,
+  RotateCw,
+  Share2,
+  History,
+  Trash2,
+  X,
+} from 'lucide-react';
 import PremiumMarkdown from './PremiumMarkdown';
 import { apiCreateShare } from '@/lib/auth';
 import { toast } from 'sonner';
@@ -17,7 +27,11 @@ const SUGGESTIONS = [
 const HISTORY_KEY = 'wedora_chat_sessions';
 
 const loadSessions = () => {
-  try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; } catch { return []; }
+  try {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+  } catch {
+    return [];
+  }
 };
 
 const upsertSession = (sessionId, title) => {
@@ -25,22 +39,32 @@ const upsertSession = (sessionId, title) => {
   const existing = loadSessions();
   const prev = existing.find((s) => s.session_id === sessionId);
   const sessions = existing.filter((s) => s.session_id !== sessionId);
-  sessions.unshift({ session_id: sessionId, title: prev?.title || title, updated_at: Date.now() });
+  sessions.unshift({
+    session_id: sessionId,
+    title: prev?.title || title,
+    updated_at: Date.now(),
+  });
   localStorage.setItem(HISTORY_KEY, JSON.stringify(sessions.slice(0, 30)));
 };
 
 const removeSession = (sessionId) => {
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(loadSessions().filter((s) => s.session_id !== sessionId)));
+  localStorage.setItem(
+    HISTORY_KEY,
+    JSON.stringify(loadSessions().filter((s) => s.session_id !== sessionId))
+  );
 };
 
 const fmtWhen = (ts) => {
   const d = new Date(ts);
   const today = new Date();
   const sameDay = d.toDateString() === today.toDateString();
+
   return sameDay
     ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
     : d.toLocaleDateString([], { day: 'numeric', month: 'short' });
 };
+
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
 export const ChatInterface = ({ initialPromptRef }) => {
   const [messages, setMessages] = useState([]); // {role, content, error?}
@@ -52,17 +76,22 @@ export const ChatInterface = ({ initialPromptRef }) => {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
+  const sparkleRef = useRef(null);
   const lastUserMsgRef = useRef('');
 
   useEffect(() => {
-    if (initialPromptRef) initialPromptRef.current = (t) => {
-      setInput(t);
-      setTimeout(() => inputRef.current?.focus(), 60);
-    };
+    if (initialPromptRef) {
+      initialPromptRef.current = (t) => {
+        setInput(t);
+        setTimeout(() => inputRef.current?.focus(), 60);
+      };
+    }
   }, [initialPromptRef]);
 
   useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
   }, [messages, sending]);
 
   // Auto-grow textarea
@@ -73,11 +102,57 @@ export const ChatInterface = ({ initialPromptRef }) => {
     el.style.height = Math.min(el.scrollHeight, 180) + 'px';
   }, [input]);
 
+  const handleSearchPointerMove = (event) => {
+    if (
+      event.pointerType &&
+      event.pointerType !== 'mouse' &&
+      event.pointerType !== 'pen'
+    ) {
+      return;
+    }
+
+    const sparkle = sparkleRef.current;
+    if (!sparkle) return;
+
+    const currentX =
+      parseFloat(sparkle.style.getPropertyValue('--wedora-star-x')) || 0;
+    const currentY =
+      parseFloat(sparkle.style.getPropertyValue('--wedora-star-y')) || 0;
+
+    const sparkleRect = sparkle.getBoundingClientRect();
+    const sparkleCenterX = sparkleRect.left + sparkleRect.width / 2 - currentX;
+    const sparkleCenterY = sparkleRect.top + sparkleRect.height / 2 - currentY;
+
+    const moveX = clamp((event.clientX - sparkleCenterX) * 0.3, -34, 34);
+    const moveY = clamp((event.clientY - sparkleCenterY) * 0.3, -30, 22);
+    const rotate = clamp(moveX * 0.16, -6, 6);
+
+    sparkle.style.setProperty('--wedora-star-x', `${moveX}px`);
+    sparkle.style.setProperty('--wedora-star-y', `${moveY}px`);
+    sparkle.style.setProperty('--wedora-star-rotation', `${rotate}deg`);
+    sparkle.classList.add('wedora-search-sparkle-active');
+  };
+
+  const resetSearchSparkle = () => {
+    const sparkle = sparkleRef.current;
+    if (!sparkle) return;
+
+    sparkle.style.setProperty('--wedora-star-x', '0px');
+    sparkle.style.setProperty('--wedora-star-y', '0px');
+    sparkle.style.setProperty('--wedora-star-rotation', '0deg');
+    sparkle.classList.remove('wedora-search-sparkle-active');
+  };
+
   const send = async (textArg) => {
     const text = (textArg ?? input).trim();
     if (!text || sending) return;
+
     lastUserMsgRef.current = text;
-    setMessages((m) => [...m, { role: 'user', content: text }, { role: 'assistant', content: '' }]);
+    setMessages((m) => [
+      ...m,
+      { role: 'user', content: text },
+      { role: 'assistant', content: '' },
+    ]);
     setInput('');
     setSending(true);
 
@@ -92,7 +167,10 @@ export const ChatInterface = ({ initialPromptRef }) => {
           if (!m.length) return m;
           const last = m[m.length - 1];
           if (last.role !== 'assistant') return m;
-          return [...m.slice(0, -1), { ...last, content: last.content + chunk }];
+          return [
+            ...m.slice(0, -1),
+            { ...last, content: last.content + chunk },
+          ];
         });
       },
       onDone: (sid) => {
@@ -106,11 +184,14 @@ export const ChatInterface = ({ initialPromptRef }) => {
           if (!m.length) return m;
           const last = m[m.length - 1];
           if (last.role !== 'assistant') return m;
-          return [...m.slice(0, -1), {
-            ...last,
-            content: gotAnyChunk ? last.content : '',
-            error: true,
-          }];
+          return [
+            ...m.slice(0, -1),
+            {
+              ...last,
+              content: gotAnyChunk ? last.content : '',
+              error: true,
+            },
+          ];
         });
         setSending(false);
       },
@@ -119,16 +200,26 @@ export const ChatInterface = ({ initialPromptRef }) => {
 
   const retry = async () => {
     if (!lastUserMsgRef.current || sending) return;
+
     // Remove trailing error assistant and re-send using last user message
     setMessages((m) => {
       if (!m.length) return m;
       const copy = [...m];
-      // pop the errored assistant
-      if (copy[copy.length - 1]?.role === 'assistant' && copy[copy.length - 1]?.error) copy.pop();
-      // pop the last user (we're re-sending it)
+
+      // Pop the errored assistant
+      if (
+        copy[copy.length - 1]?.role === 'assistant' &&
+        copy[copy.length - 1]?.error
+      ) {
+        copy.pop();
+      }
+
+      // Pop the last user (we're re-sending it)
       if (copy[copy.length - 1]?.role === 'user') copy.pop();
+
       return copy;
     });
+
     setTimeout(() => send(lastUserMsgRef.current), 30);
   };
 
@@ -144,17 +235,25 @@ export const ChatInterface = ({ initialPromptRef }) => {
   const openSession = async (sid) => {
     if (sending || loadingHistory) return;
     setLoadingHistory(true);
+
     try {
       const { messages: msgs } = await apiChatHistory(sid);
-      setMessages((msgs || []).map((m) => ({ role: m.role, content: m.content })));
+      setMessages((msgs || []).map((m) => ({
+        role: m.role,
+        content: m.content,
+      })));
       setSessionId(sid);
-      lastUserMsgRef.current = [...(msgs || [])].reverse().find((m) => m.role === 'user')?.content || '';
+      lastUserMsgRef.current =
+        [...(msgs || [])].reverse().find((m) => m.role === 'user')?.content ||
+        '';
       setShowHistory(false);
+
       const el = document.querySelector('#hero');
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch {
       toast.error('Could not load that conversation.');
     }
+
     setLoadingHistory(false);
   };
 
@@ -165,7 +264,11 @@ export const ChatInterface = ({ initialPromptRef }) => {
   };
 
   const shareChat = async () => {
-    if (!sessionId) { toast.info('Send a message first to create a shareable plan.'); return; }
+    if (!sessionId) {
+      toast.info('Send a message first to create a shareable plan.');
+      return;
+    }
+
     let shareId;
     try {
       const res = await apiCreateShare(sessionId);
@@ -174,12 +277,18 @@ export const ChatInterface = ({ initialPromptRef }) => {
       toast.error('Could not create the share link. Try again.');
       return;
     }
+
     const url = `${window.location.origin}/share/${shareId}`;
     try {
       await navigator.clipboard.writeText(url);
-      toast.success('Share link copied to clipboard — send it to family!', { description: url });
+      toast.success('Share link copied to clipboard — send it to family!', {
+        description: url,
+      });
     } catch {
-      toast.success('Your shareable plan link is ready — copy it below', { description: url, duration: 15000 });
+      toast.success('Your shareable plan link is ready — copy it below', {
+        description: url,
+        duration: 15000,
+      });
       window.prompt('Copy your wedding plan link:', url);
     }
   };
@@ -195,18 +304,60 @@ export const ChatInterface = ({ initialPromptRef }) => {
 
   return (
     <div className="w-full max-w-3xl mx-auto">
+      <style>{`
+        .wedora-search-sparkle {
+          --wedora-star-x: 0px;
+          --wedora-star-y: 0px;
+          --wedora-star-rotation: 0deg;
+          --wedora-star-scale: 1;
+          position: relative;
+          z-index: 2;
+          flex: none;
+          transform:
+            translate3d(
+              var(--wedora-star-x),
+              var(--wedora-star-y),
+              0
+            )
+            rotate(var(--wedora-star-rotation))
+            scale(var(--wedora-star-scale));
+          transform-origin: center;
+          transition:
+            transform 240ms cubic-bezier(.2, .75, .25, 1),
+            filter 240ms ease;
+          will-change: transform;
+        }
+
+        .wedora-search-sparkle-active {
+          --wedora-star-scale: 1.18;
+          filter: drop-shadow(0 0 8px rgba(201, 184, 255, .72));
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .wedora-search-sparkle {
+            transition: none;
+          }
+        }
+      `}</style>
+
       {/* Chat toolbar — History always visible; Share/New only during a chat */}
       <div className="flex items-center justify-between mb-2 px-1">
-        <div className="text-[11px] uppercase tracking-widest text-[#988FA6]">{hasChat ? 'Conversation' : ''}</div>
+        <div className="text-[11px] uppercase tracking-widest text-[#988FA6]">
+          {hasChat ? 'Conversation' : ''}
+        </div>
         <div className="flex items-center gap-2">
           <button
             data-testid="chat-history-btn"
-            onClick={() => { setSessions(loadSessions()); setShowHistory(true); }}
+            onClick={() => {
+              setSessions(loadSessions());
+              setShowHistory(true);
+            }}
             className="chip !text-xs inline-flex items-center gap-1"
             title="Past conversations"
           >
             <History className="w-3.5 h-3.5" /> History
           </button>
+
           {hasChat && (
             <>
               <button
@@ -234,18 +385,32 @@ export const ChatInterface = ({ initialPromptRef }) => {
 
       {/* History drawer (slide-over) */}
       {showHistory && (
-        <div className="fixed inset-0 z-[70]" data-testid="chat-history-drawer">
-          <div className="absolute inset-0 bg-[#2D2638]/25 backdrop-blur-sm" onClick={() => setShowHistory(false)} />
+        <div
+          className="fixed inset-0 z-[70]"
+          data-testid="chat-history-drawer"
+        >
+          <div
+            className="absolute inset-0 bg-[#2D2638]/25 backdrop-blur-sm"
+            onClick={() => setShowHistory(false)}
+          />
           <div className="absolute right-0 top-0 h-full w-[86%] max-w-sm liquid-glass-strong !rounded-l-[28px] p-5 overflow-y-auto chat-scroll shadow-2xl animate-[slideIn_.3s_ease]">
             <div className="flex items-center justify-between mb-5">
-              <h3 className="font-display text-2xl text-[#2D2638]">Your <span className="iridescent-text italic">Plans.</span></h3>
-              <button data-testid="history-close-btn" onClick={() => setShowHistory(false)} className="w-9 h-9 rounded-full bg-white/70 border border-white/80 flex items-center justify-center">
+              <h3 className="font-display text-2xl text-[#2D2638]">
+                Your <span className="iridescent-text italic">Plans.</span>
+              </h3>
+              <button
+                data-testid="history-close-btn"
+                onClick={() => setShowHistory(false)}
+                className="w-9 h-9 rounded-full bg-white/70 border border-white/80 flex items-center justify-center"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
+
             {sessions.length === 0 ? (
               <p className="text-sm text-[#6B617A] rounded-2xl border border-dashed border-[#C9B8FF]/60 bg-white/50 p-6 text-center">
-                No past conversations yet. Ask WEDORA something lovely and it will appear here.
+                No past conversations yet. Ask WEDORA something lovely and it
+                will appear here.
               </p>
             ) : (
               <div className="space-y-2">
@@ -261,12 +426,19 @@ export const ChatInterface = ({ initialPromptRef }) => {
                     onClick={() => openSession(s.session_id)}
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-[#2D2638] truncate">{s.title || 'Wedding conversation'}</p>
-                      <p className="text-[11px] text-[#988FA6] mt-0.5">{fmtWhen(s.updated_at)}</p>
+                      <p className="text-sm text-[#2D2638] truncate">
+                        {s.title || 'Wedding conversation'}
+                      </p>
+                      <p className="text-[11px] text-[#988FA6] mt-0.5">
+                        {fmtWhen(s.updated_at)}
+                      </p>
                     </div>
                     <button
                       data-testid={`history-delete-${s.session_id}`}
-                      onClick={(e) => { e.stopPropagation(); deleteSession(s.session_id); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteSession(s.session_id);
+                      }}
                       className="w-7 h-7 rounded-full bg-white/70 border border-white/80 flex items-center justify-center opacity-40 group-hover:opacity-100 transition shrink-0"
                       title="Remove from history"
                     >
@@ -288,7 +460,12 @@ export const ChatInterface = ({ initialPromptRef }) => {
           className="chat-scroll pearl-card mb-4 p-4 md:p-6 max-h-[520px] overflow-y-auto"
         >
           {messages.map((m, i) => (
-            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} mb-3`}>
+            <div
+              key={i}
+              className={`flex ${
+                m.role === 'user' ? 'justify-end' : 'justify-start'
+              } mb-3`}
+            >
               {m.role === 'user' ? (
                 <div className="max-w-[85%] rounded-3xl rounded-br-md px-4 py-2.5 text-[#2D2638] bg-gradient-to-r from-[#C9B8FF]/25 via-[#F7B7D8]/25 to-[#A9E8FF]/25 border border-white/80 backdrop-blur-md whitespace-pre-wrap">
                   {m.content}
@@ -298,16 +475,21 @@ export const ChatInterface = ({ initialPromptRef }) => {
                   {m.content ? (
                     <PremiumMarkdown text={m.content} />
                   ) : m.error ? null : (
-                    <div className="flex items-center gap-2 text-[#6B617A]" data-testid={HERO.thinkingIndicator}>
+                    <div
+                      className="flex items-center gap-2 text-[#6B617A]"
+                      data-testid={HERO.thinkingIndicator}
+                    >
                       <div className="thinking-orb" />
                       <span className="italic">WEDORA is thinking…</span>
                     </div>
                   )}
 
-                  {/* Error inline (kept after any partial content) */}
                   {m.error && (
                     <div className="mt-3 rounded-2xl border border-pink-200/70 bg-gradient-to-br from-white/90 to-[#FADBE5]/40 p-3 flex items-center justify-between gap-3">
-                      <p className="text-sm text-[#4a4257]">WEDORA is having trouble connecting right now. Please try again.</p>
+                      <p className="text-sm text-[#4a4257]">
+                        WEDORA is having trouble connecting right now. Please
+                        try again.
+                      </p>
                       <button
                         data-testid="chat-retry-btn"
                         onClick={retry}
@@ -325,8 +507,18 @@ export const ChatInterface = ({ initialPromptRef }) => {
       )}
 
       {/* Apple liquid glass input (textarea) */}
-      <div className="liquid-glass-strong rounded-[28px] pl-5 pr-2 py-2 flex items-center gap-3 gradient-border">
-        <Sparkles className="w-5 h-5 text-[#C9B8FF] shrink-0" />
+      <div
+        data-wedora-search-bar
+        onPointerMove={handleSearchPointerMove}
+        onPointerLeave={resetSearchSparkle}
+        className="liquid-glass-strong rounded-[28px] pl-5 pr-2 py-2 flex items-center gap-3 gradient-border"
+      >
+        <Sparkles
+          ref={sparkleRef}
+          data-wedora-search-sparkle
+          aria-hidden="true"
+          className="wedora-search-sparkle w-5 h-5 text-[#C9B8FF] shrink-0"
+        />
         <textarea
           ref={inputRef}
           data-testid={HERO.chatInput}
@@ -345,7 +537,11 @@ export const ChatInterface = ({ initialPromptRef }) => {
           aria-label="Send"
           title="Send (Enter)"
         >
-          {sending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ArrowUp className="w-5 h-5" />}
+          {sending ? (
+            <RefreshCw className="w-4 h-4 animate-spin" />
+          ) : (
+            <ArrowUp className="w-5 h-5" />
+          )}
         </button>
       </div>
 
