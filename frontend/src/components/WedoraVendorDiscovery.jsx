@@ -390,7 +390,7 @@ const WedoraVendorDiscovery = () => {
                 </button>
 
                 <button
-                  className="flex min-h-[64px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#D8C8FF] via-[#E8D3F4] to-[#F7C5D9] px-8 text-sm font-medium text-[#30283A] shadow-[0_8px_24px_rgba(155,124,246,0.16)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(155,124,246,0.22)]"
+                  className="flex min-h-[64px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#D8C8FF] via-[#E8D3F4] to-[#F7C5D9] px-8 text-sm font-medium text-[#30283A] shadow-[0_8px_24px_rgba(155,124,246,0.16)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(155,124,246,0.22)] active:scale-[0.97] active:translate-y-[1px] transition-transform duration-150 active:scale-[0.97] active:translate-y-[1px]"
                 >
                   <Search size={18} />
                   Search
@@ -647,7 +647,7 @@ const WedoraVendorDiscovery = () => {
                         )}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-[#E9E1F2] py-2.5 text-xs text-[#62586F] hover:bg-[#FBF7FF]"
+                        className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-[#DCD0F0] bg-white/80 py-2.5 text-xs font-medium text-[#665A78] shadow-[0_4px_14px_rgba(155,124,246,0.06)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#CBB8EE] hover:bg-gradient-to-r hover:from-[#F4EEFF] hover:to-[#FFF1F7] hover:text-[#3F354D] transition-transform duration-150 active:scale-[0.97] active:translate-y-[1px]"
                       >
                         <Instagram size={14} />
                         Instagram
@@ -655,7 +655,7 @@ const WedoraVendorDiscovery = () => {
 
                       <a
                         href={`tel:${vendor.phone}`}
-                        className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#E9E1F2] text-[#62586F] hover:bg-[#FBF7FF]"
+                        className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#DCD0F0] bg-white/80 text-[#8D75D9] shadow-[0_4px_14px_rgba(155,124,246,0.06)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#CBB8EE] hover:bg-[#F4EEFF] hover:text-[#6F57C8]"
                       >
                         <Phone size={15} />
                       </a>
@@ -667,7 +667,7 @@ const WedoraVendorDiscovery = () => {
                       onClick={() =>
                         setSelectedVendor(vendor)
                       }
-                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#30283A] py-3 text-xs text-white hover:bg-[#40364D]"
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#D8C8FF] via-[#E8D3F4] to-[#F7C5D9] py-3 text-xs font-semibold text-[#30283A] shadow-[0_7px_20px_rgba(155,124,246,0.15)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(155,124,246,0.22)] transition-transform duration-150 active:scale-[0.97] active:translate-y-[1px]"
                     >
                       View Full Profile
                       <ExternalLink size={14} />
@@ -724,7 +724,7 @@ const WedoraVendorDiscovery = () => {
             </p>
 
             <button
-              className="mt-7 rounded-xl bg-[#30283A] px-7 py-3 text-sm text-white"
+              className="mt-7 rounded-full bg-gradient-to-r from-[#D8C8FF] via-[#E8D3F4] to-[#F7C5D9] px-7 py-3 text-sm font-semibold text-[#30283A] shadow-[0_8px_24px_rgba(155,124,246,0.15)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(155,124,246,0.22)] active:scale-[0.97] active:translate-y-[1px] transition-transform duration-150 active:scale-[0.97] active:translate-y-[1px]"
             >
               Join WEDORA Vendor Network
             </button>
@@ -900,7 +900,7 @@ const WedoraVendorDiscovery = () => {
 
                 <a
                   href={`tel:${selectedVendor.phone}`}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-[#30283A] py-3 text-xs text-white"
+                  className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#D8C8FF] via-[#E8D3F4] to-[#F7C5D9] py-3 text-xs font-semibold text-[#30283A] shadow-[0_7px_20px_rgba(155,124,246,0.15)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(155,124,246,0.22)] transition-transform duration-150 active:scale-[0.97] active:translate-y-[1px]"
                 >
                   <Phone size={14} />
                   Call Vendor
@@ -913,7 +913,7 @@ const WedoraVendorDiscovery = () => {
                   )}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center justify-center gap-2 rounded-xl border border-[#E8DFF5] py-3 text-xs text-[#62586F]"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-[#DCD0F0] bg-white/80 py-3 text-xs font-medium text-[#665A78] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#CBB8EE] hover:bg-gradient-to-r hover:from-[#F4EEFF] hover:to-[#FFF1F7] hover:text-[#3F354D] transition-transform duration-150 active:scale-[0.97] active:translate-y-[1px]"
                 >
                   <Instagram size={14} />
                   Instagram
@@ -923,7 +923,7 @@ const WedoraVendorDiscovery = () => {
                   href={`https://${selectedVendor.website}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center justify-center gap-2 rounded-xl border border-[#E8DFF5] py-3 text-xs text-[#62586F]"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-[#DCD0F0] bg-white/80 py-3 text-xs font-medium text-[#665A78] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#CBB8EE] hover:bg-gradient-to-r hover:from-[#F4EEFF] hover:to-[#FFF1F7] hover:text-[#3F354D] transition-transform duration-150 active:scale-[0.97] active:translate-y-[1px]"
                 >
                   <Globe size={14} />
                   Website
