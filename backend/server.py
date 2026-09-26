@@ -836,7 +836,30 @@ class WeddingTaskUpdateIn(BaseModel):
     completed: Optional[bool] = None
 
 
+
+class VendorCalendarEventIn(BaseModel):
+    title: str
+    event_type: str = "other"
+    event_date: str
+    start_time: Optional[str] = ""
+    end_time: Optional[str] = ""
+    location: Optional[str] = ""
+    description: Optional[str] = ""
+    wedding_id: Optional[str] = ""
+
+
+class VendorCalendarEventUpdateIn(BaseModel):
+    title: Optional[str] = None
+    event_type: Optional[str] = None
+    event_date: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    location: Optional[str] = None
+    description: Optional[str] = None
+    wedding_id: Optional[str] = None
+
 class VendorClientCreateIn(BaseModel):
+
     name: str
     phone: Optional[str] = ""
     whatsapp: Optional[str] = ""
@@ -1936,7 +1959,146 @@ async def vendor_delete_wedding_task(
     return {"success": True}
 
 
+
+VENDOR_CALENDAR_EVENT_TYPES = {
+    "meeting",
+    "site_visit",
+    "payment",
+    "materials",
+    "setup",
+    "task_deadline",
+    "reminder",
+    "other",
+}
+
+
+def _calendar_event_response(event: dict) -> dict:
+    return {key: event.get(key, "") for key in (
+        "id", "vendor_id", "wedding_id", "title", "event_type", "event_date",
+        "start_time", "end_time", "location", "description", "created_at", "updated_at",
+    )}
+
+
+def _validate_calendar_date(value: str) -> str:
+    date_value = str(value or "").strip()
+    try:
+        datetime.strptime(date_value, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Event date must use YYYY-MM-DD format")
+    return date_value
+
+
+@api_router.get("/vendor/calendar-events")
+async def vendor_get_calendar_events(
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    query = {"vendor_id": vendor["id"]}
+    if start_date:
+        query.setdefault("event_date", {})["$gte"] = _validate_calendar_date(start_date)
+    if end_date:
+        query.setdefault("event_date", {})["$lte"] = _validate_calendar_date(end_date)
+    events = await db.vendor_calendar_events.find(query, {"_id": 0}).sort(
+        [("event_date", 1), ("start_time", 1), ("created_at", -1)]
+    ).to_list(1000)
+    return {"events": [_calendar_event_response(event) for event in events]}
+
+
+@api_router.post("/vendor/calendar-events")
+async def vendor_create_calendar_event(
+    payload: VendorCalendarEventIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    title = payload.title.strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Event title is required")
+    event_type = (payload.event_type or "other").strip().lower()
+    if event_type not in VENDOR_CALENDAR_EVENT_TYPES:
+        raise HTTPException(status_code=400, detail="Invalid calendar event type")
+    wedding_id = (payload.wedding_id or "").strip()
+    if wedding_id:
+        await _get_vendor_wedding(wedding_id, vendor["id"])
+    now = datetime.now(timezone.utc).isoformat()
+    event = {
+        "id": str(uuid.uuid4()),
+        "vendor_id": vendor["id"],
+        "wedding_id": wedding_id,
+        "title": title[:160],
+        "event_type": event_type,
+        "event_date": _validate_calendar_date(payload.event_date),
+        "start_time": (payload.start_time or "").strip()[:20],
+        "end_time": (payload.end_time or "").strip()[:20],
+        "location": (payload.location or "").strip()[:240],
+        "description": (payload.description or "").strip()[:2000],
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.vendor_calendar_events.insert_one(event.copy())
+    return _calendar_event_response(event)
+
+
+@api_router.patch("/vendor/calendar-events/{event_id}")
+async def vendor_update_calendar_event(
+    event_id: str,
+    payload: VendorCalendarEventUpdateIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    updates = payload.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="No calendar event updates provided")
+    if "title" in updates:
+        updates["title"] = str(updates["title"] or "").strip()[:160]
+        if not updates["title"]:
+            raise HTTPException(status_code=400, detail="Event title is required")
+    if "event_type" in updates:
+        updates["event_type"] = str(updates["event_type"] or "other").strip().lower()
+        if updates["event_type"] not in VENDOR_CALENDAR_EVENT_TYPES:
+            raise HTTPException(status_code=400, detail="Invalid calendar event type")
+    if "event_date" in updates:
+        updates["event_date"] = _validate_calendar_date(updates["event_date"])
+    for field, limit in (("start_time", 20), ("end_time", 20), ("location", 240), ("description", 2000)):
+        if field in updates:
+            updates[field] = str(updates[field] or "").strip()[:limit]
+    if "wedding_id" in updates:
+        updates["wedding_id"] = str(updates["wedding_id"] or "").strip()
+        if updates["wedding_id"]:
+            await _get_vendor_wedding(updates["wedding_id"], vendor["id"])
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    result = await db.vendor_calendar_events.update_one(
+        {"id": event_id, "vendor_id": vendor["id"]}, {"$set": updates}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Calendar event not found")
+    event = await db.vendor_calendar_events.find_one(
+        {"id": event_id, "vendor_id": vendor["id"]}, {"_id": 0}
+    )
+    return _calendar_event_response(event)
+
+
+@api_router.delete("/vendor/calendar-events/{event_id}")
+async def vendor_delete_calendar_event(
+    event_id: str,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    result = await db.vendor_calendar_events.delete_one(
+        {"id": event_id, "vendor_id": vendor["id"]}
+    )
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Calendar event not found")
+    return {"success": True}
+
+
 async def _wedding_budget_payload(wedding: dict):
+
     wedding_id = wedding["id"]
 
     expenses = await db.vendor_wedding_expenses.find(
