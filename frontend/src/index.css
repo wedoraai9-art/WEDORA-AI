@@ -44,9 +44,13 @@
   }
 }
 
-* { border-color: hsl(var(--border)); }
+* {
+  border-color: hsl(var(--border));
+}
 
-html, body, #root {
+html,
+body,
+#root {
   background: var(--wed-bg);
   color: var(--wed-ink);
   font-family: 'DM Sans', 'Plus Jakarta Sans', system-ui, sans-serif;
@@ -70,8 +74,16 @@ body {
 }
 
 /* ---------- Iridescent gradient text ---------- */
+
 .iridescent-text {
-  background: linear-gradient(120deg, #C9B8FF 0%, #F7B7D8 30%, #F58D91 55%, #A9E8FF 80%, #C9B8FF 100%);
+  background: linear-gradient(
+    120deg,
+    #C9B8FF 0%,
+    #F7B7D8 30%,
+    #F58D91 55%,
+    #A9E8FF 80%,
+    #C9B8FF 100%
+  );
   background-size: 200% 200%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -80,11 +92,18 @@ body {
 }
 
 @keyframes irid-shift {
-  0%, 100% { background-position: 0% 50%; }
-  50%      { background-position: 100% 50%; }
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 /* ---------- Liquid blobs ---------- */
+
 .blob {
   position: absolute;
   border-radius: 9999px;
@@ -95,137 +114,294 @@ body {
 }
 
 @keyframes float-slow {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33%      { transform: translate(40px, -30px) scale(1.08); }
-  66%      { transform: translate(-30px, 40px) scale(0.95); }
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  33% {
+    transform: translate(40px, -30px) scale(1.08);
+  }
+
+  66% {
+    transform: translate(-30px, 40px) scale(0.95);
+  }
 }
 
 @keyframes float-slow-2 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50%      { transform: translate(-50px, 30px) scale(1.1); }
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate(-50px, 30px) scale(1.1);
+  }
 }
 
-.blob-a { animation: float-slow 18s ease-in-out infinite; }
-.blob-b { animation: float-slow-2 22s ease-in-out infinite; }
+.blob-a {
+  animation: float-slow 18s ease-in-out infinite;
+}
+
+.blob-b {
+  animation: float-slow-2 22s ease-in-out infinite;
+}
 
 /* ---------- Apple Liquid Glass ---------- */
+
 .liquid-glass {
   background:
-    linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.25) 100%);
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0.25) 100%
+    );
+
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(255,255,255,0.7);
+
+  border: 1px solid rgba(255, 255, 255, 0.7);
+
   box-shadow:
-    inset 0 1px 1px rgba(255,255,255,0.9),
-    inset 0 -1px 0.5px rgba(255,255,255,0.35),
+    inset 0 1px 1px rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0.5px rgba(255, 255, 255, 0.35),
     0 12px 40px -12px rgba(201, 184, 255, 0.35),
     0 1px 2px rgba(45, 38, 56, 0.05);
 }
 
 .liquid-glass-strong {
   background:
-    linear-gradient(135deg, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.55) 100%);
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.75) 0%,
+      rgba(255, 255, 255, 0.55) 100%
+    );
+
   backdrop-filter: blur(30px) saturate(200%);
   -webkit-backdrop-filter: blur(30px) saturate(200%);
-  border: 1px solid rgba(255,255,255,0.85);
+
+  border: 1px solid rgba(255, 255, 255, 0.85);
+
   box-shadow:
-    inset 0 1.5px 1px rgba(255,255,255,1),
+    inset 0 1.5px 1px rgba(255, 255, 255, 1),
     0 20px 60px -20px rgba(201, 184, 255, 0.45),
     0 4px 12px -4px rgba(247, 183, 216, 0.25);
 }
 
 .pearl-card {
-  background: linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(253, 251, 247, 0.7) 100%);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.85) 0%,
+      rgba(253, 251, 247, 0.7) 100%
+    );
+
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.75);
+
+  border: 1px solid rgba(255, 255, 255, 0.75);
+
   box-shadow: 0 8px 32px 0 rgba(201, 184, 255, 0.14);
+
   border-radius: 24px;
-  transition: transform 0.35s cubic-bezier(.2,.8,.2,1), box-shadow 0.35s ease, border-color 0.35s ease;
+
+  transition:
+    transform 0.35s cubic-bezier(.2, .8, .2, 1),
+    box-shadow 0.35s ease,
+    border-color 0.35s ease;
 }
+
 .pearl-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 20px 48px 0 rgba(247, 183, 216, 0.28);
+
+  box-shadow:
+    0 20px 48px 0 rgba(247, 183, 216, 0.28);
+
   border-color: rgba(247, 183, 216, 0.7);
 }
 
-/* Gradient border trick */
+/* ---------- Gradient border trick ---------- */
+
 .gradient-border {
   position: relative;
 }
+
 .gradient-border::before {
   content: '';
-  position: absolute; inset: 0;
+  position: absolute;
+  inset: 0;
   padding: 1px;
   border-radius: inherit;
-  background: linear-gradient(135deg, rgba(201,184,255,0.7), rgba(247,183,216,0.6), rgba(169,232,255,0.7));
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(201, 184, 255, 0.7),
+      rgba(247, 183, 216, 0.6),
+      rgba(169, 232, 255, 0.7)
+    );
+
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+
   -webkit-mask-composite: xor;
-          mask-composite: exclude;
+  mask-composite: exclude;
+
   pointer-events: none;
 }
 
-/* Thinking orb */
+/* ---------- Thinking orb ---------- */
+
 @keyframes orb-spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
+
 .thinking-orb {
-  width: 20px; height: 20px; border-radius: 9999px;
-  background: conic-gradient(from 0deg, #C9B8FF, #F7B7D8, #A9E8FF, #F58D91, #C9B8FF);
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+
+  background:
+    conic-gradient(
+      from 0deg,
+      #C9B8FF,
+      #F7B7D8,
+      #A9E8FF,
+      #F58D91,
+      #C9B8FF
+    );
+
   animation: orb-spin 2.5s linear infinite;
-  box-shadow: 0 0 20px rgba(247, 183, 216, 0.6);
+
+  box-shadow:
+    0 0 20px rgba(247, 183, 216, 0.6);
+
   filter: blur(0.5px);
 }
 
-/* Glowing button */
+/* ---------- Glowing button ---------- */
+
 .glow-btn {
   position: relative;
-  background: linear-gradient(120deg, #C9B8FF 0%, #F7B7D8 50%, #A9E8FF 100%);
+
+  background:
+    linear-gradient(
+      120deg,
+      #C9B8FF 0%,
+      #F7B7D8 50%,
+      #A9E8FF 100%
+    );
+
   color: #2D2638;
-  border: 1px solid rgba(255,255,255,0.85);
+
+  border: 1px solid rgba(255, 255, 255, 0.85);
   border-radius: 9999px;
+
   padding: 0.75rem 1.5rem;
+
   font-weight: 500;
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
-  box-shadow: 0 8px 24px -6px rgba(247, 183, 216, 0.5), inset 0 1px 1px rgba(255,255,255,0.9);
+
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+
+  box-shadow:
+    0 8px 24px -6px rgba(247, 183, 216, 0.5),
+    inset 0 1px 1px rgba(255, 255, 255, 0.9);
 }
+
 .glow-btn:hover {
   transform: translateY(-1px) scale(1.02);
-  box-shadow: 0 14px 32px -6px rgba(247, 183, 216, 0.65), inset 0 1px 1px rgba(255,255,255,1);
-}
-.glow-btn:active { transform: translateY(0) scale(0.99); }
 
-/* Suggested prompt chip */
+  box-shadow:
+    0 14px 32px -6px rgba(247, 183, 216, 0.65),
+    inset 0 1px 1px rgba(255, 255, 255, 1);
+}
+
+.glow-btn:active {
+  transform: translateY(0) scale(0.99);
+}
+
+/* ---------- Suggested prompt chip ---------- */
+
 .chip {
-  background: rgba(255,255,255,0.6);
+  background: rgba(255, 255, 255, 0.6);
+
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255,255,255,0.8);
+
+  border: 1px solid rgba(255, 255, 255, 0.8);
+
   border-radius: 9999px;
+
   padding: 0.5rem 1rem;
+
   font-size: 0.875rem;
+
   color: #4a4257;
+
   transition: all 0.25s ease;
+
   cursor: pointer;
 }
+
 .chip:hover {
-  background: linear-gradient(120deg, rgba(201,184,255,0.35), rgba(247,183,216,0.35));
-  border-color: rgba(247,183,216,0.7);
+  background:
+    linear-gradient(
+      120deg,
+      rgba(201, 184, 255, 0.35),
+      rgba(247, 183, 216, 0.35)
+    );
+
+  border-color: rgba(247, 183, 216, 0.7);
+
   transform: translateY(-1px);
+
   color: #2D2638;
 }
 
-/* Reveal on scroll */
-.reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.9s ease, transform 0.9s cubic-bezier(.2,.8,.2,1); }
-.reveal.in { opacity: 1; transform: translateY(0); }
+/* ---------- Reveal on scroll ---------- */
 
-/* Scroll bar */
-::-webkit-scrollbar { width: 10px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: linear-gradient(#C9B8FF, #F7B7D8); border-radius: 9999px; }
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
 
-/* Keep the vendor dashboard tabs scrollbar visible, inset, and medium-thin. */
+  transition:
+    opacity 0.9s ease,
+    transform 0.9s cubic-bezier(.2, .8, .2, 1);
+}
+
+.reveal.in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ---------- Scroll bar ---------- */
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background:
+    linear-gradient(#C9B8FF, #F7B7D8);
+
+  border-radius: 9999px;
+}
+
+/* ---------- Vendor dashboard tabs scrollbar ---------- */
+
 .liquid-glass[data-testid="dashboard-tabs"] {
   scrollbar-width: auto;
   scrollbar-color: #D8AFE9 transparent;
@@ -242,9 +418,12 @@ body {
 }
 
 .liquid-glass[data-testid="dashboard-tabs"]::-webkit-scrollbar-thumb {
-  background: linear-gradient(90deg, #C9B8FF, #F7B7D8);
+  background:
+    linear-gradient(90deg, #C9B8FF, #F7B7D8);
+
   border: 2px solid rgba(255, 255, 255, 0.85);
   border-radius: 9999px;
+
   cursor: grab;
 }
 
@@ -252,81 +431,242 @@ body {
   cursor: grabbing;
 }
 
-/* Thin scroll for chat area */
-.chat-scroll::-webkit-scrollbar { width: 6px; }
-.chat-scroll::-webkit-scrollbar-thumb { background: rgba(201,184,255,0.5); }
+/* ---------- Thin scroll for chat area ---------- */
 
-/* Prose overrides for AI messages */
-.ai-prose h1, .ai-prose h2, .ai-prose h3 { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; color: #2D2638; margin: 0.9rem 0 0.35rem; letter-spacing: -0.005em; }
-.ai-prose h1 { font-size: 1.2rem; }
+.chat-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-scroll::-webkit-scrollbar-thumb {
+  background: rgba(201, 184, 255, 0.5);
+}
+
+/* ---------- Prose overrides for AI messages ---------- */
+
+.ai-prose h1,
+.ai-prose h2,
+.ai-prose h3 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 600;
+  color: #2D2638;
+
+  margin: 0.9rem 0 0.35rem;
+
+  letter-spacing: -0.005em;
+}
+
+.ai-prose h1 {
+  font-size: 1.2rem;
+}
+
 .ai-prose h2 {
   font-size: 1.02rem;
+
   text-transform: uppercase;
+
   letter-spacing: 0.14em;
+
   color: #4a4257;
+
   padding-bottom: 0.35rem;
-  border-bottom: 1px solid rgba(201,184,255,0.35);
+
+  border-bottom: 1px solid rgba(201, 184, 255, 0.35);
+
   margin-top: 1.1rem;
 }
-.ai-prose h2:first-child { margin-top: 0.1rem; }
-.ai-prose h3 { font-size: 0.98rem; color: #2D2638; }
-.ai-prose p  { margin: 0.4rem 0; line-height: 1.6; color: #3b3547; }
-.ai-prose .ai-ul { margin: 0.35rem 0 0.35rem 0.2rem; list-style: none; padding: 0; }
-.ai-prose .ai-ul > li { position: relative; padding-left: 1.1rem; margin: 0.2rem 0; line-height: 1.55; }
-.ai-prose .ai-ul > li::before { content: ''; position: absolute; left: 0.15rem; top: 0.65em; width: 6px; height: 6px; border-radius: 9999px; background: linear-gradient(120deg, #C9B8FF, #F7B7D8); }
-.ai-prose .ai-ol { margin: 0.35rem 0 0.35rem 0.2rem; counter-reset: item; list-style: none; padding: 0; }
-.ai-prose .ai-ol > li { counter-increment: item; position: relative; padding-left: 1.6rem; margin: 0.25rem 0; line-height: 1.55; }
+
+.ai-prose h2:first-child {
+  margin-top: 0.1rem;
+}
+
+.ai-prose h3 {
+  font-size: 0.98rem;
+  color: #2D2638;
+}
+
+.ai-prose p {
+  margin: 0.4rem 0;
+  line-height: 1.6;
+  color: #3b3547;
+}
+
+.ai-prose .ai-ul {
+  margin: 0.35rem 0 0.35rem 0.2rem;
+  list-style: none;
+  padding: 0;
+}
+
+.ai-prose .ai-ul > li {
+  position: relative;
+  padding-left: 1.1rem;
+  margin: 0.2rem 0;
+  line-height: 1.55;
+}
+
+.ai-prose .ai-ul > li::before {
+  content: '';
+
+  position: absolute;
+
+  left: 0.15rem;
+  top: 0.65em;
+
+  width: 6px;
+  height: 6px;
+
+  border-radius: 9999px;
+
+  background:
+    linear-gradient(
+      120deg,
+      #C9B8FF,
+      #F7B7D8
+    );
+}
+
+.ai-prose .ai-ol {
+  margin: 0.35rem 0 0.35rem 0.2rem;
+  counter-reset: item;
+  list-style: none;
+  padding: 0;
+}
+
+.ai-prose .ai-ol > li {
+  counter-increment: item;
+
+  position: relative;
+
+  padding-left: 1.6rem;
+
+  margin: 0.25rem 0;
+
+  line-height: 1.55;
+}
+
 .ai-prose .ai-ol > li::before {
   content: counter(item);
-  position: absolute; left: 0; top: 0.15em;
-  font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 0.72rem;
-  min-width: 1.15rem; height: 1.15rem; padding: 0 0.35rem;
-  border-radius: 9999px; color: #2D2638;
-  background: linear-gradient(120deg, rgba(201,184,255,0.55), rgba(247,183,216,0.55));
-  border: 1px solid rgba(255,255,255,0.85);
-  display: inline-flex; align-items: center; justify-content: center;
-}
-.ai-prose strong { color: #2D2638; font-weight: 600; }
-.ai-prose em { color: #4a4257; }
-.ai-prose code { background: rgba(201,184,255,0.18); padding: 0.05rem 0.35rem; border-radius: 4px; font-size: 0.85em; }
-.ai-prose a { color: #7c5cf2; }
 
-/* Silky background section */
+  position: absolute;
+
+  left: 0;
+  top: 0.15em;
+
+  font-family: 'Plus Jakarta Sans', sans-serif;
+
+  font-weight: 600;
+
+  font-size: 0.72rem;
+
+  min-width: 1.15rem;
+  height: 1.15rem;
+
+  padding: 0 0.35rem;
+
+  border-radius: 9999px;
+
+  color: #2D2638;
+
+  background:
+    linear-gradient(
+      120deg,
+      rgba(201, 184, 255, 0.55),
+      rgba(247, 183, 216, 0.55)
+    );
+
+  border: 1px solid rgba(255, 255, 255, 0.85);
+
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-prose strong {
+  color: #2D2638;
+  font-weight: 600;
+}
+
+.ai-prose em {
+  color: #4a4257;
+}
+
+.ai-prose code {
+  background: rgba(201, 184, 255, 0.18);
+
+  padding: 0.05rem 0.35rem;
+
+  border-radius: 4px;
+
+  font-size: 0.85em;
+}
+
+.ai-prose a {
+  color: #7c5cf2;
+}
+
+/* ---------- Silky background section ---------- */
+
 .silky-bg {
   background:
-    radial-gradient(ellipse 60% 40% at 20% 20%, rgba(201,184,255,0.35), transparent 60%),
-    radial-gradient(ellipse 50% 40% at 80% 30%, rgba(247,183,216,0.32), transparent 60%),
-    radial-gradient(ellipse 60% 50% at 50% 80%, rgba(169,232,255,0.3), transparent 60%),
-    linear-gradient(180deg, #FDFBF7 0%, #FAF8F6 100%);
+    radial-gradient(
+      ellipse 60% 40% at 20% 20%,
+      rgba(201, 184, 255, 0.35),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 50% 40% at 80% 30%,
+      rgba(247, 183, 216, 0.32),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 60% 50% at 50% 80%,
+      rgba(169, 232, 255, 0.3),
+      transparent 60%
+    ),
+    linear-gradient(
+      180deg,
+      #FDFBF7 0%,
+      #FAF8F6 100%
+    );
 }
 
 @keyframes slideIn {
-  from { transform: translateX(40px); opacity: 0; }
-  to   { transform: translateX(0); opacity: 1; }
+  from {
+    transform: translateX(40px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
+
 /* =========================================================
    WEDORA VENUE DISCOVERY — UNIFIED WEDORA THEME
    ========================================================= */
 
 .wedora-venue-page {
   min-height: 100vh !important;
+
   color: #2D2638 !important;
+
   font-family: 'Plus Jakarta Sans', sans-serif !important;
 
   background:
     radial-gradient(
       ellipse 55% 45% at 15% 15%,
-      rgba(201,184,255,0.18),
+      rgba(201, 184, 255, 0.18),
       transparent 65%
     ),
     radial-gradient(
       ellipse 55% 45% at 85% 18%,
-      rgba(247,183,216,0.18),
+      rgba(247, 183, 216, 0.18),
       transparent 65%
     ),
     radial-gradient(
       ellipse 55% 45% at 50% 85%,
-      rgba(169,232,255,0.14),
+      rgba(169, 232, 255, 0.14),
       transparent 65%
     ),
     #FFFCF8 !important;
@@ -336,8 +676,11 @@ body {
 
 .wedora-venue-page h1 {
   font-family: 'Cormorant Garamond', Georgia, serif !important;
+
   font-weight: 400 !important;
+
   color: #2D2638 !important;
+
   letter-spacing: -0.02em !important;
 }
 
@@ -345,7 +688,9 @@ body {
 .wedora-venue-page h3,
 .wedora-venue-page h4 {
   font-family: 'Cormorant Garamond', Georgia, serif !important;
+
   font-weight: 500 !important;
+
   color: #2D2638 !important;
 }
 
@@ -364,16 +709,19 @@ body {
 .wedora-venue-page h1 span,
 .wedora-venue-page h1 em,
 .wedora-venue-page h1 i {
-  background: linear-gradient(
-    90deg,
-    #F5A9B8 0%,
-    #C9B8FF 50%,
-    #A9E8FF 100%
-  ) !important;
+  background:
+    linear-gradient(
+      90deg,
+      #F5A9B8 0%,
+      #C9B8FF 50%,
+      #A9E8FF 100%
+    ) !important;
 
   -webkit-background-clip: text !important;
   background-clip: text !important;
+
   -webkit-text-fill-color: transparent !important;
+
   color: transparent !important;
 }
 
@@ -391,9 +739,11 @@ body {
 .wedora-venue-page input,
 .wedora-venue-page select,
 .wedora-venue-page textarea {
-  background: rgba(255,255,255,0.82) !important;
+  background: rgba(255, 255, 255, 0.82) !important;
+
   color: #2D2638 !important;
-  border-color: rgba(201,184,255,0.35) !important;
+
+  border-color: rgba(201, 184, 255, 0.35) !important;
 }
 
 .wedora-venue-page input::placeholder,
@@ -412,12 +762,13 @@ body {
 
 .wedora-venue-page button[class*="bg-[#b"],
 .wedora-venue-page button[class*="bg-[#a"] {
-  background: linear-gradient(
-    135deg,
-    #F7B7D8,
-    #C9B8FF,
-    #A9E8FF
-  ) !important;
+  background:
+    linear-gradient(
+      135deg,
+      #F7B7D8,
+      #C9B8FF,
+      #A9E8FF
+    ) !important;
 
   color: #2D2638 !important;
 }
@@ -426,13 +777,13 @@ body {
 
 .wedora-venue-page [class*="rounded-xl"],
 .wedora-venue-page [class*="rounded-2xl"] {
-  border-color: rgba(201,184,255,0.28) !important;
+  border-color: rgba(201, 184, 255, 0.28) !important;
 }
 
 /* Soft glass surfaces */
 
 .wedora-venue-page [class*="bg-white"] {
-  background: rgba(255,255,255,0.72) !important;
+  background: rgba(255, 255, 255, 0.72) !important;
 }
 
 /* Icons */
@@ -444,7 +795,7 @@ body {
 /* Icon circles */
 
 .wedora-venue-page [class*="rounded-full"] {
-  border-color: rgba(201,184,255,0.25);
+  border-color: rgba(201, 184, 255, 0.25);
 }
 
 /* Links */
@@ -457,7 +808,7 @@ body {
 
 .wedora-venue-page [class*="border-[#"],
 .wedora-venue-page [class*="border-b"] {
-  border-color: rgba(201,184,255,0.28) !important;
+  border-color: rgba(201, 184, 255, 0.28) !important;
 }
 
 /* Hover */
@@ -472,29 +823,32 @@ body {
   background: #C9B8FF;
   color: #2D2638;
 }
+
 /* =========================================================
    WEDORA VENDOR DISCOVERY — UNIFIED WEDORA THEME
    ========================================================= */
 
 .wedora-vendor-page {
   min-height: 100vh !important;
+
   color: #2D2638 !important;
+
   font-family: 'Plus Jakarta Sans', sans-serif !important;
 
   background:
     radial-gradient(
       ellipse 55% 45% at 15% 15%,
-      rgba(201,184,255,0.18),
+      rgba(201, 184, 255, 0.18),
       transparent 65%
     ),
     radial-gradient(
       ellipse 55% 45% at 85% 18%,
-      rgba(247,183,216,0.18),
+      rgba(247, 183, 216, 0.18),
       transparent 65%
     ),
     radial-gradient(
       ellipse 55% 45% at 50% 85%,
-      rgba(169,232,255,0.14),
+      rgba(169, 232, 255, 0.14),
       transparent 65%
     ),
     #FFFCF8 !important;
@@ -504,8 +858,11 @@ body {
 
 .wedora-vendor-page h1 {
   font-family: 'Cormorant Garamond', Georgia, serif !important;
+
   font-weight: 400 !important;
+
   color: #2D2638 !important;
+
   letter-spacing: -0.02em !important;
 }
 
@@ -513,7 +870,9 @@ body {
 .wedora-vendor-page h3,
 .wedora-vendor-page h4 {
   font-family: 'Cormorant Garamond', Georgia, serif !important;
+
   font-weight: 500 !important;
+
   color: #2D2638 !important;
 }
 
@@ -530,16 +889,19 @@ body {
 .wedora-vendor-page h1 span,
 .wedora-vendor-page h1 em,
 .wedora-vendor-page h1 i {
-  background: linear-gradient(
-    90deg,
-    #F5A9B8 0%,
-    #C9B8FF 50%,
-    #A9E8FF 100%
-  ) !important;
+  background:
+    linear-gradient(
+      90deg,
+      #F5A9B8 0%,
+      #C9B8FF 50%,
+      #A9E8FF 100%
+    ) !important;
 
   -webkit-background-clip: text !important;
   background-clip: text !important;
+
   -webkit-text-fill-color: transparent !important;
+
   color: transparent !important;
 }
 
@@ -560,9 +922,11 @@ body {
 
 .wedora-vendor-page input,
 .wedora-vendor-page select {
-  background: rgba(255,255,255,0.82) !important;
+  background: rgba(255, 255, 255, 0.82) !important;
+
   color: #2D2638 !important;
-  border-color: rgba(201,184,255,0.35) !important;
+
+  border-color: rgba(201, 184, 255, 0.35) !important;
 }
 
 .wedora-vendor-page input::placeholder {
@@ -580,12 +944,13 @@ body {
 
 .wedora-vendor-page button[class*="bg-[#b"],
 .wedora-vendor-page button[class*="bg-[#a"] {
-  background: linear-gradient(
-    135deg,
-    #F7B7D8,
-    #C9B8FF,
-    #A9E8FF
-  ) !important;
+  background:
+    linear-gradient(
+      135deg,
+      #F7B7D8,
+      #C9B8FF,
+      #A9E8FF
+    ) !important;
 
   color: #2D2638 !important;
 }
@@ -594,13 +959,13 @@ body {
 
 .wedora-vendor-page [class*="rounded-xl"],
 .wedora-vendor-page [class*="rounded-2xl"] {
-  border-color: rgba(201,184,255,0.28) !important;
+  border-color: rgba(201, 184, 255, 0.28) !important;
 }
 
 /* Soft glass effect */
 
 .wedora-vendor-page [class*="bg-white"] {
-  background: rgba(255,255,255,0.72) !important;
+  background: rgba(255, 255, 255, 0.72) !important;
 }
 
 /* Icons */
@@ -612,7 +977,7 @@ body {
 /* Keep icon circles soft and pastel */
 
 .wedora-vendor-page [class*="rounded-full"] {
-  border-color: rgba(201,184,255,0.25);
+  border-color: rgba(201, 184, 255, 0.25);
 }
 
 /* Links */
@@ -625,7 +990,7 @@ body {
 
 .wedora-vendor-page [class*="border-[#"],
 .wedora-vendor-page [class*="border-b"] {
-  border-color: rgba(201,184,255,0.28) !important;
+  border-color: rgba(201, 184, 255, 0.28) !important;
 }
 
 /* Hover */
@@ -639,4 +1004,294 @@ body {
 .wedora-vendor-page ::selection {
   background: #C9B8FF;
   color: #2D2638;
+}
+
+
+/* =========================================================
+   WEDORA — LIQUID PRESS BUTTON EFFECT
+   Soft Apple/iOS-inspired liquid glass interaction
+   ========================================================= */
+
+/*
+   These are the pastel / glass buttons only.
+
+   The normal button appearance remains unchanged.
+   The effect activates when the user presses the button.
+*/
+
+.glow-btn,
+.chip,
+.wedora-venue-page button[class*="bg-[#b"],
+.wedora-venue-page button[class*="bg-[#a"],
+.wedora-vendor-page button[class*="bg-[#b"],
+.wedora-vendor-page button[class*="bg-[#a"] {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+
+  -webkit-tap-highlight-color: transparent;
+
+  transform-origin: center;
+
+  will-change:
+    transform,
+    box-shadow;
+
+  transition:
+    transform 0.28s cubic-bezier(.2, .8, .2, 1),
+    box-shadow 0.28s ease,
+    background 0.35s ease,
+    border-color 0.28s ease;
+}
+
+
+/* ---------------------------------------------------------
+   Keep button text/icons above the liquid animation
+   --------------------------------------------------------- */
+
+.glow-btn > *,
+.chip > *,
+.wedora-venue-page button[class*="bg-[#b"] > *,
+.wedora-venue-page button[class*="bg-[#a"] > *,
+.wedora-vendor-page button[class*="bg-[#b"] > *,
+.wedora-vendor-page button[class*="bg-[#a"] > * {
+  position: relative;
+  z-index: 2;
+}
+
+
+/* ---------------------------------------------------------
+   Soft moving glass highlight
+   --------------------------------------------------------- */
+
+.glow-btn::before,
+.chip::before,
+.wedora-venue-page button[class*="bg-[#b"]::before,
+.wedora-venue-page button[class*="bg-[#a"]::before,
+.wedora-vendor-page button[class*="bg-[#b"]::before,
+.wedora-vendor-page button[class*="bg-[#a"]::before {
+  content: '';
+
+  position: absolute;
+
+  z-index: 1;
+
+  width: 70%;
+  height: 180%;
+
+  left: -85%;
+  top: -40%;
+
+  background:
+    linear-gradient(
+      105deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.04) 25%,
+      rgba(255, 255, 255, 0.55) 50%,
+      rgba(255, 255, 255, 0.04) 75%,
+      transparent 100%
+    );
+
+  filter: blur(10px);
+
+  transform: rotate(12deg);
+
+  opacity: 0;
+
+  pointer-events: none;
+}
+
+
+/* ---------------------------------------------------------
+   Liquid ripple
+   --------------------------------------------------------- */
+
+.glow-btn::after,
+.chip::after,
+.wedora-venue-page button[class*="bg-[#b"]::after,
+.wedora-venue-page button[class*="bg-[#a"]::after,
+.wedora-vendor-page button[class*="bg-[#b"]::after,
+.wedora-vendor-page button[class*="bg-[#a"]::after {
+  content: '';
+
+  position: absolute;
+
+  z-index: 1;
+
+  left: 50%;
+  top: 50%;
+
+  width: 22px;
+  height: 22px;
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(255, 255, 255, 0.62) 0%,
+      rgba(255, 255, 255, 0.30) 28%,
+      rgba(255, 255, 255, 0.12) 48%,
+      transparent 72%
+    );
+
+  transform:
+    translate(-50%, -50%)
+    scale(0);
+
+  opacity: 0;
+
+  pointer-events: none;
+}
+
+
+/* =========================================================
+   LIQUID PRESS
+   ========================================================= */
+
+.glow-btn:active,
+.chip:active,
+.wedora-venue-page button[class*="bg-[#b"]:active,
+.wedora-venue-page button[class*="bg-[#a"]:active,
+.wedora-vendor-page button[class*="bg-[#b"]:active,
+.wedora-vendor-page button[class*="bg-[#a"]:active {
+  transform: scale(0.975);
+
+  box-shadow:
+    0 4px 14px -5px rgba(247, 183, 216, 0.38),
+    inset 0 2px 8px rgba(255, 255, 255, 0.38),
+    inset 0 -2px 5px rgba(201, 184, 255, 0.18);
+
+  transition:
+    transform 0.12s cubic-bezier(.2, .8, .2, 1),
+    box-shadow 0.12s ease;
+}
+
+
+/* ---------------------------------------------------------
+   Ripple expands during the press
+   --------------------------------------------------------- */
+
+.glow-btn:active::after,
+.chip:active::after,
+.wedora-venue-page button[class*="bg-[#b"]:active::after,
+.wedora-venue-page button[class*="bg-[#a"]:active::after,
+.wedora-vendor-page button[class*="bg-[#b"]:active::after,
+.wedora-vendor-page button[class*="bg-[#a"]:active::after {
+  animation:
+    wedora-liquid-ripple
+    0.65s
+    cubic-bezier(.15, .75, .25, 1)
+    forwards;
+}
+
+
+/* ---------------------------------------------------------
+   Light sweeps across the liquid glass
+   --------------------------------------------------------- */
+
+.glow-btn:active::before,
+.chip:active::before,
+.wedora-venue-page button[class*="bg-[#b"]:active::before,
+.wedora-venue-page button[class*="bg-[#a"]:active::before,
+.wedora-vendor-page button[class*="bg-[#b"]:active::before,
+.wedora-vendor-page button[class*="bg-[#a"]:active::before {
+  animation:
+    wedora-liquid-light
+    0.7s
+    cubic-bezier(.2, .7, .2, 1)
+    forwards;
+}
+
+
+/* =========================================================
+   LIQUID RIPPLE ANIMATION
+   ========================================================= */
+
+@keyframes wedora-liquid-ripple {
+  0% {
+    transform:
+      translate(-50%, -50%)
+      scale(0);
+
+    opacity: 0;
+  }
+
+  12% {
+    opacity: 0.9;
+  }
+
+  55% {
+    opacity: 0.48;
+  }
+
+  100% {
+    transform:
+      translate(-50%, -50%)
+      scale(18);
+
+    opacity: 0;
+  }
+}
+
+
+/* =========================================================
+   LIQUID HIGHLIGHT ANIMATION
+   ========================================================= */
+
+@keyframes wedora-liquid-light {
+  0% {
+    left: -85%;
+    opacity: 0;
+  }
+
+  15% {
+    opacity: 0.85;
+  }
+
+  60% {
+    opacity: 0.55;
+  }
+
+  100% {
+    left: 125%;
+    opacity: 0;
+  }
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .glow-btn::before,
+  .glow-btn::after,
+  .chip::before,
+  .chip::after,
+
+  .wedora-venue-page button[class*="bg-[#b"]::before,
+  .wedora-venue-page button[class*="bg-[#b"]::after,
+
+  .wedora-venue-page button[class*="bg-[#a"]::before,
+  .wedora-venue-page button[class*="bg-[#a"]::after,
+
+  .wedora-vendor-page button[class*="bg-[#b"]::before,
+  .wedora-vendor-page button[class*="bg-[#b"]::after,
+
+  .wedora-vendor-page button[class*="bg-[#a"]::before,
+  .wedora-vendor-page button[class*="bg-[#a"]::after {
+    animation: none !important;
+  }
+
+  .glow-btn:active,
+  .chip:active,
+
+  .wedora-venue-page button[class*="bg-[#b"]:active,
+  .wedora-venue-page button[class*="bg-[#a"]:active,
+
+  .wedora-vendor-page button[class*="bg-[#b"]:active,
+  .wedora-vendor-page button[class*="bg-[#a"]:active {
+    transform: none;
+  }
 }
