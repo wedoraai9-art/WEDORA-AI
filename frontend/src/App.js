@@ -51,9 +51,9 @@ import WeddingTransportation from '@/components/WeddingTransportation';
 import WedoraVenueDiscovery from '@/components/WedoraVenueDiscovery';
 import WedoraVendorDiscovery from '@/components/WedoraVendorDiscovery';
 
-const INTRO_TOTAL_DURATION = 16200;
-const INTRO_STAR_TRAVEL_START = 15100;
-const INTRO_STAR_TRAVEL_DURATION = 1050;
+const INTRO_TOTAL_DURATION = 18200;
+const INTRO_STAR_TRAVEL_START = 15000;
+const INTRO_STAR_TRAVEL_DURATION = 2600;
 const REDUCED_INTRO_DURATION = 1200;
 
 const shouldPlayIntro = (pathname) =>
@@ -145,6 +145,7 @@ const AppContent = () => {
   const isHomePage = location.pathname === '/';
 
   const introStarRef = useRef(null);
+  const travelStarRef = useRef(null);
   const starAnimationRef = useRef(null);
 
   const [prefersReducedMotion] = useState(getReducedMotionPreference);
@@ -180,12 +181,13 @@ const AppContent = () => {
       setStarTraveling(true);
 
       const introStar = introStarRef.current;
+      const travelStar = travelStarRef.current;
 
       const searchStar = document.querySelector(
         '.wedora-search-sparkle-home, [data-wedora-search-sparkle]'
       );
 
-      if (!introStar || !searchStar || !introStar.animate) {
+      if (!introStar || !travelStar || !searchStar || !travelStar.animate) {
         return;
       }
 
@@ -198,74 +200,94 @@ const AppContent = () => {
 
       const startCenterX = startRect.left + startRect.width / 2;
       const startCenterY = startRect.top + startRect.height / 2;
-
       const targetCenterX = targetRect.left + targetRect.width / 2;
       const targetCenterY = targetRect.top + targetRect.height / 2;
-
       const moveX = targetCenterX - startCenterX;
       const moveY = targetCenterY - startCenterY;
 
-      const targetScale = Math.min(
-        1,
-        targetRect.width / startRect.width
-      );
+      // Pull the travelling copy out of the fading final scene so it remains
+      // clearly visible while it crosses the screen.
+      travelStar.style.position = 'fixed';
+      travelStar.style.left = `${startCenterX - 22}px`;
+      travelStar.style.top = `${startCenterY - 22}px`;
+      travelStar.style.right = 'auto';
+      travelStar.style.width = '44px';
+      travelStar.style.height = '44px';
+      travelStar.style.margin = '0';
+      travelStar.style.zIndex = '2005';
+      travelStar.style.opacity = '1';
+      travelStar.style.visibility = 'visible';
+      travelStar.style.pointerEvents = 'none';
 
       const keyframes = [
         {
-          transform: 'translate3d(0, 0, 0) scale(1.08) rotate(0deg)',
-          opacity: 1,
+          transform: 'translate3d(0, 0, 0) scale(.55) rotate(-18deg)',
+          opacity: 0,
           offset: 0,
         },
         {
-          transform: 'translate3d(0, 0, 0) scale(1.28) rotate(-8deg)',
+          transform: 'translate3d(0, -18px, 0) scale(1.45) rotate(8deg)',
           opacity: 1,
           offset: 0.08,
         },
         {
           transform:
-            `translate3d(${moveX * 0.08}px, ${moveY * 0.12}px, 0) ` +
-            'scale(1.18) rotate(10deg)',
+            `translate3d(${moveX * 0.10}px, ${moveY * 0.12 - 18}px, 0) ` +
+            'scale(1.22) rotate(-10deg)',
           opacity: 1,
-          offset: 0.2,
+          offset: 0.22,
         },
         {
           transform:
-            `translate3d(${moveX * 0.28}px, ${moveY * 0.42}px, 0) ` +
-            'scale(1.08) rotate(-14deg)',
-          opacity: 0.99,
-          offset: 0.42,
+            `translate3d(${moveX * 0.32}px, ${moveY * 0.38 + 12}px, 0) ` +
+            'scale(1.10) rotate(14deg)',
+          opacity: 1,
+          offset: 0.46,
         },
         {
           transform:
-            `translate3d(${moveX * 0.56}px, ${moveY * 0.68}px, 0) ` +
-            'scale(1.02) rotate(12deg)',
-          opacity: 0.98,
-          offset: 0.64,
+            `translate3d(${moveX * 0.58}px, ${moveY * 0.66 - 8}px, 0) ` +
+            'scale(1.02) rotate(-12deg)',
+          opacity: 1,
+          offset: 0.68,
         },
         {
           transform:
-            `translate3d(${moveX * 0.82}px, ${moveY * 0.88}px, 0) ` +
-            'scale(0.98) rotate(-7deg)',
-          opacity: 0.97,
-          offset: 0.84,
+            `translate3d(${moveX * 0.82}px, ${moveY * 0.87 + 4}px, 0) ` +
+            'scale(.92) rotate(8deg)',
+          opacity: 1,
+          offset: 0.86,
         },
         {
           transform:
-            `translate3d(${moveX}px, ${moveY}px, 0) ` +
-            `scale(${targetScale}) rotate(0deg)`,
-          opacity: 0.96,
+            `translate3d(${moveX}px, ${moveY}px, 0) scale(.88) rotate(0deg)`,
+          opacity: 1,
           offset: 1,
         },
       ];
 
-      starAnimationRef.current = introStar.animate(
+      starAnimationRef.current = travelStar.animate(
         keyframes,
         {
           duration: INTRO_STAR_TRAVEL_DURATION,
-          easing: 'cubic-bezier(.22, .72, .22, 1)',
+          easing: 'cubic-bezier(.16, .78, .18, 1)',
           fill: 'forwards',
         }
       );
+
+      starAnimationRef.current.finished
+        .then(() => {
+          searchStar.animate(
+            [
+              { transform: 'scale(1)', filter: 'brightness(1)' },
+              { transform: 'scale(1.55)', filter: 'brightness(1.7)' },
+              { transform: 'scale(.92)', filter: 'brightness(1.2)' },
+              { transform: 'scale(1)', filter: 'brightness(1)' },
+            ],
+            { duration: 650, easing: 'ease-out' }
+          );
+        })
+        .catch(() => {});
     }, INTRO_STAR_TRAVEL_START);
 
     const finishTimer = window.setTimeout(() => {
@@ -279,6 +301,10 @@ const AppContent = () => {
       if (starAnimationRef.current) {
         starAnimationRef.current.cancel();
         starAnimationRef.current = null;
+      }
+
+      if (travelStarRef.current) {
+        travelStarRef.current.getAnimations().forEach((animation) => animation.cancel());
       }
     };
   }, [
@@ -541,7 +567,7 @@ const AppContent = () => {
 
             .wedora-intro-scene--final {
               --scene-delay: 11.2s;
-              --scene-duration: 5s;
+              --scene-duration: 7s;
             }
 
             .wedora-intro-scene-content {
@@ -946,6 +972,33 @@ const AppContent = () => {
               filter:
                 drop-shadow(0 0 7px rgba(255, 116, 158, .78))
                 drop-shadow(0 0 14px rgba(96, 212, 255, .68));
+            }
+
+            .wedora-intro-travel-star {
+              position: fixed;
+              left: 0;
+              top: 0;
+              z-index: 2005;
+              width: 44px;
+              height: 44px;
+              margin: 0;
+              overflow: visible;
+              opacity: 0;
+              visibility: hidden;
+              pointer-events: none;
+              filter:
+                drop-shadow(0 0 8px rgba(255, 116, 158, .92))
+                drop-shadow(0 0 17px rgba(96, 212, 255, .86));
+              will-change: transform, left, top, opacity;
+            }
+
+            .wedora-intro-star-traveling
+              .wedora-intro-fly-star {
+              opacity: 0;
+            }
+
+            .wedora-intro-final-lockup {
+              isolation: isolate;
             }
 
             .wedora-intro-final-label {
@@ -1654,6 +1707,11 @@ const AppContent = () => {
               </div>
             </section>
           </div>
+
+          <IntroSparkle
+            ref={travelStarRef}
+            className="wedora-intro-travel-star"
+          />
 
           <div className="wedora-intro-reduced-card">
             <img
