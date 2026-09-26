@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { apiMarketplace, apiVendorProfile, apiTrack, apiCreateLead, fmtApiError } from '@/lib/auth';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { apiMarketplace, apiVendorProfile, apiTrack, apiCreateLead, authAxios, fmtApiError } from '@/lib/auth';
 import { toast } from 'sonner';
-import { MapPin, Crown, ArrowLeft, MessageCircle, Instagram, Globe, X } from 'lucide-react';
+import { MapPin, Crown, ArrowLeft, MessageCircle, Instagram, Globe, X, Star, BadgeCheck } from 'lucide-react';
 
 const CATEGORIES = ['All', 'Wedding Decor', 'Wedding Planner', 'Photographer', 'Videographer', 'Caterer', 'Florist', 'Makeup Artist', 'Mehendi Artist', 'DJ', 'Music/Band', 'Choreographer', 'Venue', 'Hotel', 'Resort', 'Farmhouse', 'Invitation Designer', 'Furniture/Rental', 'Bridal Wear', 'Groom Wear', 'Jewellery', 'Transportation', 'Other'];
 
@@ -157,9 +157,18 @@ const Marketplace = () => {
 export const VendorPublicProfile = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const reviewToken = searchParams.get('review_token') || '';
   const [vendor, setVendor] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [showQuote, setShowQuote] = useState(false);
+  const [reviewInvite, setReviewInvite] = useState(null);
+  const [reviewInviteLoading, setReviewInviteLoading] = useState(false);
+  const [reviewInviteError, setReviewInviteError] = useState('');
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewText, setReviewText] = useState('');
+  const [reviewSaving, setReviewSaving] = useState(false);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -173,6 +182,52 @@ export const VendorPublicProfile = () => {
       catch { setNotFound(true); }
     })();
   }, [slug]);
+
+  useEffect(() => {
+    if (!reviewToken) {
+      setReviewInvite(null);
+      setReviewInviteError('');
+      setReviewSubmitted(false);
+      return;
+    }
+    let cancelled = false;
+    setReviewInviteLoading(true);
+    setReviewInviteError('');
+    authAxios.get('/marketplace/review-invitation', { params: { token: reviewToken } })
+      .then((response) => {
+        if (!cancelled) setReviewInvite(response.data || null);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setReviewInvite(null);
+          setReviewInviteError(error?.response?.data?.detail || 'This review link is invalid or has expired.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setReviewInviteLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [reviewToken]);
+
+  const submitReview = async (event) => {
+    event.preventDefault();
+    if (!reviewToken || reviewSaving) return;
+    setReviewSaving(true);
+    try {
+      await authAxios.post('/marketplace/reviews', {
+        token: reviewToken,
+        rating: reviewRating,
+        review: reviewText.trim(),
+      });
+      setReviewSubmitted(true);
+      const refreshed = await apiVendorProfile(slug).catch(() => null);
+      if (refreshed) setVendor(refreshed?.vendor || refreshed);
+    } catch (error) {
+      toast.error(fmtApiError(error?.response?.data?.detail, 'Could not submit your review. Please try again.'));
+    } finally {
+      setReviewSaving(false);
+    }
+  };
 
   if (notFound) return (
     <div className="min-h-screen silky-bg pt-40 text-center text-[#6B617A]">
@@ -241,6 +296,109 @@ export const VendorPublicProfile = () => {
             </div>
           </div>
         </div>
+
+        {reviewToken && (
+          <section className="pearl-card mt-8 p-6 md:p-8" data-testid="verified-review-form">
+            {reviewInviteLoading ? (
+              <p className="text-sm text-[#6B617A]">Loading your review request…</p>
+            ) : reviewInviteError ? (
+              <div role="alert">
+                <h2 className="font-heading font-semibold text-xl text-[#2D2638]">Review link unavailable</h2>
+                <p className="mt-2 text-sm text-[#6B617A]">{reviewInviteError}</p>
+              </div>
+            ) : reviewSubmitted ? (
+              <div role="status">
+                <h2 className="font-heading font-semibold text-xl text-[#2D2638]">Thank you for your review!</h2>
+                <p className="mt-2 text-sm text-[#6B617A]">Your verified review has been added to this vendor’s profile.</p>
+              </div>
+            ) : reviewInvite ? (
+              <>
+                <p className="font-heading uppercase tracking-[0.2em] text-xs text-[#988FA6] mb-2">Verified wedding review</p>
+                <h2 className="font-display text-2xl text-[#2D2638]">How was your experience?</h2>
+                <p className="mt-2 text-sm text-[#6B617A]">
+                  Hi {reviewInvite.client_name}, share your experience with {reviewInvite.vendor_name} for {reviewInvite.wedding_name}.
+                </p>
+                <form onSubmit={submitReview} className="mt-5 space-y-4">
+                  <div>
+                    <p className="text-sm font-medium text-[#4a4257] mb-2">Your rating</p>
+                    <div className="flex gap-1" role="radiogroup" aria-label="Rating from 1 to 5 stars">
+                      {[1, 2, 3, 4, 5].map((rating) => (
+                        <button
+                          key={rating}
+                          type="button"
+                          role="radio"
+                          aria-checked={reviewRating === rating}
+                          aria-label={`${rating} star${rating === 1 ? '' : 's'}`}
+                          onClick={() => setReviewRating(rating)}
+                          className="rounded-full p-1 focus:outline-none focus:ring-2 focus:ring-pink-300"
+                        >
+                          <Star className={`w-7 h-7 ${rating <= reviewRating ? 'fill-[#F4B942] text-[#F4B942]' : 'text-[#c9bfd1]'}`} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <label className="block">
+                    <span className="text-sm font-medium text-[#4a4257]">Your review</span>
+                    <textarea
+                      required
+                      minLength={10}
+                      maxLength={1200}
+                      rows={4}
+                      value={reviewText}
+                      onChange={(event) => setReviewText(event.target.value)}
+                      placeholder="Tell others what you appreciated about working with this vendor…"
+                      className="mt-2 w-full rounded-2xl px-4 py-3 bg-white/80 border border-white/80 outline-none focus:border-pink-300 text-[#2D2638] text-sm resize-y"
+                    />
+                    <span className="mt-1 block text-xs text-[#988FA6]">10 to 1,200 characters</span>
+                  </label>
+                  <button type="submit" disabled={reviewSaving || reviewText.trim().length < 10} className="glow-btn disabled:opacity-60">
+                    {reviewSaving ? 'Sending…' : 'Submit review'}
+                  </button>
+                </form>
+              </>
+            ) : null}
+          </section>
+        )}
+
+        {(Number(vendor.review_count) > 0 || Number(vendor.verified_wedding_count) > 0) && (
+          <section className="pearl-card mt-8 p-6 md:p-8" data-testid="vendor-reviews">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+              <div>
+                <h2 className="font-heading font-semibold text-xl text-[#2D2638]">Client reviews</h2>
+                <p className="mt-1 text-sm text-[#6B617A]">Reviews are submitted through a link sent to a linked wedding client.</p>
+              </div>
+              {Number(vendor.verified_wedding_count) > 0 && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f4eafa] px-3 py-1.5 text-xs text-[#76588f]">
+                  <BadgeCheck className="w-4 h-4" /> {vendor.verified_wedding_count} verified wedding{Number(vendor.verified_wedding_count) === 1 ? '' : 's'}
+                </span>
+              )}
+            </div>
+            {Number(vendor.review_count) > 0 && (
+              <p className="mb-4 inline-flex items-center gap-2 text-sm text-[#4a4257]">
+                <Star className="w-4 h-4 fill-[#F4B942] text-[#F4B942]" />
+                <strong>{Number(vendor.average_rating || 0).toFixed(1)}</strong>
+                <span className="text-[#6B617A]">· {vendor.review_count} review{Number(vendor.review_count) === 1 ? '' : 's'}</span>
+              </p>
+            )}
+            <div className="space-y-3">
+              {(vendor.reviews || []).map((review) => (
+                <article key={review.id} className="rounded-2xl border border-white/80 bg-white/70 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="font-medium text-[#2D2638]">{review.reviewer_name}</p>
+                      <p className="text-xs text-[#988FA6]">{review.wedding_name}</p>
+                    </div>
+                    <div className="flex items-center gap-1" aria-label={`${review.rating} out of 5 stars`}>
+                      {[1, 2, 3, 4, 5].map((rating) => <Star key={rating} className={`w-4 h-4 ${rating <= Number(review.rating) ? 'fill-[#F4B942] text-[#F4B942]' : 'text-[#c9bfd1]'}`} />)}
+                    </div>
+                  </div>
+                  <p className="mt-3 text-sm leading-relaxed text-[#4a4257] whitespace-pre-wrap">{review.review}</p>
+                  {review.verified && <p className="mt-3 inline-flex items-center gap-1 text-xs text-[#76588f]"><BadgeCheck className="w-3.5 h-3.5" /> Verified wedding</p>}
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
 
         {vendor.portfolio?.length > 0 && (
           <div className="mt-8" onClick={() => apiTrack(slug, 'portfolio_view')}>
