@@ -52,8 +52,8 @@ import WedoraVenueDiscovery from '@/components/WedoraVenueDiscovery';
 import WedoraVendorDiscovery from '@/components/WedoraVendorDiscovery';
 
 const INTRO_TOTAL_DURATION = 16200;
-const INTRO_STAR_TRAVEL_START = 13900;
-const INTRO_STAR_TRAVEL_DURATION = 1700;
+const INTRO_STAR_TRAVEL_START = 15100;
+const INTRO_STAR_TRAVEL_DURATION = 1050;
 const REDUCED_INTRO_DURATION = 1200;
 
 const shouldPlayIntro = (pathname) =>
@@ -909,9 +909,9 @@ const AppContent = () => {
             .wedora-intro-fly-star {
               position: absolute;
               top: 2px;
-              right: -20px;
-              width: 36px;
-              height: 36px;
+              right: -18px;
+              width: 34px;
+              height: 34px;
               overflow: visible;
               filter:
                 drop-shadow(
@@ -935,7 +935,7 @@ const AppContent = () => {
                 wedora-intro-star-glow
                 1.5s
                 ease-in-out
-                12.95s
+                13.3s
                 infinite
                 alternate;
             }
@@ -943,6 +943,9 @@ const AppContent = () => {
             .wedora-intro-star-traveling
               .wedora-intro-fly-star {
               animation: none;
+              filter:
+                drop-shadow(0 0 7px rgba(255, 116, 158, .78))
+                drop-shadow(0 0 14px rgba(96, 212, 255, .68));
             }
 
             .wedora-intro-final-label {
@@ -1397,7 +1400,7 @@ const AppContent = () => {
             aria-hidden="true"
           >
             {/* =====================================================
-                OPENING INTRO — MATCHES SECOND REFERENCE IMAGE
+                OPENING INTRO — REFERENCE TYPOGRAPHY PRESERVED
                ===================================================== */}
             <section
               className="
