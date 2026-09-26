@@ -191,7 +191,14 @@ export const VendorPublicProfile = () => {
 
         <div className="pearl-card overflow-hidden">
           <div className="relative h-44 md:h-56 bg-gradient-to-br from-[#C9B8FF]/40 via-[#F7B7D8]/40 to-[#A9E8FF]/40 overflow-hidden">
-            {vendor.portfolio?.[0] && <img src={vendor.portfolio[0]} alt="" className="w-full h-full object-cover" />}
+            {(vendor.profile_background || vendor.portfolio?.[0]) && (
+              <img
+                src={vendor.profile_background || vendor.portfolio[0]}
+                alt=""
+                data-testid="profile-cover-image"
+                className="w-full h-full object-cover"
+              />
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-white/85 to-transparent" />
             {vendor.plan_badge && (
               <span data-testid="profile-premium-badge" className="absolute top-4 right-4 inline-flex items-center gap-1 text-[10px] font-semibold tracking-widest px-3 py-1.5 rounded-full bg-white/90 backdrop-blur border border-pink-200/80 text-[#2D2638]">
