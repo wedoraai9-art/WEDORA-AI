@@ -511,48 +511,44 @@ export const ChatInterface = ({ initialPromptRef }) => {
           <svg
             data-wedora-search-sparkle
             className="wedora-search-sparkle"
-            viewBox="0 0 24 24"
+            viewBox="0 0 30 30"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
             <defs>
               <linearGradient
                 id="wedora-search-sparkle-gradient"
-                x1="2"
-                y1="2"
-                x2="22"
-                y2="22"
+                x1="4"
+                y1="4"
+                x2="26"
+                y2="26"
                 gradientUnits="userSpaceOnUse"
               >
-                <stop
-                  offset="0"
-                  className="wedora-search-sparkle-stop-pink"
-                  stopColor="#F18499"
-                />
-                <stop
-                  offset="0.5"
-                  className="wedora-search-sparkle-stop-lavender"
-                  stopColor="#CFA8D2"
-                />
-                <stop
-                  offset="1"
-                  className="wedora-search-sparkle-stop-blue"
-                  stopColor="#87DDF5"
-                />
+                <stop offset="0" className="wedora-search-sparkle-stop-pink" stopColor="#F18499" />
+                <stop offset="0.46" className="wedora-search-sparkle-stop-lavender" stopColor="#CFA8D2" />
+                <stop offset="0.72" className="wedora-search-sparkle-stop-blue" stopColor="#A6D0E9" />
+                <stop offset="1" className="wedora-search-sparkle-stop-blue" stopColor="#87DDF5" />
               </linearGradient>
             </defs>
 
             <path
-              d="M12 3L13.35 8.65L19 10L13.35 11.35L12 17L10.65 11.35L5 10L10.65 8.65L12 3Z"
+              d="M12 3.2L13.8 10.2L20.8 12L13.8 13.8L12 20.8L10.2 13.8L3.2 12L10.2 10.2L12 3.2Z"
               stroke="url(#wedora-search-sparkle-gradient)"
-              strokeWidth="1.65"
+              strokeWidth="1.55"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
             <path
-              d="M19 15L19.55 17.45L22 18L19.55 18.55L19 21L18.45 18.55L16 18L18.45 17.45L19 15Z"
+              d="M23 4.4L23.55 6.45L25.6 7L23.55 7.55L23 9.6L22.45 7.55L20.4 7L22.45 6.45L23 4.4Z"
               stroke="url(#wedora-search-sparkle-gradient)"
-              strokeWidth="1.35"
+              strokeWidth="1.15"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M21.6 18.2L22 19.8L23.6 20.2L22 20.6L21.6 22.2L21.2 20.6L19.6 20.2L21.2 19.8L21.6 18.2Z"
+              stroke="url(#wedora-search-sparkle-gradient)"
+              strokeWidth="1.05"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
