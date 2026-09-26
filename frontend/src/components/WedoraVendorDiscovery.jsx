@@ -276,23 +276,23 @@ const WedoraVendorDiscovery = () => {
   };
 
   return (
-   <div className="wedora-vendor-page min-h-screen bg-[#FAF8FF] text-[#2D2638]">
+   <div className="wedora-vendor-page min-h-screen bg-gradient-to-b from-[#FBF9FF] via-[#FFFCFE] to-[#F8F6FF] text-[#2D2638]">
 
       {/* HEADER */}
-      <header className="sticky top-0 z-40 border-b border-[#e8e1d9] bg-[#fbfaf7]/95 backdrop-blur">
+      <header className="sticky top-[82px] z-30 border-b border-[#E9E2F2] bg-[#FFFCFE]/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
 
           <button
             onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-sm text-[#6f6861] hover:text-[#302c29]"
+            className="flex items-center gap-2 text-sm text-[#756A82] hover:text-[#30283A]"
           >
             <ArrowLeft size={18} />
             Back to WEDORA
           </button>
 
           <div className="flex items-center gap-2">
-            <Sparkles size={18} className="text-[#b99768]" />
-            <span className="text-sm tracking-[0.25em] text-[#514a44]">
+            <Sparkles size={18} className="text-[#9B7CF6]" />
+            <span className="text-sm tracking-[0.25em] text-[#5F556E]">
               WEDORA AI
             </span>
           </div>
@@ -305,11 +305,16 @@ const WedoraVendorDiscovery = () => {
       {/* HERO */}
       <main>
 
-        <section className="px-6 pb-16 pt-20">
+        <section className="relative overflow-hidden px-6 pb-16 pt-12 md:pt-16">
+          <div className="pointer-events-none absolute inset-0 -z-10">
+            <div className="absolute left-[-10%] top-0 h-72 w-72 rounded-full bg-[#DCCBFF]/20 blur-[100px]" />
+            <div className="absolute right-[-8%] top-10 h-80 w-80 rounded-full bg-[#F7C6DA]/20 blur-[110px]" />
+            <div className="absolute bottom-[-20%] left-[35%] h-72 w-72 rounded-full bg-[#CBE8F7]/15 blur-[110px]" />
+          </div>
 
           <div className="mx-auto max-w-5xl text-center">
 
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#e3d8ca] bg-[#f7f1e9] px-4 py-2 text-xs tracking-[0.18em] text-[#8b7357]">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#E8DFF5] bg-[#F6F0FF] px-4 py-2 text-xs tracking-[0.18em] text-[#8E829F]">
               <Sparkles size={14} />
               INDIA'S WEDDING VENDOR DISCOVERY
             </div>
@@ -317,51 +322,51 @@ const WedoraVendorDiscovery = () => {
             <h1 className="text-4xl font-light tracking-tight md:text-6xl">
               Find the right
               <br />
-              <span className="font-normal italic text-[#a88761]">
+              <span className="font-normal italic text-[#9B7CF6]">
                 wedding vendor.
               </span>
             </h1>
 
-            <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-[#777069] md:text-lg">
+            <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-[#746A82] md:text-lg">
               Search wedding professionals across India by service,
               city and expertise — and explore their complete profile.
             </p>
 
             {/* SEARCH BOX */}
-            <div className="mx-auto mt-10 max-w-5xl rounded-[28px] border border-[#ded5ca] bg-white p-3 shadow-[0_20px_60px_rgba(70,55,40,0.08)]">
+            <div className="mx-auto mt-10 max-w-5xl rounded-[28px] border border-[#E8DFF5] bg-white p-3 shadow-[0_20px_60px_rgba(70,55,40,0.08)]">
 
               <div className="flex flex-col gap-3 lg:flex-row">
 
-                <div className="flex min-h-[64px] flex-1 items-center gap-3 rounded-2xl bg-[#faf8f5] px-5">
+                <div className="flex min-h-[64px] flex-1 items-center gap-3 rounded-2xl bg-[#FBF9FD] px-5">
 
                   <Search
                     size={21}
-                    className="shrink-0 text-[#a88761]"
+                    className="shrink-0 text-[#9B7CF6]"
                   />
 
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Search photographer, decorator, caterer..."
-                    className="w-full bg-transparent text-[15px] outline-none placeholder:text-[#a49c94]"
+                    className="w-full bg-transparent text-[15px] outline-none placeholder:text-[#B0A5C0]"
                   />
 
                   {query && (
                     <button onClick={() => setQuery('')}>
                       <X
                         size={17}
-                        className="text-[#99918a]"
+                        className="text-[#A198AD]"
                       />
                     </button>
                   )}
 
                 </div>
 
-                <div className="flex min-h-[64px] items-center gap-3 rounded-2xl bg-[#faf8f5] px-5 lg:w-[210px]">
+                <div className="flex min-h-[64px] items-center gap-3 rounded-2xl bg-[#FBF9FD] px-5 lg:w-[210px]">
 
                   <MapPin
                     size={18}
-                    className="text-[#a88761]"
+                    className="text-[#9B7CF6]"
                   />
 
                   <select
@@ -378,14 +383,14 @@ const WedoraVendorDiscovery = () => {
 
                 <button
                   onClick={() => setShowFilters(!showFilters)}
-                  className="flex min-h-[64px] items-center justify-center gap-2 rounded-2xl border border-[#ded5ca] px-6 text-sm text-[#665d55]"
+                  className="flex min-h-[64px] items-center justify-center gap-2 rounded-2xl border border-[#E8DFF5] px-6 text-sm text-[#62586F]"
                 >
                   <SlidersHorizontal size={17} />
                   Filters
                 </button>
 
                 <button
-                  className="flex min-h-[64px] items-center justify-center gap-2 rounded-2xl bg-[#302c29] px-8 text-sm text-white hover:bg-[#49423d]"
+                  className="flex min-h-[64px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#D8C8FF] via-[#E8D3F4] to-[#F7C5D9] px-8 text-sm font-medium text-[#30283A] shadow-[0_8px_24px_rgba(155,124,246,0.16)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(155,124,246,0.22)]"
                 >
                   <Search size={18} />
                   Search
@@ -395,13 +400,13 @@ const WedoraVendorDiscovery = () => {
 
               {/* FILTERS */}
               {showFilters && (
-                <div className="mt-4 border-t border-[#eee8e1] pt-4">
+                <div className="mt-4 border-t border-[#EEE8F5] pt-4">
 
                   <div className="grid gap-3 md:grid-cols-2">
 
-                    <div className="rounded-2xl border border-[#e5ddd4] bg-[#fcfaf8] p-4 text-left">
+                    <div className="rounded-2xl border border-[#E9E2F1] bg-[#FCFAFE] p-4 text-left">
 
-                      <label className="mb-2 block text-xs tracking-wide text-[#81776f]">
+                      <label className="mb-2 block text-xs tracking-wide text-[#8E829F]">
                         VENDOR CATEGORY
                       </label>
 
@@ -421,10 +426,10 @@ const WedoraVendorDiscovery = () => {
 
                     </div>
 
-                    <div className="flex items-center justify-between rounded-2xl border border-[#e5ddd4] bg-[#fcfaf8] p-4">
+                    <div className="flex items-center justify-between rounded-2xl border border-[#E9E2F1] bg-[#FCFAFE] p-4">
 
                       <div>
-                        <p className="text-xs tracking-wide text-[#81776f]">
+                        <p className="text-xs tracking-wide text-[#8E829F]">
                           SEARCH RESULTS
                         </p>
 
@@ -435,7 +440,7 @@ const WedoraVendorDiscovery = () => {
 
                       <button
                         onClick={clearFilters}
-                        className="text-xs text-[#9a7168] hover:underline"
+                        className="text-xs text-[#C98EAE] hover:underline"
                       >
                         Clear filters
                       </button>
@@ -454,12 +459,12 @@ const WedoraVendorDiscovery = () => {
         </section>
 
         {/* CATEGORY QUICK SEARCH */}
-        <section className="border-y border-[#ebe4dc] bg-white px-6 py-12">
+        <section className="border-y border-[#EEE8F4] bg-white px-6 py-12">
 
           <div className="mx-auto max-w-6xl">
 
             <div className="mb-6 text-center">
-              <p className="text-xs tracking-[0.2em] text-[#a88761]">
+              <p className="text-xs tracking-[0.2em] text-[#9B7CF6]">
                 EXPLORE VENDORS
               </p>
 
@@ -482,8 +487,8 @@ const WedoraVendorDiscovery = () => {
                     }
                     className={`rounded-full border px-4 py-2.5 text-xs transition ${
                       active
-                        ? 'border-[#b99768] bg-[#f7efe5] text-[#806b52]'
-                        : 'border-[#e3dbd2] bg-[#fdfbf9] text-[#716960] hover:border-[#cdbda9]'
+                        ? 'border-[#9B7CF6] bg-[#F5ECFF] text-[#806b52]'
+                        : 'border-[#E9E1F2] bg-[#FFFDFF] text-[#756A82] hover:border-[#D2C2EE]'
                     }`}
                   >
                     {item}
@@ -507,7 +512,7 @@ const WedoraVendorDiscovery = () => {
 
               <div>
 
-                <p className="text-xs tracking-[0.2em] text-[#a88761]">
+                <p className="text-xs tracking-[0.2em] text-[#9B7CF6]">
                   WEDORA VENDOR NETWORK
                 </p>
 
@@ -517,7 +522,7 @@ const WedoraVendorDiscovery = () => {
 
               </div>
 
-              <div className="flex items-center gap-2 text-xs text-[#837b73]">
+              <div className="flex items-center gap-2 text-xs text-[#8B8198]">
                 <Users size={15} />
                 Vendors across India
               </div>
@@ -534,15 +539,15 @@ const WedoraVendorDiscovery = () => {
                 >
 
                   {/* PROFILE COVER */}
-                  <div className="relative flex h-44 items-center justify-center bg-gradient-to-br from-[#f4e8e5] via-[#f7f1e9] to-[#e9eef3]">
+                  <div className="relative flex h-44 items-center justify-center bg-gradient-to-br from-[#F7EAF3] via-[#F6F0FF] to-[#EAF1FA]">
 
                     <div className="text-center">
 
-                      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/80 text-[#a88761]">
+                      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/80 text-[#9B7CF6]">
                         <Briefcase size={26} />
                       </div>
 
-                      <p className="mt-3 text-xs text-[#8a8179]">
+                      <p className="mt-3 text-xs text-[#958AA2]">
                         Vendor Portfolio
                       </p>
 
@@ -558,14 +563,14 @@ const WedoraVendorDiscovery = () => {
                         size={18}
                         className={
                           shortlisted.includes(vendor.id)
-                            ? 'fill-[#a88761] text-[#a88761]'
-                            : 'text-[#756d66]'
+                            ? 'fill-[#9B7CF6] text-[#9B7CF6]'
+                            : 'text-[#786E85]'
                         }
                       />
                     </button>
 
                     {vendor.verified && (
-                      <div className="absolute bottom-4 left-4 flex items-center gap-1 rounded-full bg-white/90 px-3 py-1.5 text-[10px] text-[#6c7669]">
+                      <div className="absolute bottom-4 left-4 flex items-center gap-1 rounded-full bg-white/90 px-3 py-1.5 text-[10px] text-[#718C82]">
                         <CheckCircle2 size={12} />
                         Verified Vendor
                       </div>
@@ -584,16 +589,16 @@ const WedoraVendorDiscovery = () => {
                           {vendor.name}
                         </h3>
 
-                        <p className="mt-1 text-xs text-[#8b8179]">
+                        <p className="mt-1 text-xs text-[#91869D]">
                           {vendor.category}
                         </p>
 
                       </div>
 
-                      <div className="flex items-center gap-1 rounded-full bg-[#faf5ed] px-2.5 py-1 text-xs text-[#806b52]">
+                      <div className="flex items-center gap-1 rounded-full bg-[#F7F1FF] px-2.5 py-1 text-xs text-[#806b52]">
                         <Star
                           size={12}
-                          className="fill-[#b99768]"
+                          className="fill-[#9B7CF6]"
                         />
                         {vendor.rating}
                       </div>
@@ -605,14 +610,14 @@ const WedoraVendorDiscovery = () => {
                       {vendor.city}, {vendor.state}
                     </div>
 
-                    <p className="mt-4 line-clamp-2 text-sm leading-6 text-[#777069]">
+                    <p className="mt-4 line-clamp-2 text-sm leading-6 text-[#746A82]">
                       {vendor.description}
                     </p>
 
                     {/* QUICK INFO */}
                     <div className="mt-5 grid grid-cols-2 gap-3">
 
-                      <div className="rounded-xl bg-[#faf8f5] p-3">
+                      <div className="rounded-xl bg-[#FBF9FD] p-3">
                         <p className="text-[10px] tracking-wide text-[#978d84]">
                           EXPERIENCE
                         </p>
@@ -621,7 +626,7 @@ const WedoraVendorDiscovery = () => {
                         </p>
                       </div>
 
-                      <div className="rounded-xl bg-[#faf8f5] p-3">
+                      <div className="rounded-xl bg-[#FBF9FD] p-3">
                         <p className="text-[10px] tracking-wide text-[#978d84]">
                           REVIEWS
                         </p>
@@ -642,7 +647,7 @@ const WedoraVendorDiscovery = () => {
                         )}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-[#e3dbd2] py-2.5 text-xs text-[#665d55] hover:bg-[#faf7f3]"
+                        className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-[#E9E1F2] py-2.5 text-xs text-[#62586F] hover:bg-[#FBF7FF]"
                       >
                         <Instagram size={14} />
                         Instagram
@@ -650,7 +655,7 @@ const WedoraVendorDiscovery = () => {
 
                       <a
                         href={`tel:${vendor.phone}`}
-                        className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#e3dbd2] text-[#665d55] hover:bg-[#faf7f3]"
+                        className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#E9E1F2] text-[#62586F] hover:bg-[#FBF7FF]"
                       >
                         <Phone size={15} />
                       </a>
@@ -662,7 +667,7 @@ const WedoraVendorDiscovery = () => {
                       onClick={() =>
                         setSelectedVendor(vendor)
                       }
-                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#302c29] py-3 text-xs text-white hover:bg-[#49423d]"
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#30283A] py-3 text-xs text-white hover:bg-[#40364D]"
                     >
                       View Full Profile
                       <ExternalLink size={14} />
@@ -681,7 +686,7 @@ const WedoraVendorDiscovery = () => {
 
                 <Search
                   size={35}
-                  className="mx-auto text-[#b8aa9a]"
+                  className="mx-auto text-[#B8A9C9]"
                 />
 
                 <h3 className="mt-5 text-xl font-light">
@@ -700,26 +705,26 @@ const WedoraVendorDiscovery = () => {
         </section>
 
         {/* VENDOR CTA */}
-        <section className="border-t border-[#e8e1d9] bg-white px-6 py-20">
+        <section className="border-t border-[#E9E2F2] bg-white px-6 py-20">
 
-          <div className="mx-auto max-w-5xl rounded-[30px] bg-[#f5efe7] px-8 py-14 text-center">
+          <div className="mx-auto max-w-5xl rounded-[30px] bg-[#F4EEFF] px-8 py-14 text-center">
 
             <Sparkles
               size={28}
-              className="mx-auto text-[#a88761]"
+              className="mx-auto text-[#9B7CF6]"
             />
 
             <h2 className="mt-5 text-3xl font-light">
               Are you a wedding vendor?
             </h2>
 
-            <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#766e67]">
+            <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#7C7188]">
               Create your WEDORA vendor profile and let couples discover
               your services, portfolio and contact information.
             </p>
 
             <button
-              className="mt-7 rounded-xl bg-[#302c29] px-7 py-3 text-sm text-white"
+              className="mt-7 rounded-xl bg-[#30283A] px-7 py-3 text-sm text-white"
             >
               Join WEDORA Vendor Network
             </button>
@@ -732,12 +737,12 @@ const WedoraVendorDiscovery = () => {
 
       {/* FULL PROFILE MODAL */}
       {selectedVendor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#29231f]/50 px-5 py-8 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292330]/50 px-5 py-8 backdrop-blur-sm">
 
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[30px] bg-white shadow-2xl">
 
             {/* COVER */}
-            <div className="relative flex h-52 items-center justify-center bg-gradient-to-br from-[#f4e8e5] via-[#f7f1e9] to-[#e9eef3]">
+            <div className="relative flex h-52 items-center justify-center bg-gradient-to-br from-[#F7EAF3] via-[#F6F0FF] to-[#EAF1FA]">
 
               <button
                 onClick={() => setSelectedVendor(null)}
@@ -748,11 +753,11 @@ const WedoraVendorDiscovery = () => {
 
               <div className="text-center">
 
-                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-white text-[#a88761]">
+                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-white text-[#9B7CF6]">
                   <Briefcase size={32} />
                 </div>
 
-                <p className="mt-3 text-xs text-[#81776f]">
+                <p className="mt-3 text-xs text-[#8E829F]">
                   {selectedVendor.category}
                 </p>
 
@@ -775,7 +780,7 @@ const WedoraVendorDiscovery = () => {
                     {selectedVendor.verified && (
                       <CheckCircle2
                         size={18}
-                        className="text-[#718c72]"
+                        className="text-[#708C82]"
                       />
                     )}
 
@@ -788,10 +793,10 @@ const WedoraVendorDiscovery = () => {
 
                 </div>
 
-                <div className="flex items-center gap-1 self-start rounded-full bg-[#faf5ed] px-4 py-2 text-sm text-[#806b52]">
+                <div className="flex items-center gap-1 self-start rounded-full bg-[#F7F1FF] px-4 py-2 text-sm text-[#806b52]">
                   <Star
                     size={14}
-                    className="fill-[#b99768]"
+                    className="fill-[#9B7CF6]"
                   />
                   {selectedVendor.rating} ·{' '}
                   {selectedVendor.reviews} reviews
@@ -799,14 +804,14 @@ const WedoraVendorDiscovery = () => {
 
               </div>
 
-              <p className="mt-6 text-sm leading-7 text-[#6f6861]">
+              <p className="mt-6 text-sm leading-7 text-[#756A82]">
                 {selectedVendor.description}
               </p>
 
               {/* PROFILE DETAILS */}
               <div className="mt-7 grid gap-3 md:grid-cols-2">
 
-                <div className="rounded-2xl bg-[#faf8f5] p-4">
+                <div className="rounded-2xl bg-[#FBF9FD] p-4">
                   <p className="text-[10px] tracking-wide text-[#978d84]">
                     EXPERIENCE
                   </p>
@@ -815,7 +820,7 @@ const WedoraVendorDiscovery = () => {
                   </p>
                 </div>
 
-                <div className="rounded-2xl bg-[#faf8f5] p-4">
+                <div className="rounded-2xl bg-[#FBF9FD] p-4">
                   <p className="text-[10px] tracking-wide text-[#978d84]">
                     PRICE RANGE
                   </p>
@@ -824,7 +829,7 @@ const WedoraVendorDiscovery = () => {
                   </p>
                 </div>
 
-                <div className="rounded-2xl bg-[#faf8f5] p-4">
+                <div className="rounded-2xl bg-[#FBF9FD] p-4">
                   <p className="text-[10px] tracking-wide text-[#978d84]">
                     ADDRESS
                   </p>
@@ -833,7 +838,7 @@ const WedoraVendorDiscovery = () => {
                   </p>
                 </div>
 
-                <div className="rounded-2xl bg-[#faf8f5] p-4">
+                <div className="rounded-2xl bg-[#FBF9FD] p-4">
                   <p className="text-[10px] tracking-wide text-[#978d84]">
                     PHONE
                   </p>
@@ -856,7 +861,7 @@ const WedoraVendorDiscovery = () => {
                   {selectedVendor.services.map((service) => (
                     <span
                       key={service}
-                      className="rounded-full bg-[#f7f1e9] px-4 py-2 text-xs text-[#75634f]"
+                      className="rounded-full bg-[#F6F0FF] px-4 py-2 text-xs text-[#74628D]"
                     >
                       {service}
                     </span>
@@ -878,9 +883,9 @@ const WedoraVendorDiscovery = () => {
                   {selectedVendor.portfolio.map((item) => (
                     <div
                       key={item}
-                      className="flex h-28 items-end rounded-2xl bg-gradient-to-br from-[#eee4dd] to-[#e5eaf0] p-3"
+                      className="flex h-28 items-end rounded-2xl bg-gradient-to-br from-[#EEE8F4] to-[#E9E7F5] p-3"
                     >
-                      <span className="text-xs text-[#665d55]">
+                      <span className="text-xs text-[#62586F]">
                         {item}
                       </span>
                     </div>
@@ -895,7 +900,7 @@ const WedoraVendorDiscovery = () => {
 
                 <a
                   href={`tel:${selectedVendor.phone}`}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-[#302c29] py-3 text-xs text-white"
+                  className="flex items-center justify-center gap-2 rounded-xl bg-[#30283A] py-3 text-xs text-white"
                 >
                   <Phone size={14} />
                   Call Vendor
@@ -908,7 +913,7 @@ const WedoraVendorDiscovery = () => {
                   )}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center justify-center gap-2 rounded-xl border border-[#ded5ca] py-3 text-xs text-[#665d55]"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-[#E8DFF5] py-3 text-xs text-[#62586F]"
                 >
                   <Instagram size={14} />
                   Instagram
@@ -918,7 +923,7 @@ const WedoraVendorDiscovery = () => {
                   href={`https://${selectedVendor.website}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center justify-center gap-2 rounded-xl border border-[#ded5ca] py-3 text-xs text-[#665d55]"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-[#E8DFF5] py-3 text-xs text-[#62586F]"
                 >
                   <Globe size={14} />
                   Website
