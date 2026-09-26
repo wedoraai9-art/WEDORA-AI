@@ -4940,6 +4940,7 @@ Return ONLY valid JSON in exactly this shape:
       "state": "",
       "type": "Palace|Resort|Banquet|Garden|Beach|Hotel|Farmhouse|Other",
       "capacity": 0,
+      "hotel_guest_occupancy": 0,
       "rooms": 0,
       "starting_price": 0,
       "price_label": "",
@@ -4957,7 +4958,10 @@ Rules:
 - A venue may appear only once.
 - source_url MUST exactly match one of the supplied result URLs.
 - Never label a public-web venue as WEDORA Verified.
-- Keep capacity and rooms at 0 when they are not clearly published.
+- Keep event capacity at 0 when the wedding/event guest capacity is not clearly published.
+- "capacity" means ONLY the number of guests the venue/event space can host for the wedding or event. Never use hotel room occupancy, beds, rooms, or sleeping capacity as event capacity.
+- "hotel_guest_occupancy" means ONLY the total number of guests the hotel/property can accommodate for the event, when the source clearly states that total event accommodation capacity. Do not interpret it as overnight sleeping capacity, bed count, or room count. Do not calculate or guess it. If not clearly published, return 0.
+- "rooms" means the total number of accommodation rooms. Keep it at 0 when not clearly published.
 - Keep starting_price at 0 when the result does not clearly publish a usable starting price.
 - Keep price_label explicit, such as "₹X per day", "₹X per plate", "rental price", or "Price on request".
 - Never convert a per-plate price into a total wedding budget.
@@ -5050,6 +5054,7 @@ Rules:
                 return default
 
         capacity = safe_number(venue.get("capacity"))
+        hotel_guest_occupancy = safe_number(venue.get("hotel_guest_occupancy"))
         rooms = safe_number(venue.get("rooms"))
         starting_price = safe_number(venue.get("starting_price"))
 
@@ -5060,6 +5065,7 @@ Rules:
             "state": str(venue.get("state") or "").strip(),
             "type": str(venue.get("type") or "Other").strip(),
             "capacity": int(capacity) if capacity.is_integer() else capacity,
+            "hotelGuestOccupancy": int(hotel_guest_occupancy) if hotel_guest_occupancy.is_integer() else hotel_guest_occupancy,
             "rooms": int(rooms) if rooms.is_integer() else rooms,
             "startingPrice": int(starting_price) if starting_price.is_integer() else starting_price,
             "priceLabel": str(venue.get("price_label") or "Price on request").strip(),
