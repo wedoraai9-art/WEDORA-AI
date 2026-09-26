@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { NAV } from '@/constants/testIds';
 import { Menu, X } from 'lucide-react';
 
@@ -14,18 +15,8 @@ const links = [
   { id: NAV.about, label: 'For Vendors', href: '/for-vendors' },
 ];
 
-const scrollTo = (href) => {
-  if (href.startsWith('/')) {
-    window.location.href = href;
-    return;
-  }
-
-  const el = document.querySelector(href);
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  else window.location.href = '/' + href;
-};
-
 export const Navigation = ({ introActive = false }) => {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -35,6 +26,47 @@ export const Navigation = ({ introActive = false }) => {
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  const scrollTo = (href) => {
+    // Internal React Router pages: navigate without a full browser reload.
+    if (href.startsWith('/')) {
+      navigate(href);
+      setOpen(false);
+
+      // Start the destination page from the top.
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // Homepage section links.
+    const el = document.querySelector(href);
+
+    if (el) {
+      el.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+      return;
+    }
+
+    // If the section does not exist on the current page, return to Home.
+    // The intro will NOT replay because App.jsx stores the intro state
+    // in sessionStorage.
+    navigate('/');
+    setOpen(false);
+
+    // Wait for the Home page to render before scrolling to the section.
+    window.setTimeout(() => {
+      const target = document.querySelector(href);
+
+      if (target) {
+        target.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      }
+    }, 80);
+  };
 
   const entranceClass = introActive
     ? 'wedora-nav-hidden'
