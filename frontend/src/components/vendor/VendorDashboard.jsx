@@ -46,6 +46,7 @@ const TABS = [
   { id: 'overview', label: 'Overview', icon: LayoutGrid },
   { id: 'weddings', label: 'Weddings', icon: CalendarDays },
   { id: 'calendar', label: 'Calendar', icon: CalendarDays },
+  { id: 'profit-loss', label: 'Profit & Loss', icon: Wallet },
   { id: 'profile', label: 'My Profile', icon: User },
   { id: 'portfolio', label: 'Portfolio', icon: Images },
   { id: 'leads', label: 'Leads', icon: Inbox },
@@ -337,6 +338,89 @@ const VendorCalendarTab = ({ weddings = [], tasks = [], notifications = [] }) =>
             <div className="sm:col-span-2 flex justify-end"><button disabled={saving} type="submit" className="glow-btn !py-2.5 !px-5 !text-sm">{saving ? 'Saving…' : editingId ? 'Save changes' : 'Save event'}</button></div>
           </form>
         </section>
+      )}
+    </div>
+  );
+};
+
+const VendorProfitLossTab = () => {
+  const currentMonth = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  };
+  const [month, setMonth] = useState(currentMonth);
+  const [report, setReport] = useState(null);
+  const [reportLoading, setReportLoading] = useState(false);
+
+  const loadReport = useCallback(async () => {
+    setReportLoading(true);
+    try {
+      const response = await authAxios.get('/vendor/profit-loss', { params: { month } });
+      setReport(response?.data || null);
+    } catch (error) {
+      toast.error(fmtApiError(error?.response?.data?.detail, 'Could not load the monthly Profit & Loss report'));
+      setReport(null);
+    } finally {
+      setReportLoading(false);
+    }
+  }, [month]);
+
+  useEffect(() => {
+    loadReport();
+  }, [loadReport]);
+
+  const currency = (value) => `₹${Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+  const monthLabel = month
+    ? new Date(`${month}-01T00:00:00`).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+    : '';
+  const activeWeddings = (report?.by_wedding || []).filter(
+    (item) => Number(item.income || 0) !== 0 || Number(item.expenses || 0) !== 0
+  );
+
+  return (
+    <div className="space-y-5" data-testid="vendor-profit-loss-tab">
+      <section className="pearl-card p-5 md:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-widest text-[#988FA6]">Business Report</p>
+            <h2 className="font-display text-2xl text-[#2D2638] mt-1">Monthly Profit & Loss</h2>
+            <p className="text-sm text-[#6B617A] mt-1">Money received and expenses recorded across your weddings.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <label htmlFor="vendor-profit-loss-month" className="text-xs text-[#8B8194]">Month</label>
+            <input id="vendor-profit-loss-month" type="month" value={month} onChange={(event) => setMonth(event.target.value)} className="rounded-xl border border-[#eadff2] bg-white px-3 py-2 text-sm text-[#3F3748]" />
+            <button type="button" onClick={loadReport} disabled={reportLoading} className="chip !text-xs disabled:opacity-60">Refresh</button>
+          </div>
+        </div>
+      </section>
+
+      {reportLoading ? (
+        <section className="pearl-card p-8 text-center text-sm text-[#8B8194]">Loading your monthly report…</section>
+      ) : report ? (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <StatCard icon={Wallet} label="Payments Received" value={currency(report.income)} testid="stat-monthly-income" />
+            <StatCard icon={CreditCard} label="Recorded Expenses" value={currency(report.expenses)} testid="stat-monthly-expenses" />
+            <StatCard icon={BarChart3} label="Net Profit" value={currency(report.net_profit)} testid="stat-monthly-net-profit" />
+            <StatCard icon={Clock} label="Invoice Balance Due" value={currency(report.invoice_balance_due)} testid="stat-monthly-invoice-balance" />
+          </div>
+
+          <section className="pearl-card p-5 md:p-6">
+            <p className="text-xs uppercase tracking-widest text-[#988FA6]">{monthLabel}</p>
+            <h3 className="font-heading font-semibold text-lg text-[#2D2638] mt-1">Wedding breakdown</h3>
+            <p className="text-xs text-[#8B8194] mt-1">Refunds are deducted from payments received.</p>
+            {activeWeddings.length ? (
+              <div className="mt-4 overflow-x-auto rounded-xl border border-[#eadff2] bg-white">
+                <table className="w-full min-w-[600px] text-left">
+                  <thead><tr className="border-b border-[#eadff2] bg-[#faf7ff] text-xs text-[#8B8194]"><th className="px-4 py-3 font-medium">Wedding</th><th className="px-4 py-3 font-medium">Received</th><th className="px-4 py-3 font-medium">Expenses</th><th className="px-4 py-3 font-medium">Net Profit</th></tr></thead>
+                  <tbody>{activeWeddings.map((item) => <tr key={item.wedding_id} className="border-b border-[#f0e8f5] last:border-b-0"><td className="px-4 py-3 text-sm text-[#3F3748]">{item.wedding_name}</td><td className="px-4 py-3 text-sm text-[#6B617A]">{currency(item.income)}</td><td className="px-4 py-3 text-sm text-[#6B617A]">{currency(item.expenses)}</td><td className="px-4 py-3 text-sm font-medium text-[#3F3748]">{currency(item.net_profit)}</td></tr>)}</tbody>
+                </table>
+              </div>
+            ) : <p className="mt-4 text-sm text-[#6B617A]">No payments or expenses recorded for {monthLabel}.</p>}
+          </section>
+        </>
+      ) : (
+        <section className="pearl-card p-8 text-center text-sm text-[#8B8194]">The report could not be loaded. Please try Refresh.</section>
       )}
     </div>
   );
@@ -995,6 +1079,9 @@ const VendorDashboard = () => {
             notifications={dashboardNotifications}
           />
         )}
+
+        {/* Monthly Profit & Loss */}
+        {tab === 'profit-loss' && vendor && <VendorProfitLossTab />}
 
         {/* Profile */}
         {tab === 'profile' && vendor && (
