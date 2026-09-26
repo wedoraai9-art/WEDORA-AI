@@ -464,6 +464,23 @@ const AppContent = () => {
                 #fffdfd;
               isolation: isolate;
               animation: wedora-intro-screen-in .55s ease-out both;
+              transition: background .85s ease, opacity .85s ease;
+            }
+
+            /* During the star handoff, let the real homepage appear underneath
+               so the journey reads as one continuous transition. */
+            .wedora-intro-star-traveling {
+              background: rgba(255, 253, 253, .24);
+            }
+
+            .wedora-intro-star-traveling::before {
+              opacity: .16;
+              transition: opacity .85s ease;
+            }
+
+            .wedora-intro-star-traveling::after {
+              opacity: .12;
+              transition: opacity .85s ease;
             }
 
             .wedora-intro-screen::before {
@@ -576,6 +593,37 @@ const AppContent = () => {
               text-align: center;
             }
 
+            /* All intro scenes except the final lockup place their small
+               kicker beneath the main heading, matching the requested layout. */
+            .wedora-intro-scene:not(.wedora-intro-scene--final)
+              .wedora-intro-scene-content {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+            }
+
+            .wedora-intro-scene:not(.wedora-intro-scene--final)
+              .wedora-intro-kicker {
+              order: 2;
+              margin: 22px 0 0;
+            }
+
+            .wedora-intro-scene:not(.wedora-intro-scene--final)
+              .wedora-intro-title {
+              order: 1;
+            }
+
+            .wedora-intro-scene:not(.wedora-intro-scene--final)
+              .wedora-intro-description,
+            .wedora-intro-scene:not(.wedora-intro-scene--final)
+              .wedora-intro-feature-row,
+            .wedora-intro-scene:not(.wedora-intro-scene--final)
+              .wedora-intro-discovery-cards,
+            .wedora-intro-scene:not(.wedora-intro-scene--final)
+              .wedora-intro-vendor-panel {
+              order: 3;
+            }
+
             .wedora-intro-kicker {
               margin: 0 0 18px;
               color: #9B91A8;
@@ -600,7 +648,7 @@ const AppContent = () => {
 
             .wedora-intro-scene--brand
               .wedora-intro-kicker {
-              margin-bottom: 38px;
+              margin: 28px 0 0;
               color: #9B91A8;
               font-size: clamp(9px, 1vw, 12px);
               font-weight: 500;
@@ -651,6 +699,13 @@ const AppContent = () => {
             .wedora-intro-scene--brand
               .wedora-intro-description {
               display: none;
+            }
+
+            /* The final frame is intentionally excluded from the kicker
+               repositioning above and remains visually unchanged. */
+            .wedora-intro-scene--final
+              .wedora-intro-kicker {
+              order: initial;
             }
 
             .wedora-intro-title {
@@ -1321,7 +1376,7 @@ const AppContent = () => {
 
               .wedora-intro-scene--brand
                 .wedora-intro-kicker {
-                margin-bottom: 28px;
+                margin: 22px 0 0;
                 font-size: 9px;
                 letter-spacing: .27em;
               }
