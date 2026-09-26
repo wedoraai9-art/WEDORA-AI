@@ -41,6 +41,7 @@ const sampleVenues = [
     city: 'Jaipur',
     type: 'Palace',
     capacity: 500,
+    hotelGuestOccupancy: 0,
     rooms: 80,
     startingPrice: 650000,
     location: 'Jaipur, Rajasthan',
@@ -54,6 +55,7 @@ const sampleVenues = [
     city: 'Jaipur',
     type: 'Garden',
     capacity: 800,
+    hotelGuestOccupancy: 0,
     rooms: 45,
     startingPrice: 450000,
     location: 'Jaipur, Rajasthan',
@@ -67,6 +69,7 @@ const sampleVenues = [
     city: 'Udaipur',
     type: 'Resort',
     capacity: 350,
+    hotelGuestOccupancy: 0,
     rooms: 110,
     startingPrice: 850000,
     location: 'Udaipur, Rajasthan',
@@ -139,6 +142,10 @@ const WedoraVenueDiscovery = () => {
       venueUpdates.forEach((item) => {
         if (item.field === 'Capacity') {
           updatedVenue.capacity = Number(item.correctedValue);
+        }
+
+        if (item.field === 'Hotel Guest Occupancy') {
+          updatedVenue.hotelGuestOccupancy = Number(item.correctedValue);
         }
 
         if (item.field === 'Starting Price') {
@@ -787,14 +794,23 @@ const WedoraVenueDiscovery = () => {
 
                         </div>
 
-                        <div className="mt-5 grid grid-cols-2 gap-3">
+                        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
 
                           <div className="rounded-xl bg-[#FBF9FD] p-3">
                             <p className="text-[10px] tracking-wide text-[#978d84]">
-                              CAPACITY
+                              EVENT CAPACITY
                             </p>
                             <p className="mt-1 text-sm">
-                              {venue.capacity} guests
+                              {venue.capacity ? `${venue.capacity} guests` : 'Not specified'}
+                            </p>
+                          </div>
+
+                          <div className="rounded-xl bg-[#FBF9FD] p-3">
+                            <p className="text-[10px] tracking-wide text-[#978d84]">
+                              HOTEL GUEST OCCUPANCY
+                            </p>
+                            <p className="mt-1 text-sm">
+                              {venue.hotelGuestOccupancy ? `${venue.hotelGuestOccupancy} guests` : 'Not specified'}
                             </p>
                           </div>
 
@@ -803,7 +819,7 @@ const WedoraVenueDiscovery = () => {
                               ROOMS
                             </p>
                             <p className="mt-1 text-sm">
-                              {venue.rooms}
+                              {venue.rooms || 'Not specified'}
                             </p>
                           </div>
 
@@ -926,7 +942,7 @@ const WedoraVenueDiscovery = () => {
             </h2>
 
             <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-[#82778E]">
-              Found an outdated price, incorrect capacity, changed contact
+              Found an outdated price, incorrect event capacity, hotel guest occupancy, changed contact
               information or another mistake? Submit an update and WEDORA
               can use verified corrections in future searches.
             </p>
@@ -1007,7 +1023,10 @@ const WedoraVenueDiscovery = () => {
                         Starting Price
                       </option>
                       <option value="Capacity">
-                        Guest Capacity
+                        Event Capacity
+                      </option>
+                      <option value="Hotel Guest Occupancy">
+                        Hotel Guest Occupancy
                       </option>
                       <option value="Rooms">
                         Number of Rooms
