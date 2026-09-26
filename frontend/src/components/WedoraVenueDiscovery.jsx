@@ -159,23 +159,131 @@ const WedoraVenueDiscovery = () => {
     });
   }, [savedUpdates]);
 
+  // Convert natural-language searches into the same filters used by
+  // the venue database. This makes searches such as
+  // "Outdoor venue near Jaipur under ₹5 lakh" actually return matching
+  // venues instead of treating the whole sentence as a literal keyword.
+  const parsedSearch = useMemo(() => {
+    const text = query.toLowerCase().trim();
+
+    let parsedLocation = location;
+    let parsedGuests = guests;
+    let parsedBudget = budget;
+    let parsedType = selectedType;
+    let parsedRooms = '';
+
+    // Location
+    const knownCities = [
+      'jaipur',
+      'udaipur',
+      'jodhpur',
+      'delhi',
+      'mumbai',
+      'goa',
+      'pushkar',
+      'ajmer',
+    ];
+
+    if (!parsedLocation) {
+      const foundCity = knownCities.find((city) => text.includes(city));
+      if (foundCity) {
+        parsedLocation = foundCity;
+      }
+    }
+
+    // Guests: "300 guests", "for 500 guests", etc.
+    if (!parsedGuests) {
+      const guestMatch = text.match(/(\d[\d,]*)\s*(?:guests?|people|persons?)/i);
+      if (guestMatch) {
+        parsedGuests = guestMatch[1].replace(/,/g, '');
+      }
+    }
+
+    // Rooms: "100 rooms", "with 80 rooms", etc.
+    const roomMatch = text.match(/(\d[\d,]*)\s*rooms?/i);
+    if (roomMatch) {
+      parsedRooms = roomMatch[1].replace(/,/g, '');
+    }
+
+    // Budget:
+    // ₹5 lakh / 5 lakh / 5 lakhs -> 500000
+    // ₹50 lakh -> 5000000
+    // ₹500000 -> 500000
+    if (!parsedBudget) {
+      const lakhMatch = text.match(/(?:₹|rs\.?\s*)?(\d+(?:\.\d+)?)\s*(?:lakh|lakhs|lac|lacs)/i);
+      const numberMatch = text.match(/(?:₹|rs\.?\s*)?(\d[\d,]*)\s*(?:only|budget)?/i);
+
+      if (lakhMatch) {
+        parsedBudget = String(
+          Math.round(Number(lakhMatch[1]) * 100000)
+        );
+      } else if (numberMatch && /budget|under|below|within|max|upto|up to|₹|rs/i.test(text)) {
+        parsedBudget = numberMatch[1].replace(/,/g, '');
+      }
+    }
+
+    // Venue type / intent.
+    if (!parsedType) {
+      if (/palace|fort|heritage/i.test(text)) {
+        parsedType = 'Palace';
+      } else if (/resort/i.test(text)) {
+        parsedType = 'Resort';
+      } else if (/banquet|indoor/i.test(text)) {
+        parsedType = 'Banquet';
+      } else if (/garden|outdoor|open.?air|lawn|green/i.test(text)) {
+        // Our current sample database uses Garden for outdoor venues.
+        parsedType = 'Garden';
+      } else if (/beach/i.test(text)) {
+        parsedType = 'Beach';
+      }
+    }
+
+    return {
+      location: parsedLocation,
+      guests: parsedGuests,
+      budget: parsedBudget,
+      type: parsedType,
+      rooms: parsedRooms,
+    };
+  }, [query, location, guests, budget, selectedType]);
+
   const filteredVenues = useMemo(() => {
     if (!searched) return [];
 
+    const searchText = query.toLowerCase().trim();
+
     return mergedVenues.filter((venue) => {
       const matchesLocation =
-        !location ||
-        venue.city.toLowerCase().includes(location.toLowerCase()) ||
-        venue.location.toLowerCase().includes(location.toLowerCase());
+        !parsedSearch.location ||
+        venue.city.toLowerCase().includes(parsedSearch.location.toLowerCase()) ||
+        venue.location.toLowerCase().includes(parsedSearch.location.toLowerCase());
 
       const matchesGuests =
-        !guests || venue.capacity >= Number(guests);
+        !parsedSearch.guests ||
+        venue.capacity >= Number(parsedSearch.guests);
 
       const matchesBudget =
-        !budget || venue.startingPrice <= Number(budget);
+        !parsedSearch.budget ||
+        venue.startingPrice <= Number(parsedSearch.budget);
+
+      const matchesRooms =
+        !parsedSearch.rooms ||
+        venue.rooms >= Number(parsedSearch.rooms);
 
       const matchesType =
-        !selectedType || venue.type === selectedType;
+        !parsedSearch.type ||
+        venue.type.toLowerCase() === parsedSearch.type.toLowerCase();
+
+      // Only use the free-text query as a fallback when it does not contain
+      // structured search information. Structured terms are already handled
+      // above, so "Outdoor venue near Jaipur under ₹5 lakh" can match the
+      // actual venue record.
+      const structuredSearchDetected =
+        Boolean(parsedSearch.location) ||
+        Boolean(parsedSearch.guests) ||
+        Boolean(parsedSearch.budget) ||
+        Boolean(parsedSearch.type) ||
+        Boolean(parsedSearch.rooms);
 
       const searchableText = `
         ${venue.name}
@@ -184,32 +292,37 @@ const WedoraVenueDiscovery = () => {
         ${venue.location}
       `.toLowerCase();
 
-      const matchesQuery =
-        !query ||
-        searchableText.includes(query.toLowerCase()) ||
-        query.toLowerCase().includes(venue.city.toLowerCase()) ||
-        query.toLowerCase().includes(venue.type.toLowerCase());
+      const matchesFreeText =
+        !searchText ||
+        structuredSearchDetected ||
+        searchableText.includes(searchText);
 
       return (
         matchesLocation &&
         matchesGuests &&
         matchesBudget &&
+        matchesRooms &&
         matchesType &&
-        matchesQuery
+        matchesFreeText
       );
     });
-  }, [
-    searched,
-    mergedVenues,
-    location,
-    guests,
-    budget,
-    selectedType,
-    query,
-  ]);
+  }, [searched, mergedVenues, parsedSearch, query]);
 
   const handleSearch = () => {
     setSearched(true);
+
+    // Move the user to the results after the search button is pressed.
+    // A short delay allows React to render the results first.
+    window.setTimeout(() => {
+      const results = document.getElementById('venue-results');
+
+      if (results) {
+        results.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      }
+    }, 80);
   };
 
   const useSuggestion = (suggestion) => {
@@ -534,7 +647,7 @@ const WedoraVenueDiscovery = () => {
 
         {/* RESULTS */}
         {searched && (
-          <section className="px-6 py-16">
+          <section id="venue-results" className="scroll-mt-24 px-6 py-16">
 
             <div className="mx-auto max-w-6xl">
 
