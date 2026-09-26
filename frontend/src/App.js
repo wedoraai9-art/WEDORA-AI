@@ -1,217 +1,465 @@
-import React, { useState, useEffect } from 'react';
-import { NAV } from '@/constants/testIds';
-import { Menu, X } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import '@/App.css';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  useLocation,
+} from 'react-router-dom';
+import { Toaster } from 'sonner';
 
-const LOGO_URL = '/WEDORA.jpg';
+import { AuthProvider } from '@/context/AuthContext';
+import Navigation from '@/components/Navigation';
+import Hero from '@/components/Hero';
+import Capabilities from '@/components/Capabilities';
+import HowItWorks from '@/components/HowItWorks';
+import AIDesigner from '@/components/AIDesigner';
+import BudgetPlanner from '@/components/BudgetPlanner';
+import VenueDiscovery from '@/components/VenueDiscovery';
+import PromptExamples from '@/components/PromptExamples';
+import FinalCTA from '@/components/FinalCTA';
+import Footer from '@/components/Footer';
+import VendorLanding from '@/components/vendor/VendorLanding';
+import VendorAuth from '@/components/vendor/VendorAuth';
+import VendorDashboard from '@/components/vendor/VendorDashboard';
+import AdminDashboard from '@/components/vendor/AdminDashboard';
+import Marketplace, {
+  VendorPublicProfile,
+} from '@/components/marketplace/Marketplace';
+import SharePage from '@/components/SharePage';
+import WeddingPlanner from '@/components/WeddingPlanner';
+import WeddingChecklist from '@/components/WeddingChecklist';
+import WeddingTimeline from '@/components/WeddingTimeline';
+import WeddingGuests from '@/components/WeddingGuests';
+import WeddingBudget from '@/components/WeddingBudget';
+import WeddingVenuePlanning from '@/components/WeddingVenuePlanning';
+import WeddingPhotography from '@/components/WeddingPhotography';
+import WeddingCatering from '@/components/WeddingCatering';
+import WeddingCouple from '@/components/WeddingCouple';
+import WeddingTransportation from '@/components/WeddingTransportation';
+import WedoraVenueDiscovery from '@/components/WedoraVenueDiscovery';
+import WedoraVendorDiscovery from '@/components/WedoraVendorDiscovery';
 
-const links = [
-  { id: NAV.home, label: 'Home', href: '#hero' },
-  { id: NAV.planWedding, label: 'Plan Wedding', href: '#capabilities' },
-  { id: NAV.aiDesigner, label: 'AI Designer', href: '#designer' },
-  { id: NAV.budget, label: 'Budget', href: '#budget' },
-  { id: NAV.venues, label: 'Venues', href: '#venues' },
-  { id: NAV.vendors, label: 'Marketplace', href: '/marketplace' },
-  { id: NAV.about, label: 'For Vendors', href: '/for-vendors' },
-];
+const INTRO_TOTAL_DURATION = 3500;
+const LOGO_TRAVEL_START = 2600;
+const LOGO_TRAVEL_DURATION = 750;
+const HIDDEN_NAVBAR_OFFSET = 72;
 
-const scrollTo = (href) => {
-  if (href.startsWith('/')) {
-    window.location.href = href;
-    return;
-  }
+const shouldPlayIntro = (pathname) => {
+  if (pathname !== '/' || typeof window === 'undefined') return false;
 
-  const el = document.querySelector(href);
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  else window.location.href = '/' + href;
+  const prefersReducedMotion =
+    window.matchMedia &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  return !prefersReducedMotion;
 };
 
-export const Navigation = ({ introActive = false }) => {
-  const [open, setOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+const Home = () => {
+  const chatPromptRef = useRef(null);
+
+  const handlePrompt = (text) => {
+    const el = document.querySelector('#hero');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    setTimeout(() => {
+      if (chatPromptRef.current) chatPromptRef.current(text);
+    }, 500);
+  };
+
+  return (
+    <div className="App min-h-screen">
+      <Hero chatRef={chatPromptRef} />
+      <Capabilities />
+      <HowItWorks />
+      <AIDesigner />
+      <BudgetPlanner />
+      <VenueDiscovery />
+      <PromptExamples onPrompt={handlePrompt} />
+      <FinalCTA onStart={() => handlePrompt('Help me plan my dream wedding.')} />
+      <Footer />
+    </div>
+  );
+};
+
+const AppContent = () => {
+  const location = useLocation();
+  const isHomePage = location.pathname === '/';
+  const introLogoRef = useRef(null);
+  const logoAnimationRef = useRef(null);
+
+  const [introActive, setIntroActive] = useState(() =>
+    shouldPlayIntro(location.pathname)
+  );
+  const [introTraveling, setIntroTraveling] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
+    if (!isHomePage) {
+      if (introActive) setIntroActive(false);
+      return undefined;
+    }
 
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+    if (!introActive) return undefined;
 
-  const entranceClass = introActive
-    ? 'wedora-nav-hidden'
-    : 'wedora-nav-arriving';
+    const travelTimer = window.setTimeout(() => {
+      setIntroTraveling(true);
+
+      const introLogo = introLogoRef.current;
+      const navbarLogo = document.querySelector('.wedora-nav-logo img');
+
+      if (!introLogo || !navbarLogo || !introLogo.animate) return;
+
+      const startRect = introLogo.getBoundingClientRect();
+      const targetRect = navbarLogo.getBoundingClientRect();
+
+      const startCenterX = startRect.left + startRect.width / 2;
+      const startCenterY = startRect.top + startRect.height / 2;
+      const targetCenterX = targetRect.left + targetRect.width / 2;
+      const targetCenterY =
+        targetRect.top + targetRect.height / 2 + HIDDEN_NAVBAR_OFFSET;
+
+      const moveX = targetCenterX - startCenterX;
+      const moveY = targetCenterY - startCenterY;
+      const scaleX = targetRect.width / startRect.width;
+      const scaleY = targetRect.height / startRect.height;
+
+      const endTransform =
+        `translate(calc(-50% + ${moveX}px), calc(-50% + ${moveY}px)) ` +
+        `scale(${scaleX}, ${scaleY})`;
+
+      logoAnimationRef.current = introLogo.animate(
+        [
+          {
+            transform: 'translate(-50%, -50%) scale(1, 1)',
+            borderRadius: '30px',
+          },
+          {
+            transform: endTransform,
+            borderRadius: '50%',
+          },
+        ],
+        {
+          duration: LOGO_TRAVEL_DURATION,
+          easing: 'cubic-bezier(.22, .72, .22, 1)',
+          fill: 'forwards',
+        }
+      );
+    }, LOGO_TRAVEL_START);
+
+    const finishTimer = window.setTimeout(() => {
+      setIntroActive(false);
+    }, INTRO_TOTAL_DURATION);
+
+    return () => {
+      window.clearTimeout(travelTimer);
+      window.clearTimeout(finishTimer);
+
+      if (logoAnimationRef.current) {
+        logoAnimationRef.current.cancel();
+        logoAnimationRef.current = null;
+      }
+    };
+  }, [introActive, isHomePage]);
+
+  const finishIntroEarly = () => {
+    setIntroActive(false);
+  };
 
   return (
     <>
-      <style>{`
-        .wedora-nav-hidden {
-          opacity: 0;
-          pointer-events: none;
-          transform: translate(-50%, -72px);
-        }
+      <div className="App min-h-screen">
+        <Navigation introActive={introActive} />
 
-        .wedora-nav-arriving {
-          animation: wedora-nav-glide-in .85s cubic-bezier(.2, .75, .2, 1) both;
-        }
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/wedding-planning" element={<WeddingPlanner />} />
+          <Route
+            path="/wedding-planning/checklist"
+            element={<WeddingChecklist />}
+          />
+          <Route
+            path="/wedding-planning/timeline"
+            element={<WeddingTimeline />}
+          />
+          <Route
+            path="/wedding-planning/guests"
+            element={<WeddingGuests />}
+          />
+          <Route
+            path="/wedding-planning/budget"
+            element={<WeddingBudget />}
+          />
+          <Route
+            path="/wedding-planning/venue"
+            element={<WeddingVenuePlanning />}
+          />
+          <Route
+            path="/wedding-planning/photography"
+            element={<WeddingPhotography />}
+          />
+          <Route
+            path="/wedding-planning/catering"
+            element={<WeddingCatering />}
+          />
+          <Route
+            path="/wedding-planning/couple"
+            element={<WeddingCouple />}
+          />
+          <Route
+            path="/wedding-planning/transportation"
+            element={<WeddingTransportation />}
+          />
+          <Route
+            path="/venue-discovery"
+            element={<WedoraVenueDiscovery />}
+          />
+          <Route
+            path="/vendor-discovery"
+            element={<WedoraVendorDiscovery />}
+          />
+          <Route path="/for-vendors" element={<VendorLanding />} />
+          <Route path="/vendor/auth" element={<VendorAuth />} />
+          <Route path="/vendor/dashboard" element={<VendorDashboard />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/marketplace" element={<Marketplace />} />
+          <Route path="/vendor/:slug" element={<VendorPublicProfile />} />
+          <Route path="/share/:shareId" element={<SharePage />} />
+        </Routes>
+      </div>
 
-        .wedora-nav-arriving .wedora-nav-logo {
-          opacity: 0;
-          animation: wedora-nav-item-in .55s cubic-bezier(.2, .75, .25, 1) .28s forwards;
-        }
+      {introActive && (
+        <div
+          className={`wedora-intro-screen ${
+            introTraveling ? 'wedora-intro-traveling' : ''
+          }`}
+          role="status"
+          aria-label="WEDORA AI welcome"
+        >
+          <style>{`
+            .wedora-intro-screen {
+              position: fixed;
+              inset: 0;
+              z-index: 1000;
+              display: grid;
+              place-items: center;
+              overflow: hidden;
+              background:
+                radial-gradient(ellipse at 18% 24%, rgba(201, 184, 255, .36), transparent 42%),
+                radial-gradient(ellipse at 82% 28%, rgba(247, 183, 216, .31), transparent 43%),
+                radial-gradient(ellipse at 52% 88%, rgba(169, 232, 255, .32), transparent 46%),
+                #fffdfd;
+              animation: wedora-intro-fade-in .35s ease-out both;
+            }
 
-        .wedora-nav-arriving .wedora-nav-links > * {
-          opacity: 0;
-          animation: wedora-nav-item-in .45s cubic-bezier(.2, .75, .25, 1) forwards;
-        }
+            .wedora-intro-screen::before {
+              content: '';
+              position: absolute;
+              inset: -20%;
+              pointer-events: none;
+              background:
+                conic-gradient(
+                  from 210deg at 50% 50%,
+                  transparent 0deg,
+                  rgba(201, 184, 255, .12) 60deg,
+                  rgba(169, 232, 255, .16) 125deg,
+                  rgba(247, 183, 216, .13) 205deg,
+                  transparent 270deg
+                );
+              filter: blur(34px);
+              animation: wedora-intro-light-drift 5s ease-in-out infinite alternate;
+            }
 
-        .wedora-nav-arriving .wedora-nav-links > :nth-child(1) {
-          animation-delay: .38s;
-        }
+            .wedora-intro-ribbon {
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              width: min(145vw, 1250px);
+              height: clamp(130px, 24vw, 270px);
+              border: 1px solid rgba(255, 255, 255, .68);
+              border-left-color: rgba(201, 184, 255, .36);
+              border-right-color: rgba(169, 232, 255, .46);
+              border-radius: 50%;
+              opacity: 0;
+              pointer-events: none;
+              transform: translate(-50%, -50%) rotate(-9deg) scale(.72);
+              box-shadow:
+                0 0 38px rgba(201, 184, 255, .17),
+                inset 0 0 38px rgba(255, 255, 255, .24);
+              animation: wedora-intro-ribbon-form 1.9s cubic-bezier(.2, .7, .2, 1) .05s forwards;
+            }
 
-        .wedora-nav-arriving .wedora-nav-links > :nth-child(2) {
-          animation-delay: .43s;
-        }
+            .wedora-intro-ribbon::after {
+              content: '';
+              position: absolute;
+              inset: 12% -3%;
+              border-radius: 50%;
+              background: linear-gradient(
+                100deg,
+                transparent,
+                rgba(247, 183, 216, .13),
+                rgba(169, 232, 255, .16),
+                rgba(201, 184, 255, .14),
+                transparent
+              );
+              filter: blur(16px);
+            }
 
-        .wedora-nav-arriving .wedora-nav-links > :nth-child(3) {
-          animation-delay: .48s;
-        }
+            .wedora-intro-copy {
+              position: absolute;
+              top: calc(46% + clamp(130px, 19vw, 190px));
+              left: 50%;
+              width: max-content;
+              max-width: 90vw;
+              color: #82778e;
+              font-family: inherit;
+              font-size: 11px;
+              font-weight: 500;
+              letter-spacing: .34em;
+              text-align: center;
+              text-transform: uppercase;
+              opacity: 0;
+              transform: translate(-50%, 10px);
+              animation: wedora-intro-copy-in .65s ease-out .75s forwards;
+              transition: opacity .3s ease, transform .3s ease;
+            }
 
-        .wedora-nav-arriving .wedora-nav-links > :nth-child(4) {
-          animation-delay: .53s;
-        }
+            .wedora-intro-traveling .wedora-intro-copy {
+              opacity: 0;
+              transform: translate(-50%, 4px);
+            }
 
-        .wedora-nav-arriving .wedora-nav-links > :nth-child(5) {
-          animation-delay: .58s;
-        }
+            .wedora-intro-logo {
+              position: absolute;
+              top: 46%;
+              left: 50%;
+              width: min(76vw, 320px);
+              aspect-ratio: 1;
+              object-fit: cover;
+              object-position: center;
+              border-radius: 30px;
+              box-shadow: 0 22px 70px rgba(137, 111, 170, .16);
+              transform: translate(-50%, -50%);
+              animation: wedora-intro-logo-reveal 1s cubic-bezier(.2, .72, .2, 1) .2s both;
+              will-change: transform;
+            }
 
-        .wedora-nav-arriving .wedora-nav-links > :nth-child(6) {
-          animation-delay: .63s;
-        }
+            .wedora-intro-skip {
+              position: absolute;
+              right: max(22px, env(safe-area-inset-right));
+              bottom: max(22px, env(safe-area-inset-bottom));
+              padding: 9px 14px;
+              border: 1px solid rgba(152, 143, 166, .24);
+              border-radius: 999px;
+              background: rgba(255, 255, 255, .58);
+              color: #756b82;
+              font: inherit;
+              font-size: 12px;
+              cursor: pointer;
+              transition: background .2s ease, color .2s ease;
+            }
 
-        .wedora-nav-arriving .wedora-nav-links > :nth-child(7) {
-          animation-delay: .68s;
-        }
+            .wedora-intro-skip:hover {
+              background: rgba(255, 255, 255, .9);
+              color: #2D2638;
+            }
 
-        .wedora-nav-arriving .wedora-nav-actions {
-          opacity: 0;
-          animation: wedora-nav-item-in .55s cubic-bezier(.2, .75, .25, 1) .62s forwards;
-        }
+            @keyframes wedora-intro-fade-in {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
 
-        @keyframes wedora-nav-glide-in {
-          from {
-            opacity: 0;
-            transform: translate(-50%, -52px);
-          }
-          to {
-            opacity: 1;
-            transform: translate(-50%, 0);
-          }
-        }
+            @keyframes wedora-intro-light-drift {
+              from { transform: rotate(-5deg) scale(.98); }
+              to { transform: rotate(8deg) scale(1.04); }
+            }
 
-        @keyframes wedora-nav-item-in {
-          from {
-            opacity: 0;
-            transform: translateY(-8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
+            @keyframes wedora-intro-ribbon-form {
+              0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) rotate(-9deg) scale(.72);
+              }
+              45% { opacity: .9; }
+              100% {
+                opacity: .52;
+                transform: translate(-50%, -50%) rotate(-3deg) scale(1);
+              }
+            }
 
-        @media (prefers-reduced-motion: reduce) {
-          .wedora-nav-arriving,
-          .wedora-nav-arriving .wedora-nav-logo,
-          .wedora-nav-arriving .wedora-nav-links > *,
-          .wedora-nav-arriving .wedora-nav-actions {
-            animation: none;
-            opacity: 1;
-            transform: none;
-          }
-        }
-      `}</style>
+            @keyframes wedora-intro-logo-reveal {
+              from {
+                opacity: 0;
+                filter: blur(9px);
+                transform: translate(-50%, -46%) scale(.94);
+              }
+              to {
+                opacity: 1;
+                filter: blur(0);
+                transform: translate(-50%, -50%) scale(1);
+              }
+            }
 
-      <nav
-        className={`fixed top-4 left-1/2 z-50 transition-all duration-500 ${
-          scrolled ? 'w-[95%] max-w-6xl' : 'w-[95%] max-w-6xl'
-        } ${entranceClass}`}
-      >
-        <div className="liquid-glass rounded-full px-4 md:px-6 py-2.5 flex items-center justify-between">
-          {/* Logo */}
+            @keyframes wedora-intro-copy-in {
+              to {
+                opacity: .9;
+                transform: translate(-50%, 0);
+              }
+            }
+
+            @media (max-width: 600px) {
+              .wedora-intro-copy {
+                letter-spacing: .22em;
+                font-size: 9px;
+              }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+              .wedora-intro-screen,
+              .wedora-intro-screen::before,
+              .wedora-intro-ribbon,
+              .wedora-intro-logo,
+              .wedora-intro-copy {
+                animation: none;
+                transition: none;
+              }
+            }
+          `}</style>
+
+          <div className="wedora-intro-ribbon" aria-hidden="true" />
+
+          <img
+            ref={introLogoRef}
+            className="wedora-intro-logo"
+            src="/WEDORA.jpg"
+            alt="WEDORA AI"
+          />
+
+          <p className="wedora-intro-copy">
+            The future of wedding management
+          </p>
+
           <button
-            data-testid={NAV.logo}
-            onClick={() => scrollTo('#hero')}
-            className="wedora-nav-logo flex items-center gap-2 pl-1"
+            type="button"
+            className="wedora-intro-skip"
+            onClick={finishIntroEarly}
           >
-            <img
-              src={LOGO_URL}
-              alt="WEDORA"
-              className="w-9 h-9 rounded-full object-cover ring-1 ring-white/70"
-            />
-            <span className="font-heading font-semibold tracking-wide text-[#2D2638] hidden sm:inline">
-              WEDORA <span className="iridescent-text">AI</span>
-            </span>
+            Skip intro
           </button>
-
-          {/* Desktop links */}
-          <div className="wedora-nav-links hidden lg:flex items-center gap-1">
-            {links.map((link) => (
-              <button
-                key={link.id}
-                data-testid={link.id}
-                onClick={() => scrollTo(link.href)}
-                className="text-sm text-[#4a4257] hover:text-[#2D2638] px-3 py-1.5 rounded-full transition hover:bg-white/50"
-              >
-                {link.label}
-              </button>
-            ))}
-          </div>
-
-          {/* CTA and mobile menu */}
-          <div className="wedora-nav-actions flex items-center gap-2">
-            <button
-              data-testid={NAV.startPlanning}
-              onClick={() => scrollTo('#hero')}
-              className="glow-btn text-sm hidden sm:inline-block"
-            >
-              Start Planning
-            </button>
-
-            <button
-              data-testid={NAV.mobileToggle}
-              className="lg:hidden p-2 rounded-full hover:bg-white/60"
-              onClick={() => setOpen(!open)}
-              aria-label="Menu"
-            >
-              {open ? (
-                <X className="w-5 h-5" />
-              ) : (
-                <Menu className="w-5 h-5" />
-              )}
-            </button>
-          </div>
         </div>
+      )}
 
-        {/* Mobile menu */}
-        {open && (
-          <div className="lg:hidden mt-2 liquid-glass-strong rounded-3xl p-3 flex flex-col gap-1">
-            {links.map((link) => (
-              <button
-                key={`${link.id}-m`}
-                data-testid={`${link.id}-mobile`}
-                onClick={() => {
-                  scrollTo(link.href);
-                  setOpen(false);
-                }}
-                className="text-left px-4 py-2 rounded-2xl text-[#4a4257] hover:bg-white/50 transition"
-              >
-                {link.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </nav>
+      <Toaster position="top-center" />
     </>
   );
 };
 
-export default Navigation;
+function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </BrowserRouter>
+  );
+}
+
+export default App;
