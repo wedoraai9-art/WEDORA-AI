@@ -22,15 +22,28 @@ const vendorCategories = [
   'Wedding Planner',
   'Decorator',
   'Photographer',
+  'Videographer',
   'Caterer',
   'Makeup Artist',
   'Mehndi Artist',
   'Florist',
   'DJ & Entertainment',
-  'Venue',
+  'Sangeet Choreographer',
   'Invitation Designer',
   'Bridal Wear',
   'Groom Wear',
+  'Jewellery',
+  'Wedding Cake',
+  'Transportation',
+  'Tent & Event Rentals',
+  'Furniture',
+  'Lighting & Sound',
+  'Pandit & Ceremony Services',
+  'Photobooth',
+  'Wedding Gifts & Favors',
+  'Honeymoon & Travel',
+  'Destination Wedding Services',
+  'Venue',
 ];
 
 const cities = [
@@ -45,6 +58,21 @@ const cities = [
   'Hyderabad',
   'Kolkata',
   'Chandigarh',
+  'Ahmedabad',
+  'Pune',
+  'Lucknow',
+  'Agra',
+  'Indore',
+  'Chennai',
+  'Kochi',
+  'Amritsar',
+  'Dehradun',
+  'Rishikesh',
+  'Pushkar',
+  'Ajmer',
+  'Jaisalmer',
+  'Bhopal',
+  'Surat',
 ];
 
 const sampleVendors = [
@@ -234,9 +262,20 @@ const WedoraVendorDiscovery = () => {
   const [selectedVendor, setSelectedVendor] = useState(null);
   const [shortlisted, setShortlisted] = useState([]);
 
+  // Live India-wide vendor discovery. The Gemini API key stays on the
+  // FastAPI/Render backend; it is never exposed in this React file.
+  const VENDOR_SEARCH_API =
+    'https://wedora-ai.onrender.com/api/vendors/search';
+
+  const [searched, setSearched] = useState(false);
+  const [liveVendors, setLiveVendors] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  const [searchSources, setSearchSources] = useState([]);
+
   // Understand natural-language vendor searches such as:
-  // "photographer in Delhi", "decorator near Udaipur",
-  // "makeup artist in Delhi" or "caterer in Mumbai".
+  // "photographer in Delhi", "luxury decorator near Udaipur",
+  // "bridal makeup artist in Jaipur" or "caterer in Mumbai".
   const parsedSearch = useMemo(() => {
     const text = query.toLowerCase().trim();
 
@@ -255,9 +294,23 @@ const WedoraVendorDiscovery = () => {
       'Hyderabad',
       'Kolkata',
       'Chandigarh',
+      'Ahmedabad',
+      'Pune',
+      'Lucknow',
+      'Agra',
+      'Indore',
+      'Chennai',
+      'Kochi',
+      'Amritsar',
+      'Dehradun',
+      'Rishikesh',
+      'Pushkar',
+      'Ajmer',
+      'Jaisalmer',
+      'Bhopal',
+      'Surat',
     ];
 
-    // Detect city from the sentence when the dropdown is still "All India".
     if (!parsedCity) {
       const foundCity = knownCities.find((item) =>
         text.includes(item.toLowerCase())
@@ -268,119 +321,110 @@ const WedoraVendorDiscovery = () => {
       }
     }
 
-    // Detect vendor category from natural language.
-    if (!parsedCategory) {
-      const categoryAliases = [
-        {
-          category: 'Wedding Planner',
-          keywords: [
-            'planner',
-            'planning',
-            'wedding planner',
-            'event planner',
-          ],
-        },
-        {
-          category: 'Decorator',
-          keywords: [
-            'decorator',
-            'decoration',
-            'decor',
-            'wedding decor',
-            'stage decor',
-            'mandap decor',
-          ],
-        },
-        {
-          category: 'Photographer',
-          keywords: [
-            'photographer',
-            'photography',
-            'candid',
-            'photo',
-            'pre-wedding photography',
-          ],
-        },
-        {
-          category: 'Caterer',
-          keywords: [
-            'caterer',
-            'catering',
-            'food',
-            'wedding food',
-          ],
-        },
-        {
-          category: 'Makeup Artist',
-          keywords: [
-            'makeup',
-            'make up',
-            'makeup artist',
-            'bridal makeup',
-            'beauty artist',
-          ],
-        },
-        {
-          category: 'Mehndi Artist',
-          keywords: [
-            'mehndi',
-            'henna',
-          ],
-        },
-        {
-          category: 'Florist',
-          keywords: [
-            'florist',
-            'flowers',
-            'floral',
-            'flower decor',
-          ],
-        },
-        {
-          category: 'DJ & Entertainment',
-          keywords: [
-            'dj',
-            'entertainment',
-            'live music',
-            'music',
-            'sangeet',
-          ],
-        },
-        {
-          category: 'Venue',
-          keywords: [
-            'venue',
-            'wedding venue',
-          ],
-        },
-        {
-          category: 'Invitation Designer',
-          keywords: [
-            'invitation',
-            'invitations',
-            'invitation designer',
-            'wedding cards',
-          ],
-        },
-        {
-          category: 'Bridal Wear',
-          keywords: [
-            'bridal wear',
-            'bridal dress',
-            'bridal lehenga',
-            'bridal clothing',
-          ],
-        },
-        {
-          category: 'Groom Wear',
-          keywords: [
-            'groom wear',
-            'sherwani',
-            'groom outfit',
-          ],
-        },
-      ];
+    const categoryAliases = [
+      {
+        category: 'Wedding Planner',
+        keywords: ['planner', 'planning', 'wedding planner', 'event planner', 'coordinator'],
+      },
+      {
+        category: 'Decorator',
+        keywords: ['decorator', 'decoration', 'decor', 'wedding decor', 'stage decor', 'mandap decor', 'floral decor'],
+      },
+      {
+        category: 'Photographer',
+        keywords: ['photographer', 'photography', 'candid', 'photo', 'pre-wedding photography'],
+      },
+      {
+        category: 'Videographer',
+        keywords: ['videographer', 'video', 'wedding film', 'wedding films', 'cinematic film'],
+      },
+      {
+        category: 'Caterer',
+        keywords: ['caterer', 'catering', 'food', 'wedding food', 'cuisine'],
+      },
+      {
+        category: 'Makeup Artist',
+        keywords: ['makeup', 'make up', 'makeup artist', 'bridal makeup', 'beauty artist', 'hair stylist'],
+      },
+      {
+        category: 'Mehndi Artist',
+        keywords: ['mehndi', 'henna'],
+      },
+      {
+        category: 'Florist',
+        keywords: ['florist', 'flowers', 'floral', 'flower decor'],
+      },
+      {
+        category: 'DJ & Entertainment',
+        keywords: ['dj', 'entertainment', 'live music', 'music', 'band', 'wedding entertainment'],
+      },
+      {
+        category: 'Sangeet Choreographer',
+        keywords: ['choreographer', 'choreography', 'sangeet choreographer', 'dance'],
+      },
+      {
+        category: 'Invitation Designer',
+        keywords: ['invitation', 'invitations', 'invitation designer', 'wedding cards', 'stationery'],
+      },
+      {
+        category: 'Bridal Wear',
+        keywords: ['bridal wear', 'bridal dress', 'bridal lehenga', 'bridal clothing', 'lehenga'],
+      },
+      {
+        category: 'Groom Wear',
+        keywords: ['groom wear', 'sherwani', 'groom outfit', 'groom clothing'],
+      },
+      {
+        category: 'Jewellery',
+        keywords: ['jewellery', 'jewelry', 'bridal jewellery', 'bridal jewelry'],
+      },
+      {
+        category: 'Wedding Cake',
+        keywords: ['wedding cake', 'cake', 'cakes'],
+      },
+      {
+        category: 'Transportation',
+        keywords: ['transportation', 'wedding car', 'wedding cars', 'car rental', 'guest transport'],
+      },
+      {
+        category: 'Tent & Event Rentals',
+        keywords: ['tent house', 'tent', 'event rental', 'rentals', 'event rentals'],
+      },
+      {
+        category: 'Furniture',
+        keywords: ['furniture', 'event furniture', 'wedding furniture'],
+      },
+      {
+        category: 'Lighting & Sound',
+        keywords: ['lighting', 'sound', 'sound system', 'event lighting'],
+      },
+      {
+        category: 'Pandit & Ceremony Services',
+        keywords: ['pandit', 'priest', 'ceremony', 'wedding priest'],
+      },
+      {
+        category: 'Photobooth',
+        keywords: ['photobooth', 'photo booth', 'photo booth rental'],
+      },
+      {
+        category: 'Wedding Gifts & Favors',
+        keywords: ['wedding gifts', 'wedding favors', 'favors', 'return gifts', 'gift hampers'],
+      },
+      {
+        category: 'Honeymoon & Travel',
+        keywords: ['honeymoon', 'travel', 'honeymoon planner', 'travel agency'],
+      },
+      {
+        category: 'Destination Wedding Services',
+        keywords: ['destination wedding', 'destination wedding planner', 'destination services'],
+      },
+      {
+        category: 'Venue',
+        keywords: ['venue', 'wedding venue', 'banquet hall', 'resort', 'palace', 'farmhouse'],
+      },
+    ];
 
+    if (!parsedCategory) {
       const foundCategory = categoryAliases.find((item) =>
         item.keywords.some((keyword) => text.includes(keyword))
       );
@@ -396,7 +440,48 @@ const WedoraVendorDiscovery = () => {
     };
   }, [query, city, category]);
 
-  const filteredVendors = useMemo(() => {
+  const normalizedLiveVendors = useMemo(() => {
+    return liveVendors.map((vendor, index) => {
+      const sourceUrl = vendor.source_url || vendor.website_url || vendor.website || '';
+      const website = vendor.website || sourceUrl || '';
+      const instagram = vendor.instagram || '';
+
+      return {
+        id: vendor.id || `live-vendor-${index}-${vendor.name || 'vendor'}`,
+        name: vendor.name || 'Unnamed Vendor',
+        category: vendor.category || vendor.role || parsedSearch.category || 'Wedding Vendor',
+        city: vendor.city || '',
+        state: vendor.state || '',
+        experience: vendor.experience || vendor.years_experience || 'Not listed',
+        rating: Number(vendor.rating) || 0,
+        reviews: Number(vendor.reviews) || 0,
+        phone: vendor.phone || vendor.contact_phone || '',
+        instagram,
+        website,
+        websiteUrl: sourceUrl,
+        address: vendor.address || vendor.location || '',
+        description: vendor.description || 'Wedding service provider discovered through WEDORA live search.',
+        services: Array.isArray(vendor.services)
+          ? vendor.services
+          : vendor.services
+            ? String(vendor.services).split(',').map((item) => item.trim()).filter(Boolean)
+            : [],
+        priceRange: vendor.price_range || vendor.priceRange || vendor.price_label || 'Price on request',
+        portfolio: Array.isArray(vendor.portfolio) ? vendor.portfolio : [],
+        verified: Boolean(vendor.verified || vendor.wedora_verified),
+        sourceName: vendor.source_name || vendor.source || '',
+        sourceUrl,
+        lastChecked: vendor.last_checked || vendor.lastChecked || '',
+        publicListing: vendor.public_listing !== false,
+      };
+    });
+  }, [liveVendors, parsedSearch.category]);
+
+  const displayedVendors = useMemo(() => {
+    if (searched && liveVendors.length > 0) {
+      return normalizedLiveVendors;
+    }
+
     const search = query.toLowerCase().trim();
 
     return sampleVendors.filter((vendor) => {
@@ -418,9 +503,6 @@ const WedoraVendorDiscovery = () => {
         ${vendor.services.join(' ')}
       `.toLowerCase();
 
-      // If the sentence contains structured information such as a city
-      // or category, those filters handle the search. We don't require
-      // the complete sentence to literally exist in the vendor profile.
       const structuredSearchDetected =
         Boolean(parsedSearch.city) ||
         Boolean(parsedSearch.category);
@@ -436,21 +518,82 @@ const WedoraVendorDiscovery = () => {
         matchesSearch
       );
     });
-  }, [query, parsedSearch]);
+  }, [
+    searched,
+    liveVendors,
+    normalizedLiveVendors,
+    query,
+    parsedSearch,
+  ]);
 
-  const handleSearch = () => {
-    // Keep the natural-language query in the input and update results.
-    // Then move the user directly to the vendor results.
-    window.setTimeout(() => {
-      const results = document.getElementById('vendor-results');
+  const filteredVendors = displayedVendors;
 
-      if (results) {
-        results.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-        });
+  const handleSearch = async () => {
+    setSearched(true);
+    setSearchLoading(true);
+    setSearchError('');
+    setLiveVendors([]);
+    setSearchSources([]);
+
+    const payload = {
+      query: query.trim(),
+      location: parsedSearch.city || (city !== 'All India' ? city : null),
+      category: parsedSearch.category || (category !== 'All Categories' ? category : null),
+    };
+
+    if (!payload.query && !payload.location && !payload.category) {
+      setSearchLoading(false);
+      setSearchError('Please enter a vendor, service or city to search.');
+      return;
+    }
+
+    try {
+      const response = await fetch(VENDOR_SEARCH_API, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'omit',
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          data.detail || `Vendor search failed (${response.status})`
+        );
       }
-    }, 80);
+
+      setLiveVendors(Array.isArray(data.results) ? data.results : []);
+      setSearchSources(Array.isArray(data.sources) ? data.sources : []);
+
+      if (!Array.isArray(data.results) || data.results.length === 0) {
+        setSearchError(
+          'No live vendors matched this search. Try a broader city, category or service.'
+        );
+      }
+    } catch (error) {
+      console.error('WEDORA live vendor search failed:', error);
+      setSearchError(
+        error.message ||
+          'Unable to search live vendor data right now. Please try again.'
+      );
+      setLiveVendors([]);
+    } finally {
+      setSearchLoading(false);
+
+      window.setTimeout(() => {
+        const results = document.getElementById('vendor-results');
+
+        if (results) {
+          results.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+          });
+        }
+      }, 80);
+    }
   };
 
   const toggleShortlist = (vendorId) => {
@@ -465,6 +608,10 @@ const WedoraVendorDiscovery = () => {
     setQuery('');
     setCity('All India');
     setCategory('All Categories');
+    setSearched(false);
+    setLiveVendors([]);
+    setSearchSources([]);
+    setSearchError('');
   };
 
   return (
@@ -705,7 +852,9 @@ const WedoraVendorDiscovery = () => {
                 </p>
 
                 <h2 className="mt-2 text-3xl font-light">
-                  {filteredVendors.length} vendors found
+                  {searchLoading
+                    ? 'Searching India...'
+                    : `${filteredVendors.length} vendors found`}
                 </h2>
 
               </div>
@@ -716,6 +865,48 @@ const WedoraVendorDiscovery = () => {
               </div>
 
             </div>
+
+            {searchLoading && (
+              <div className="mb-6 rounded-2xl border border-[#E8DFF5] bg-white px-5 py-4 text-sm text-[#756A82]">
+                <div className="flex items-center gap-3">
+                  <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[#9B7CF6]" />
+                  WEDORA is searching live wedding vendors across India...
+                </div>
+              </div>
+            )}
+
+            {searchError && !searchLoading && (
+              <div className="mb-6 rounded-2xl border border-[#F0DCE7] bg-[#FFF8FB] px-5 py-4 text-sm text-[#8C6074]">
+                {searchError}
+              </div>
+            )}
+
+            {searched && !searchLoading && searchSources.length > 0 && (
+              <div className="mb-6 rounded-2xl border border-[#E8DFF5] bg-white px-5 py-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-xs tracking-[0.14em] text-[#9B7CF6]">
+                    LIVE WEB SOURCES
+                  </p>
+                  <p className="text-xs text-[#978D9F]">
+                    {searchSources.length} source{searchSources.length === 1 ? '' : 's'} used
+                  </p>
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {searchSources.slice(0, 8).map((source, index) => (
+                    <a
+                      key={`${source.url || source.title || 'source'}-${index}`}
+                      href={source.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-full border border-[#E9E1F2] bg-[#FCFAFE] px-3 py-1.5 text-xs text-[#756A82] transition hover:border-[#CDBCEB] hover:bg-[#F6F0FF]"
+                    >
+                      {source.title || source.name || 'Source'}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 
@@ -757,12 +948,16 @@ const WedoraVendorDiscovery = () => {
                       />
                     </button>
 
-                    {vendor.verified && (
+                    {vendor.verified ? (
                       <div className="absolute bottom-4 left-4 flex items-center gap-1 rounded-full bg-white/90 px-3 py-1.5 text-[10px] text-[#718C82]">
                         <CheckCircle2 size={12} />
-                        Verified Vendor
+                        WEDORA Verified
                       </div>
-                    )}
+                    ) : vendor.sourceName ? (
+                      <div className="absolute bottom-4 left-4 rounded-full bg-white/90 px-3 py-1.5 text-[10px] text-[#81758F]">
+                        Found via {vendor.sourceName}
+                      </div>
+                    ) : null}
 
                   </div>
 
@@ -802,6 +997,13 @@ const WedoraVendorDiscovery = () => {
                       {vendor.description}
                     </p>
 
+                    {vendor.sourceName && (
+                      <p className="mt-3 text-[10px] text-[#9A90A4]">
+                        Source: {vendor.sourceName}
+                        {vendor.lastChecked ? ` · Checked ${vendor.lastChecked}` : ''}
+                      </p>
+                    )}
+
                     {/* QUICK INFO */}
                     <div className="mt-5 grid grid-cols-2 gap-3">
 
@@ -828,6 +1030,7 @@ const WedoraVendorDiscovery = () => {
                     {/* SOCIAL */}
                     <div className="mt-4 flex items-center gap-2">
 
+                      {vendor.instagram ? (
                       <a
                         href={`https://instagram.com/${vendor.instagram.replace(
                           '@',
@@ -840,13 +1043,24 @@ const WedoraVendorDiscovery = () => {
                         <Instagram size={14} />
                         Instagram
                       </a>
+                      ) : (
+                        <div className="flex flex-1 items-center justify-center rounded-xl border border-[#E8E0F1] bg-[#FBF9FD] py-2.5 text-xs text-[#A198AD]">
+                          Instagram not listed
+                        </div>
+                      )}
 
+                      {vendor.phone ? (
                       <a
                         href={`tel:${vendor.phone}`}
                         className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#DCD0F0] bg-white/80 text-[#8D75D9] shadow-[0_4px_14px_rgba(155,124,246,0.06)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#CBB8EE] hover:bg-[#F4EEFF] hover:text-[#6F57C8]"
                       >
                         <Phone size={15} />
                       </a>
+                      ) : (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#E8E0F1] bg-[#FBF9FD] text-[#A198AD]">
+                          <Phone size={15} />
+                        </div>
+                      )}
 
                     </div>
 
@@ -1107,8 +1321,14 @@ const WedoraVendorDiscovery = () => {
                   Instagram
                 </a>
 
+                {selectedVendor.website || selectedVendor.websiteUrl ? (
                 <a
-                  href={`https://${selectedVendor.website}`}
+                  href={
+                    selectedVendor.websiteUrl ||
+                    (String(selectedVendor.website).startsWith('http')
+                      ? selectedVendor.website
+                      : `https://${selectedVendor.website}`)
+                  }
                   target="_blank"
                   rel="noreferrer"
                   className="flex items-center justify-center gap-2 rounded-xl border border-[#DCD0F0] bg-white/80 py-3 text-xs font-medium text-[#665A78] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#CBB8EE] hover:bg-gradient-to-r hover:from-[#F4EEFF] hover:to-[#FFF1F7] hover:text-[#3F354D] transition-transform duration-150 active:scale-[0.97] active:translate-y-[1px]"
@@ -1116,8 +1336,33 @@ const WedoraVendorDiscovery = () => {
                   <Globe size={14} />
                   Website
                 </a>
+                ) : (
+                  <div className="flex items-center justify-center gap-2 rounded-xl border border-[#E8E0F1] bg-[#FBF9FD] py-3 text-xs text-[#A198AD]">
+                    <Globe size={14} />
+                    Website not listed
+                  </div>
+                )}
 
               </div>
+
+              {selectedVendor.sourceName && (
+                <p className="mt-5 text-center text-[11px] text-[#9A90A4]">
+                  Public source: {selectedVendor.sourceName}
+                  {selectedVendor.sourceUrl ? (
+                    <>
+                      {' · '}
+                      <a
+                        href={selectedVendor.sourceUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[#806B9D] underline underline-offset-2"
+                      >
+                        View source
+                      </a>
+                    </>
+                  ) : null}
+                </p>
+              )}
 
             </div>
 
