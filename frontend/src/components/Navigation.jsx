@@ -45,77 +45,65 @@ export const Navigation = ({ introActive = false }) => {
       <style>{`
         .wedora-nav-hidden {
           opacity: 0;
+          visibility: hidden;
           pointer-events: none;
-          transform: translate(-50%, -72px);
         }
 
         .wedora-nav-arriving {
-          animation: wedora-nav-glide-in .85s cubic-bezier(.2, .75, .2, 1) both;
+          animation: wedora-nav-fade-in .45s ease-out both;
         }
 
         .wedora-nav-arriving .wedora-nav-logo {
           opacity: 0;
-          animation: wedora-nav-item-in .55s cubic-bezier(.2, .75, .25, 1) .28s forwards;
+          animation: wedora-nav-item-fade .42s ease-out .12s forwards;
         }
 
         .wedora-nav-arriving .wedora-nav-links > * {
           opacity: 0;
-          animation: wedora-nav-item-in .45s cubic-bezier(.2, .75, .25, 1) forwards;
+          animation: wedora-nav-item-fade .38s ease-out forwards;
         }
 
         .wedora-nav-arriving .wedora-nav-links > :nth-child(1) {
-          animation-delay: .38s;
+          animation-delay: .14s;
         }
 
         .wedora-nav-arriving .wedora-nav-links > :nth-child(2) {
-          animation-delay: .43s;
+          animation-delay: .18s;
         }
 
         .wedora-nav-arriving .wedora-nav-links > :nth-child(3) {
-          animation-delay: .48s;
+          animation-delay: .22s;
         }
 
         .wedora-nav-arriving .wedora-nav-links > :nth-child(4) {
-          animation-delay: .53s;
+          animation-delay: .26s;
         }
 
         .wedora-nav-arriving .wedora-nav-links > :nth-child(5) {
-          animation-delay: .58s;
+          animation-delay: .30s;
         }
 
         .wedora-nav-arriving .wedora-nav-links > :nth-child(6) {
-          animation-delay: .63s;
+          animation-delay: .34s;
         }
 
         .wedora-nav-arriving .wedora-nav-links > :nth-child(7) {
-          animation-delay: .68s;
+          animation-delay: .38s;
         }
 
         .wedora-nav-arriving .wedora-nav-actions {
           opacity: 0;
-          animation: wedora-nav-item-in .55s cubic-bezier(.2, .75, .25, 1) .62s forwards;
+          animation: wedora-nav-item-fade .42s ease-out .3s forwards;
         }
 
-        @keyframes wedora-nav-glide-in {
-          from {
-            opacity: 0;
-            transform: translate(-50%, -52px);
-          }
-          to {
-            opacity: 1;
-            transform: translate(-50%, 0);
-          }
+        @keyframes wedora-nav-fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
 
-        @keyframes wedora-nav-item-in {
-          from {
-            opacity: 0;
-            transform: translateY(-8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+        @keyframes wedora-nav-item-fade {
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -125,18 +113,16 @@ export const Navigation = ({ introActive = false }) => {
           .wedora-nav-arriving .wedora-nav-actions {
             animation: none;
             opacity: 1;
-            transform: none;
           }
         }
       `}</style>
 
       <nav
-        className={`fixed top-4 left-1/2 z-50 transition-all duration-500 ${
+        className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 transition-all duration-500 ${
           scrolled ? 'w-[95%] max-w-6xl' : 'w-[95%] max-w-6xl'
         } ${entranceClass}`}
       >
         <div className="liquid-glass rounded-full px-4 md:px-6 py-2.5 flex items-center justify-between">
-          {/* Logo */}
           <button
             data-testid={NAV.logo}
             onClick={() => scrollTo('#hero')}
@@ -152,7 +138,6 @@ export const Navigation = ({ introActive = false }) => {
             </span>
           </button>
 
-          {/* Desktop links */}
           <div className="wedora-nav-links hidden lg:flex items-center gap-1">
             {links.map((link) => (
               <button
@@ -166,7 +151,6 @@ export const Navigation = ({ introActive = false }) => {
             ))}
           </div>
 
-          {/* CTA and mobile menu */}
           <div className="wedora-nav-actions flex items-center gap-2">
             <button
               data-testid={NAV.startPlanning}
@@ -191,7 +175,6 @@ export const Navigation = ({ introActive = false }) => {
           </div>
         </div>
 
-        {/* Mobile menu */}
         {open && (
           <div className="lg:hidden mt-2 liquid-glass-strong rounded-3xl p-3 flex flex-col gap-1">
             {links.map((link) => (
