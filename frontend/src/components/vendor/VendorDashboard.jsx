@@ -26,6 +26,12 @@ import {
   Sparkles,
   Heart,
   Wallet,
+  CalendarPlus,
+  ChevronLeft,
+  ChevronRight,
+  Trash2,
+  MapPin,
+  Pencil,
 } from 'lucide-react';
 
 import ProfileTab from './ProfileTab';
@@ -39,6 +45,7 @@ import SettingsTab from './SettingsTab';
 const TABS = [
   { id: 'overview', label: 'Overview', icon: LayoutGrid },
   { id: 'weddings', label: 'Weddings', icon: CalendarDays },
+  { id: 'calendar', label: 'Calendar', icon: CalendarDays },
   { id: 'profile', label: 'My Profile', icon: User },
   { id: 'portfolio', label: 'Portfolio', icon: Images },
   { id: 'leads', label: 'Leads', icon: Inbox },
@@ -87,6 +94,253 @@ const isCompletedWedding = (wedding) =>
   ['completed', 'cancelled', 'canceled'].includes(
     String(wedding?.status || '').toLowerCase()
   );
+
+const CALENDAR_EVENT_TYPES = [
+  ['meeting', 'Meeting'],
+  ['site_visit', 'Site visit'],
+  ['payment', 'Payment deadline'],
+  ['materials', 'Materials deadline'],
+  ['setup', 'Setup deadline'],
+  ['task_deadline', 'Task deadline'],
+  ['reminder', 'Reminder'],
+  ['other', 'Other'],
+];
+
+const blankCalendarForm = (eventDate) => ({
+  title: '',
+  event_type: 'meeting',
+  event_date: eventDate || dateKey(new Date()),
+  start_time: '',
+  end_time: '',
+  location: '',
+  description: '',
+  wedding_id: '',
+});
+
+const VendorCalendarTab = ({ weddings = [], tasks = [], notifications = [] }) => {
+  const [events, setEvents] = useState([]);
+  const [calendarLoading, setCalendarLoading] = useState(true);
+  const [month, setMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [selectedDate, setSelectedDate] = useState(dateKey(new Date()));
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(() => blankCalendarForm(dateKey(new Date())));
+  const [saving, setSaving] = useState(false);
+
+  const loadEvents = useCallback(async () => {
+    setCalendarLoading(true);
+    try {
+      const response = await authAxios.get('/vendor/calendar-events');
+      setEvents(Array.isArray(response?.data?.events) ? response.data.events : []);
+    } catch (error) {
+      toast.error(fmtApiError(error?.response?.data?.detail, 'Could not load calendar events'));
+    } finally {
+      setCalendarLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadEvents();
+  }, [loadEvents]);
+
+  const calendarItems = [
+    ...events.map((event) => ({ ...event, source: 'saved' })),
+    ...weddings
+      .filter((wedding) => !isCompletedWedding(wedding))
+      .map((wedding) => ({
+        id: `wedding-${wedding.id || wedding._id}`,
+        title: wedding.wedding_name || wedding.name || 'Wedding',
+        event_date: dateKey(wedding.wedding_date || wedding.event_date),
+        event_type: 'wedding',
+        location: wedding.city || '',
+        source: 'wedding',
+      }))
+      .filter((item) => item.event_date),
+    ...tasks
+      .filter((task) => dateKey(task.due_date))
+      .map((task) => ({
+        id: `task-${task.id}`,
+        title: task.title || 'Wedding task',
+        event_date: dateKey(task.due_date),
+        event_type: 'task_deadline',
+        wedding_id: task.wedding_id,
+        wedding_name: task.wedding_name,
+        completed: Boolean(task.completed),
+        source: 'task',
+      })),
+    ...notifications
+      .filter((item) => dateKey(item.reminder_date))
+      .map((item) => ({
+        id: `reminder-${item.id}`,
+        title: item.title || 'Wedding reminder',
+        event_date: dateKey(item.reminder_date),
+        event_type: item.notification_type || 'reminder',
+        wedding_id: item.wedding_id,
+        wedding_name: item.wedding_name,
+        source: 'reminder',
+      })),
+  ];
+
+  const monthLabel = month.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  const firstWeekday = new Date(month.getFullYear(), month.getMonth(), 1).getDay();
+  const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  const calendarCells = [
+    ...Array.from({ length: firstWeekday }, (_, index) => ({ key: `blank-${index}`, day: null })),
+    ...Array.from({ length: daysInMonth }, (_, index) => ({
+      key: `${month.getFullYear()}-${month.getMonth()}-${index + 1}`,
+      day: index + 1,
+      date: dateKey(new Date(month.getFullYear(), month.getMonth(), index + 1)),
+    })),
+  ];
+  const selectedItems = calendarItems
+    .filter((item) => item.event_date === selectedDate)
+    .sort((a, b) => String(a.start_time || '').localeCompare(String(b.start_time || '')));
+
+  const openNewEvent = (eventDate = selectedDate) => {
+    setEditingId(null);
+    setForm(blankCalendarForm(eventDate));
+    setFormOpen(true);
+  };
+
+  const openEditEvent = (event) => {
+    setEditingId(event.id);
+    setForm({ ...blankCalendarForm(event.event_date), ...event, wedding_id: event.wedding_id || '' });
+    setFormOpen(true);
+  };
+
+  const saveEvent = async (event) => {
+    event.preventDefault();
+    if (!form.title.trim() || !form.event_date) {
+      toast.error('Please add an event title and date.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = { ...form, title: form.title.trim() };
+      if (editingId) {
+        await authAxios.patch(`/vendor/calendar-events/${editingId}`, payload);
+        toast.success('Calendar event updated.');
+      } else {
+        await authAxios.post('/vendor/calendar-events', payload);
+        toast.success('Calendar event saved.');
+      }
+      setSelectedDate(form.event_date);
+      const [year, monthNumber] = form.event_date.split('-').map(Number);
+      setMonth(new Date(year, monthNumber - 1, 1));
+      setFormOpen(false);
+      await loadEvents();
+    } catch (error) {
+      toast.error(fmtApiError(error?.response?.data?.detail, 'Could not save calendar event'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteEvent = async (event) => {
+    if (!window.confirm(`Delete “${event.title}”?`)) return;
+    try {
+      await authAxios.delete(`/vendor/calendar-events/${event.id}`);
+      toast.success('Calendar event deleted.');
+      await loadEvents();
+    } catch (error) {
+      toast.error(fmtApiError(error?.response?.data?.detail, 'Could not delete calendar event'));
+    }
+  };
+
+  const eventTypeLabel = (type) =>
+    CALENDAR_EVENT_TYPES.find(([value]) => value === type)?.[1] ||
+    (type === 'wedding' ? 'Wedding date' : type === 'task_deadline' ? 'Task deadline' : 'Reminder');
+
+  return (
+    <div className="space-y-5" data-testid="vendor-calendar-tab">
+      <section className="pearl-card p-5 md:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+          <div>
+            <p className="text-xs uppercase tracking-widest text-[#988FA6]">Vendor Calendar</p>
+            <h2 className="font-display text-2xl text-[#2D2638] mt-1">Keep every date in view</h2>
+            <p className="text-sm text-[#6B617A] mt-1">Wedding dates, tasks and reminders appear here with your saved events.</p>
+          </div>
+          <button type="button" onClick={() => openNewEvent()} className="glow-btn !py-2.5 !px-4 !text-sm inline-flex items-center gap-2">
+            <CalendarPlus className="w-4 h-4" /> Add event
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between mb-3">
+          <button type="button" aria-label="Previous month" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} className="chip !p-2"><ChevronLeft className="w-4 h-4" /></button>
+          <h3 className="font-heading font-semibold text-lg text-[#2D2638]">{monthLabel}</h3>
+          <button type="button" aria-label="Next month" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} className="chip !p-2"><ChevronRight className="w-4 h-4" /></button>
+        </div>
+
+        <div className="grid grid-cols-7 gap-1 text-center">
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+            <div key={day} className="py-2 text-[11px] uppercase tracking-wide text-[#988FA6]">{day}</div>
+          ))}
+          {calendarCells.map((cell) => {
+            if (!cell.day) return <div key={cell.key} />;
+            const dayItems = calendarItems.filter((item) => item.event_date === cell.date);
+            const isSelected = selectedDate === cell.date;
+            return (
+              <button key={cell.key} type="button" onClick={() => setSelectedDate(cell.date)} className={`min-h-16 sm:min-h-20 rounded-xl border p-1.5 text-left transition ${isSelected ? 'border-[#B89AD4] bg-[#F7B7D8]/25' : 'border-white/80 bg-white/55 hover:bg-white'}`}>
+                <span className="text-xs text-[#4A4257]">{cell.day}</span>
+                {dayItems.length > 0 && <span className="mt-1 block text-[10px] text-[#8B6AA8] truncate">{dayItems.length} {dayItems.length === 1 ? 'item' : 'items'}</span>}
+              </button>
+            );
+          })}
+        </div>
+        {calendarLoading && <p className="text-xs text-[#8B8194] mt-3">Loading saved calendar events…</p>}
+      </section>
+
+      <section className="pearl-card p-5 md:p-6">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div>
+            <p className="text-xs uppercase tracking-widest text-[#988FA6]">Selected date</p>
+            <h3 className="font-heading font-semibold text-lg text-[#2D2638] mt-1">{formatDashboardDate(selectedDate)}</h3>
+          </div>
+          <button type="button" onClick={() => openNewEvent(selectedDate)} className="chip !text-xs">Add to this date</button>
+        </div>
+        {selectedItems.length ? (
+          <div className="space-y-2">
+            {selectedItems.map((item) => (
+              <div key={`${item.source}-${item.id}`} className="rounded-xl border border-[#eadff2] bg-white/75 px-4 py-3 flex items-start gap-3">
+                <CalendarDays className="w-4 h-4 mt-0.5 text-[#8B6AA8]" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-[#3F3748]">{item.title}{item.completed ? ' · Completed' : ''}</p>
+                  <p className="text-xs text-[#8B8194] mt-1">{eventTypeLabel(item.event_type)}{item.start_time ? ` · ${item.start_time}` : ''}{item.wedding_name ? ` · ${item.wedding_name}` : ''}</p>
+                  {item.location && <p className="text-xs text-[#8B8194] mt-1 inline-flex items-center gap-1"><MapPin className="w-3 h-3" />{item.location}</p>}
+                  {item.description && <p className="text-xs text-[#6B617A] mt-2">{item.description}</p>}
+                </div>
+                {item.source === 'saved' && <div className="flex gap-1 shrink-0"><button type="button" aria-label={`Edit ${item.title}`} onClick={() => openEditEvent(item)} className="chip !p-2"><Pencil className="w-3.5 h-3.5" /></button><button type="button" aria-label={`Delete ${item.title}`} onClick={() => deleteEvent(item)} className="chip !p-2"><Trash2 className="w-3.5 h-3.5" /></button></div>}
+              </div>
+            ))}
+          </div>
+        ) : <p className="text-sm text-[#6B617A]">Nothing is scheduled for this date yet.</p>}
+      </section>
+
+      {formOpen && (
+        <section className="pearl-card p-5 md:p-6" data-testid="calendar-event-form">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-heading font-semibold text-lg text-[#2D2638]">{editingId ? 'Edit calendar event' : 'Add calendar event'}</h3>
+            <button type="button" onClick={() => setFormOpen(false)} className="chip !text-xs">Close</button>
+          </div>
+          <form onSubmit={saveEvent} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="text-xs text-[#6B617A]">Title<input required maxLength={160} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} className="mt-1 w-full rounded-xl border border-[#eadff2] bg-white/80 px-3 py-2 text-sm text-[#3F3748]" placeholder="e.g. Venue site visit" /></label>
+            <label className="text-xs text-[#6B617A]">Type<select value={form.event_type} onChange={(event) => setForm({ ...form, event_type: event.target.value })} className="mt-1 w-full rounded-xl border border-[#eadff2] bg-white/80 px-3 py-2 text-sm text-[#3F3748]">{CALENDAR_EVENT_TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+            <label className="text-xs text-[#6B617A]">Date<input required type="date" value={form.event_date} onChange={(event) => setForm({ ...form, event_date: event.target.value })} className="mt-1 w-full rounded-xl border border-[#eadff2] bg-white/80 px-3 py-2 text-sm text-[#3F3748]" /></label>
+            <label className="text-xs text-[#6B617A]">Wedding (optional)<select value={form.wedding_id || ''} onChange={(event) => setForm({ ...form, wedding_id: event.target.value })} className="mt-1 w-full rounded-xl border border-[#eadff2] bg-white/80 px-3 py-2 text-sm text-[#3F3748]"><option value="">Not linked to a wedding</option>{weddings.map((wedding) => <option key={wedding.id || wedding._id} value={wedding.id || wedding._id}>{wedding.wedding_name || wedding.name || 'Wedding'}</option>)}</select></label>
+            <label className="text-xs text-[#6B617A]">Start time (optional)<input type="time" value={form.start_time || ''} onChange={(event) => setForm({ ...form, start_time: event.target.value })} className="mt-1 w-full rounded-xl border border-[#eadff2] bg-white/80 px-3 py-2 text-sm text-[#3F3748]" /></label>
+            <label className="text-xs text-[#6B617A]">End time (optional)<input type="time" value={form.end_time || ''} onChange={(event) => setForm({ ...form, end_time: event.target.value })} className="mt-1 w-full rounded-xl border border-[#eadff2] bg-white/80 px-3 py-2 text-sm text-[#3F3748]" /></label>
+            <label className="text-xs text-[#6B617A] sm:col-span-2">Location (optional)<input maxLength={240} value={form.location || ''} onChange={(event) => setForm({ ...form, location: event.target.value })} className="mt-1 w-full rounded-xl border border-[#eadff2] bg-white/80 px-3 py-2 text-sm text-[#3F3748]" placeholder="Address or meeting link" /></label>
+            <label className="text-xs text-[#6B617A] sm:col-span-2">Notes (optional)<textarea maxLength={2000} rows={3} value={form.description || ''} onChange={(event) => setForm({ ...form, description: event.target.value })} className="mt-1 w-full rounded-xl border border-[#eadff2] bg-white/80 px-3 py-2 text-sm text-[#3F3748]" placeholder="Details to remember" /></label>
+            <div className="sm:col-span-2 flex justify-end"><button disabled={saving} type="submit" className="glow-btn !py-2.5 !px-5 !text-sm">{saving ? 'Saving…' : editingId ? 'Save changes' : 'Save event'}</button></div>
+          </form>
+        </section>
+      )}
+    </div>
+  );
+};
 
 const VendorDashboard = () => {
   const { user, loading } = useAuth();
@@ -730,6 +984,15 @@ const VendorDashboard = () => {
           <WeddingsTab
             vendor={vendor}
             onOpenWedding={(wedding) => setSelectedWedding(wedding)}
+          />
+        )}
+
+        {/* Calendar */}
+        {tab === 'calendar' && vendor && (
+          <VendorCalendarTab
+            weddings={dashboardWeddings}
+            tasks={dashboardTasks}
+            notifications={dashboardNotifications}
           />
         )}
 
