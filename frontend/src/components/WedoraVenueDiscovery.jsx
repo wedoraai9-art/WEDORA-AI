@@ -362,7 +362,7 @@ const WedoraVenueDiscovery = () => {
 
                 <button
                   onClick={handleSearch}
-                  className="flex min-h-[64px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#D8C8FF] via-[#E8D3F4] to-[#F7C5D9] px-8 text-sm font-medium tracking-wide text-[#30283A] shadow-[0_8px_24px_rgba(155,124,246,0.16)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(155,124,246,0.22)]"
+                  className="flex min-h-[64px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#D8C8FF] via-[#E8D3F4] to-[#F7C5D9] px-8 text-sm font-medium tracking-wide text-[#30283A] shadow-[0_8px_24px_rgba(155,124,246,0.16)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(155,124,246,0.22)] active:scale-[0.97] active:translate-y-[1px] transition-transform duration-150 active:scale-[0.97] active:translate-y-[1px]"
                 >
                   <Search size={18} />
                   Discover Venues
@@ -923,7 +923,7 @@ const WedoraVenueDiscovery = () => {
 
                   <button
                     onClick={submitUpdate}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#30283A] py-3 text-sm text-white"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#D8C8FF] via-[#E8D3F4] to-[#F7C5D9] py-3 text-sm font-semibold text-[#30283A] shadow-[0_7px_20px_rgba(155,124,246,0.15)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(155,124,246,0.22)] transition-transform duration-150 active:scale-[0.97] active:translate-y-[1px]"
                   >
                     <Send size={15} />
                     Submit Update
@@ -953,7 +953,7 @@ const WedoraVenueDiscovery = () => {
 
                 <button
                   onClick={closeUpdateModal}
-                  className="mt-7 rounded-xl bg-[#30283A] px-7 py-3 text-sm text-white"
+                  className="mt-7 rounded-full bg-gradient-to-r from-[#D8C8FF] via-[#E8D3F4] to-[#F7C5D9] px-7 py-3 text-sm font-semibold text-[#30283A] shadow-[0_8px_24px_rgba(155,124,246,0.15)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(155,124,246,0.22)] active:scale-[0.97] active:translate-y-[1px] transition-transform duration-150 active:scale-[0.97] active:translate-y-[1px]"
                 >
                   Done
                 </button>
