@@ -225,6 +225,11 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: linear-gradient(#C9B8FF, #F7B7D8); border-radius: 9999px; }
 
+/* Keep the vendor dashboard tabs' horizontal scrollbar slim. */
+.liquid-glass[data-testid="dashboard-tabs"]::-webkit-scrollbar {
+  height: 4px;
+}
+
 /* Thin scroll for chat area */
 .chat-scroll::-webkit-scrollbar { width: 6px; }
 .chat-scroll::-webkit-scrollbar-thumb { background: rgba(201,184,255,0.5); }
