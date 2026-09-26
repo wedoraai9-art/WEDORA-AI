@@ -358,6 +358,8 @@ const WeddingWorkspace = ({ wedding, vendor, onBack }) => {
   const [clientHistory, setClientHistory] = useState({});
   const [clientHistoryLoadingId, setClientHistoryLoadingId] = useState(null);
   const [expandedClientHistoryId, setExpandedClientHistoryId] = useState(null);
+  const [reviewInviteStatus, setReviewInviteStatus] = useState({});
+  const [sendingReviewInviteId, setSendingReviewInviteId] = useState(null);
   const [editingTaskId, setEditingTaskId] = useState(null);
 
   const [budgetData, setBudgetData] = useState({
@@ -2069,6 +2071,51 @@ ${message}`;
     }
   };
 
+  const sendClientReviewInvite = async (client) => {
+    if (!client?.id || sendingReviewInviteId) return;
+    if (!String(client.email || '').trim()) {
+      setReviewInviteStatus((current) => ({
+        ...current,
+        [client.id]: { type: 'error', message: 'Add an email address to this client first.' },
+      }));
+      return;
+    }
+    const linkedWeddingIds = Array.isArray(client.wedding_ids) ? client.wedding_ids : [];
+    if (!linkedWeddingIds.includes(wedding.id)) {
+      setReviewInviteStatus((current) => ({
+        ...current,
+        [client.id]: { type: 'error', message: 'Link this client to the current wedding first.' },
+      }));
+      return;
+    }
+
+    setSendingReviewInviteId(client.id);
+    setReviewInviteStatus((current) => ({ ...current, [client.id]: null }));
+    try {
+      const response = await authAxios.post(
+        `/vendor/clients/${client.id}/review-invite`,
+        { wedding_id: wedding.id }
+      );
+      setReviewInviteStatus((current) => ({
+        ...current,
+        [client.id]: {
+          type: 'success',
+          message: response.data?.message || `Review request sent to ${client.email}.`,
+        },
+      }));
+    } catch (error) {
+      setReviewInviteStatus((current) => ({
+        ...current,
+        [client.id]: {
+          type: 'error',
+          message: error?.response?.data?.detail || 'Could not send the review request. Please try again.',
+        },
+      }));
+    } finally {
+      setSendingReviewInviteId(null);
+    }
+  };
+
   const resetExpenseForm = () => {
     setExpenseForm(emptyExpense);
     setEditingExpenseId(null);
@@ -2630,6 +2677,7 @@ ${message}`;
                       const conversations = Array.isArray(client.communications) ? client.communications : [];
                       const draft = communicationDrafts[client.id] || { channel: 'Note', message: '' };
                       const history = clientHistory[client.id];
+                      const reviewStatus = reviewInviteStatus[client.id];
                       return (
                         <article key={client.id} className="rounded-xl border border-[#eadff2] bg-white p-4 md:p-5">
                           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
@@ -2647,6 +2695,17 @@ ${message}`;
                               {client.follow_up_date && <p className="mt-2 text-xs text-[#8B6AA8]">Follow up: {formatDate(client.follow_up_date)}</p>}
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
+                              {Array.isArray(client.wedding_ids) && client.wedding_ids.includes(wedding.id) && (
+                                <button
+                                  type="button"
+                                  onClick={() => sendClientReviewInvite(client)}
+                                  disabled={sendingReviewInviteId === client.id || !client.email}
+                                  title={!client.email ? 'Add an email address to this client first' : 'Email a one-time review link for this wedding'}
+                                  className="rounded-lg bg-[#f4eafa] px-3 py-2 text-sm text-[#8B6AA8] disabled:opacity-50"
+                                >
+                                  {sendingReviewInviteId === client.id ? 'Sending...' : 'Request review'}
+                                </button>
+                              )}
                               <select aria-label={`Update ${client.name} status`} value={client.status || 'Lead'} onChange={(e) => updateClientStatus(client.id, e.target.value)} className="rounded-lg border border-[#eadff2] bg-white px-3 py-2 text-xs text-[#6B6175] outline-none">
                                 {['Lead', 'Discussion', 'Confirmed', 'Completed'].map((status) => <option key={status}>{status}</option>)}
                               </select>
@@ -2665,6 +2724,11 @@ ${message}`;
                               }} className="rounded-lg bg-[#f4eafa] px-3 py-2 text-sm text-[#8B6AA8]">Edit profile</button>
                             </div>
                           </div>
+                          {reviewStatus?.message && (
+                            <p className={`mt-2 text-sm ${reviewStatus.type === 'success' ? 'text-green-700' : 'text-red-600'}`} role="status">
+                              {reviewStatus.message}
+                            </p>
+                          )}
 
                           {clientEvents.length > 0 && (
                             <div className="mt-4">
