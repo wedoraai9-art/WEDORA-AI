@@ -4772,6 +4772,339 @@ Rules:
     }
 
 
+
+# ================= LIVE VENUE DISCOVERY =================
+class VenueSearchIn(BaseModel):
+    query: str = ""
+    location: Optional[str] = None
+    guests: Optional[int] = None
+    budget: Optional[float] = None
+    venue_type: Optional[str] = None
+    rooms: Optional[int] = None
+
+
+# Venue Discovery follows the same isolated architecture as Vendor Discovery:
+# Tavily searches the public web; Gemini only structures the returned results.
+# The shared LlmChat used by existing WEDORA Chat/Designer AI is untouched.
+VENUE_SEARCH_GEMINI_MODEL = os.environ.get(
+    "GEMINI_VENUE_SEARCH_MODEL",
+    VENDOR_SEARCH_GEMINI_MODEL,
+)
+
+
+def _normalise_venue_key(name: str, city: str = "") -> str:
+    raw = f"{name}|{city}".lower()
+    return re.sub(r"[^a-z0-9]+", "", raw)
+
+
+@api_router.post("/venues/search")
+async def search_venues(payload: VenueSearchIn):
+    """Live India-wide wedding venue discovery.
+
+    Tavily performs the public-web search. Gemini only extracts structured venue
+    records from those returned pages. This keeps venue discovery independent of
+    the existing WEDORA Chat/Designer AI configuration.
+    """
+    if not TAVILY_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="Tavily search is not configured on the server. Add TAVILY_API_KEY in Render Environment.",
+        )
+
+    if not GEMINI_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="Gemini API is not configured on the server",
+        )
+
+    query = (payload.query or "").strip()
+    location = (payload.location or "").strip()
+    venue_type = (payload.venue_type or "").strip()
+
+    if not query and not any([
+        location,
+        payload.guests,
+        payload.budget,
+        venue_type,
+        payload.rooms,
+    ]):
+        query = "wedding venues"
+
+    search_scope = location if location and location.lower() != "all india" else "India"
+    query_text = query or "wedding venues"
+    type_text = venue_type or "all wedding venue types"
+
+    search_query_parts = [query_text, search_scope]
+    if venue_type:
+        search_query_parts.append(venue_type)
+    else:
+        search_query_parts.append(
+            "palace resort banquet garden farmhouse beach hotel wedding venue"
+        )
+
+    if payload.guests:
+        search_query_parts.append(f"{payload.guests} guests")
+    if payload.rooms:
+        search_query_parts.append(f"{payload.rooms} rooms")
+    if payload.budget:
+        search_query_parts.append(f"budget up to ₹{payload.budget:,.0f}")
+
+    search_query_parts.append("wedding venue India")
+    search_query = " ".join(
+        part for part in search_query_parts if str(part).strip()
+    ).strip()
+
+    tavily_body = {
+        "api_key": TAVILY_API_KEY,
+        "query": search_query,
+        "search_depth": "basic",
+        "topic": "general",
+        "max_results": 15,
+        "include_answer": False,
+        "include_raw_content": False,
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as http:
+            tavily_response = await http.post(
+                "https://api.tavily.com/search",
+                json=tavily_body,
+            )
+            tavily_response.raise_for_status()
+            tavily_data = tavily_response.json()
+    except httpx.HTTPStatusError as exc:
+        detail = exc.response.text[:800]
+        logging.exception("Tavily venue search HTTP error")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Venue search provider error: {detail}",
+        )
+    except Exception as exc:
+        logging.exception("Tavily venue search request failed")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Venue search failed: {str(exc)}",
+        )
+
+    web_results = tavily_data.get("results") or []
+    if not isinstance(web_results, list) or not web_results:
+        return {
+            "results": [],
+            "sources": [],
+            "query": query,
+            "location": location,
+            "venue_type": venue_type,
+            "count": 0,
+            "lastChecked": datetime.now(timezone.utc).isoformat(),
+            "message": "No public web venue results were found for this search.",
+        }
+
+    compact_results = []
+    for item in web_results[:15]:
+        if not isinstance(item, dict):
+            continue
+        url = _clean_web_url(item.get("url"))
+        if not url:
+            continue
+        compact_results.append({
+            "title": str(item.get("title") or "").strip(),
+            "url": url,
+            "content": str(item.get("content") or "").strip()[:3000],
+        })
+
+    extraction_prompt = f"""
+You are WEDORA AI's live wedding venue data extraction engine for India.
+
+The user wants REAL wedding venues discovered from public web search results.
+Use ONLY the supplied Tavily search results below as source material.
+Do not invent, guess, hallucinate, or fabricate venue names, locations, capacity,
+room counts, prices, ratings, addresses, websites, or other facts.
+If a field is not clearly supported by the supplied result, return an empty value or 0.
+
+User search: {query_text}
+Location scope: {search_scope}
+Requested venue type: {type_text}
+Guest requirement: {payload.guests or 'not specified'}
+Room requirement: {payload.rooms or 'not specified'}
+Budget requirement: {('₹' + format(payload.budget, ',.0f')) if payload.budget else 'not specified'}
+
+Search results:
+{jsonlib.dumps(compact_results, ensure_ascii=False)}
+
+Return ONLY valid JSON in exactly this shape:
+{{
+  "venues": [
+    {{
+      "name": "",
+      "city": "",
+      "state": "",
+      "type": "Palace|Resort|Banquet|Garden|Beach|Hotel|Farmhouse|Other",
+      "capacity": 0,
+      "rooms": 0,
+      "starting_price": 0,
+      "price_label": "",
+      "location": "",
+      "description": "",
+      "source_name": "",
+      "source_url": ""
+    }}
+  ]
+}}
+
+Rules:
+- Return up to 15 strong matches supported by the supplied results.
+- Never add filler just to reach 15.
+- A venue may appear only once.
+- source_url MUST exactly match one of the supplied result URLs.
+- Never label a public-web venue as WEDORA Verified.
+- Keep capacity and rooms at 0 when they are not clearly published.
+- Keep starting_price at 0 when the result does not clearly publish a usable starting price.
+- Keep price_label explicit, such as "₹X per day", "₹X per plate", "rental price", or "Price on request".
+- Never convert a per-plate price into a total wedding budget.
+- For India-wide searches, include venues from different Indian cities when the supplied results support them.
+- For a specified city, prioritize venues in that city.
+- For a specified venue type, prioritize that type.
+- Prefer official venue websites and reputable venue directories among the supplied results.
+"""
+
+    try:
+        venue_client = genai.Client(api_key=GEMINI_API_KEY)
+        venue_response = await venue_client.aio.models.generate_content(
+            model=VENUE_SEARCH_GEMINI_MODEL,
+            contents=extraction_prompt,
+            config={
+                "temperature": 0.1,
+                "response_mime_type": "application/json",
+            },
+        )
+        raw_text = (venue_response.text or "").strip()
+    except Exception as exc:
+        logging.exception("Venue discovery Gemini extraction failed")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Venue data extraction failed: {str(exc)}",
+        )
+
+    if not raw_text:
+        raise HTTPException(
+            status_code=502,
+            detail="Venue search returned no usable results",
+        )
+
+    try:
+        match = re.search(r"\{[\s\S]*\}", raw_text)
+        if not match:
+            raise ValueError("No JSON object returned")
+        parsed = jsonlib.loads(match.group(0))
+    except Exception as exc:
+        logging.exception("Could not parse live venue search JSON")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Venue search returned invalid data: {str(exc)}",
+        )
+
+    raw_venues = parsed.get("venues") if isinstance(parsed, dict) else []
+    if not isinstance(raw_venues, list):
+        raw_venues = []
+
+    source_lookup = {}
+    tavily_sources = []
+    for item in compact_results:
+        url = item["url"]
+        title = item.get("title") or "Public web source"
+        source_lookup[url] = {"name": title, "url": url}
+        if not any(src["url"] == url for src in tavily_sources):
+            tavily_sources.append({"name": title, "url": url})
+
+    results = []
+    seen = set()
+
+    for index, venue in enumerate(raw_venues):
+        if not isinstance(venue, dict):
+            continue
+
+        name = str(venue.get("name") or "").strip()
+        city = str(venue.get("city") or "").strip()
+        if not name:
+            continue
+
+        key = _normalise_venue_key(name, city)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        source_url = _clean_web_url(venue.get("source_url"))
+        if source_url not in source_lookup:
+            source_url = ""
+
+        source_name = str(venue.get("source_name") or "Public web source").strip()
+        if source_url and source_url in source_lookup:
+            source_name = source_lookup[source_url]["name"]
+
+        def safe_number(value, default=0):
+            try:
+                if value in (None, "", "Not listed"):
+                    return default
+                return float(value)
+            except Exception:
+                return default
+
+        capacity = safe_number(venue.get("capacity"))
+        rooms = safe_number(venue.get("rooms"))
+        starting_price = safe_number(venue.get("starting_price"))
+
+        results.append({
+            "id": f"web-venue-{uuid.uuid4().hex[:12]}",
+            "name": name,
+            "city": city,
+            "state": str(venue.get("state") or "").strip(),
+            "type": str(venue.get("type") or "Other").strip(),
+            "capacity": int(capacity) if capacity.is_integer() else capacity,
+            "rooms": int(rooms) if rooms.is_integer() else rooms,
+            "startingPrice": int(starting_price) if starting_price.is_integer() else starting_price,
+            "priceLabel": str(venue.get("price_label") or "Price on request").strip(),
+            "location": str(
+                venue.get("location")
+                or ", ".join(x for x in [city, str(venue.get("state") or "").strip()] if x)
+            ).strip(),
+            "description": str(venue.get("description") or "").strip(),
+            "status": "Public Web Discovery",
+            "lastUpdated": datetime.now(timezone.utc).strftime("%d %b %Y"),
+            "source": source_name,
+            "sourceUrl": source_url,
+            "verified": False,
+            "wedora_verified": False,
+            "publicListing": True,
+            "lastChecked": datetime.now(timezone.utc).isoformat(),
+        })
+
+    results = results[:15]
+
+    try:
+        await db.venue_discovery_cache.insert_one({
+            "query": query,
+            "location": location,
+            "venue_type": venue_type,
+            "guests": payload.guests,
+            "budget": payload.budget,
+            "rooms": payload.rooms,
+            "results": results,
+            "sources": tavily_sources[:20],
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+    except Exception:
+        logging.exception("Venue discovery cache write failed")
+
+    return {
+        "results": results,
+        "sources": tavily_sources[:20],
+        "query": query,
+        "location": location,
+        "venue_type": venue_type,
+        "count": len(results),
+        "lastChecked": datetime.now(timezone.utc).isoformat(),
+    }
+
 # ================= VENUES & VENDORS =================
 @api_router.get("/venues")
 async def get_venues():
