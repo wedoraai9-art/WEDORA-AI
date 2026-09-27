@@ -1,9 +1,11 @@
+
 import axios from 'axios';
 
 const BACKEND_URL = 'https://wedora-ai.onrender.com';
 const API = `${BACKEND_URL}/api`;
 const TOKEN_KEY = 'wedora_token';
 
+// Authentication token
 export const getToken = () => localStorage.getItem(TOKEN_KEY);
 
 export const setToken = (token) =>
@@ -13,6 +15,7 @@ export const setToken = (token) =>
 
 export const clearToken = () => localStorage.removeItem(TOKEN_KEY);
 
+// Authenticated API client
 export const authAxios = axios.create({ baseURL: API });
 
 authAxios.interceptors.request.use((config) => {
@@ -83,10 +86,36 @@ export const apiDeleteLogo = async () =>
   (await authAxios.delete('/vendor/logo')).data;
 
 // Portfolio case studies
-// Added to resolve the missing export reported by the Cloudflare build.
+// Get all case studies for the authenticated vendor
 export const apiGetPortfolioCaseStudies = async () =>
   (
     await authAxios.get('/vendor/portfolio/case-studies')
+  ).data;
+
+// Create a case study
+export const apiCreatePortfolioCaseStudy = async (payload) =>
+  (
+    await authAxios.post(
+      '/vendor/portfolio/case-studies',
+      payload
+    )
+  ).data;
+
+// Update an existing case study
+export const apiUpdatePortfolioCaseStudy = async (id, payload) =>
+  (
+    await authAxios.put(
+      `/vendor/portfolio/case-studies/${encodeURIComponent(id)}`,
+      payload
+    )
+  ).data;
+
+// Delete a case study
+export const apiDeletePortfolioCaseStudy = async (id) =>
+  (
+    await authAxios.delete(
+      `/vendor/portfolio/case-studies/${encodeURIComponent(id)}`
+    )
   ).data;
 
 // Subscription and AI
@@ -95,7 +124,10 @@ export const apiSwitchPlan = async (plan) =>
 
 export const apiAIGenerateProfile = async (payload) =>
   (
-    await authAxios.post('/vendor/profile/ai-generate', payload)
+    await authAxios.post(
+      '/vendor/profile/ai-generate',
+      payload
+    )
   ).data;
 
 // Vendor leads and statistics
@@ -111,7 +143,7 @@ export const apiVendorStats = async () =>
   (await authAxios.get('/vendor/stats')).data;
 
 // Public marketplace
-// Render may take time to wake from sleep, so these requests have a timeout.
+// Render may take time to wake from sleep.
 export const apiMarketplace = async (params = {}) =>
   (
     await axios.get(`${API}/marketplace/vendors`, {
@@ -152,7 +184,10 @@ export const apiAdminVendors = async () =>
 
 export const apiAdminUpdateVendor = async (id, payload) =>
   (
-    await authAxios.patch(`/admin/vendors/${id}`, payload)
+    await authAxios.patch(
+      `/admin/vendors/${id}`,
+      payload
+    )
   ).data;
 
 export const apiAdminLeads = async () =>
