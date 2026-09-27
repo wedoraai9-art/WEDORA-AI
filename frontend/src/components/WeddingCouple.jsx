@@ -223,9 +223,8 @@ export default function WeddingCouple() {
     <div
       style={{
         minHeight: "100vh",
-        backgroundImage: "radial-gradient(ellipse 55% 45% at 12% 8%, rgba(201,184,255,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 88% 12%, rgba(247,183,216,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 50% 92%, rgba(169,232,255,0.14), transparent 65%), linear-gradient(180deg, #FFFCF8 0%, #FDF9FC 100%)",
         background:
-          "linear-gradient(180deg, #FFFCF8 0%, #f7f3f6 100%)",
+          "radial-gradient(ellipse 55% 45% at 12% 8%, rgba(201,184,255,0.24), transparent 65%), radial-gradient(ellipse 55% 45% at 88% 12%, rgba(247,183,216,0.22), transparent 65%), radial-gradient(ellipse 55% 45% at 50% 92%, rgba(169,232,255,0.20), transparent 65%), linear-gradient(180deg, #FFFCF8 0%, #FDF9FC 100%)",
         color: "#17141F",
         fontFamily: "Arial, sans-serif",
         paddingBottom: "70px",
@@ -277,6 +276,7 @@ export default function WeddingCouple() {
               fontSize: "38px",
               color: "#17141F",
               fontWeight: "700",
+              fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
             Bride & Groom
@@ -362,7 +362,7 @@ export default function WeddingCouple() {
           >
             <div
               style={{
-                background: "#faf7fa",
+                background: "linear-gradient(135deg, #F8F2FC, #FFF3F7, #F0F8FF)",
                 borderRadius: "16px",
                 padding: "17px",
               }}
@@ -392,7 +392,7 @@ export default function WeddingCouple() {
 
             <div
               style={{
-                background: "#faf7fa",
+                background: "linear-gradient(135deg, #F8F2FC, #FFF3F7, #F0F8FF)",
                 borderRadius: "16px",
                 padding: "17px",
               }}
@@ -546,7 +546,7 @@ export default function WeddingCouple() {
                   <div
                     style={{
                       height: "5px",
-                      background: "#eee8ef",
+                      background: "linear-gradient(90deg, #F2EAFB, #FBEAF2, #EAF5FF)",
                       borderRadius: "10px",
                       marginTop: "10px",
                       overflow: "hidden",
@@ -568,6 +568,7 @@ export default function WeddingCouple() {
 
             <button
               onClick={() => setShowAddFunction(true)}
+              className="glow-btn"
               style={{
                 width: "100%",
                 border: "1px dashed #cdbbd5",
@@ -752,7 +753,7 @@ export default function WeddingCouple() {
                 <div
                   style={{
                     marginTop: "20px",
-                    background: "#faf7fa",
+                    background: "linear-gradient(135deg, #F8F2FC, #FFF3F7, #F0F8FF)",
                     borderRadius: "18px",
                     padding: "18px",
                   }}
@@ -1039,22 +1040,24 @@ function StylingSection({
 const inputStyle = {
   padding: "13px 14px",
   borderRadius: "13px",
-  border: "1px solid #e5dce8",
-  background: "#fff",
+  border: "1px solid #DCCFF0",
+  background: "rgba(255,252,255,0.96)",
   outline: "none",
   fontSize: "14px",
   color: "#51455f",
+  boxShadow: "0 3px 12px rgba(110,85,140,0.045)",
 };
 
 const primaryButton = {
   border: "none",
   borderRadius: "13px",
   padding: "12px 20px",
-  background:
-    "linear-gradient(135deg, #9c7db6, #7f699a)",
+  background: "#17141F",
   color: "#fff",
   fontWeight: "700",
   cursor: "pointer",
+  boxShadow: "0 8px 20px rgba(127,105,154,0.18)",
+  transition: "transform 220ms ease, box-shadow 220ms ease, background 220ms ease",
 };
 
 const secondaryButton = {
