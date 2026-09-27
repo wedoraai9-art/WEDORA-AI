@@ -154,9 +154,10 @@ export default function WeddingTransportation() {
     <div
       style={{
         minHeight: "100vh",
+        backgroundImage: "radial-gradient(ellipse 55% 45% at 12% 8%, rgba(201,184,255,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 88% 12%, rgba(247,183,216,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 50% 92%, rgba(169,232,255,0.14), transparent 65%), linear-gradient(180deg, #FFFCF8 0%, #FDF9FC 100%)",
         background:
-          "linear-gradient(180deg, #fffaf7 0%, #f7f3f6 100%)",
-        color: "#4d4260",
+          "linear-gradient(180deg, #FFFCF8 0%, #f7f3f6 100%)",
+        color: "#17141F",
         fontFamily: "Arial, sans-serif",
         paddingBottom: "70px",
       }}
@@ -165,15 +166,21 @@ export default function WeddingTransportation() {
         style={{
           maxWidth: "1200px",
           margin: "0 auto",
-          padding: "34px 22px",
+          padding: "112px 22px 60px",
         }}
       >
         <button
           onClick={goBack}
-          className="glow-btn"
           style={{
-            color: "#8c6fa8",
+            border: "none",
+            background: "rgba(255,255,255,0.96)",
+            color: "#292431",
+            border: "1px solid #DCCFF0",
+            borderRadius: "999px",
+            padding: "10px 16px",
+            boxShadow: "0 8px 24px rgba(80,60,110,0.12)",
             fontSize: "15px",
+            cursor: "pointer",
             marginBottom: "22px",
           }}
         >
@@ -199,7 +206,7 @@ export default function WeddingTransportation() {
             style={{
               margin: 0,
               fontSize: "38px",
-              color: "#4d4260",
+              color: "#17141F",
               fontWeight: "700",
             }}
           >
@@ -281,11 +288,17 @@ export default function WeddingTransportation() {
 
           <button
             onClick={() => setShowForm(true)}
-            className="glow-btn"
             style={{
+              border: "none",
               borderRadius: "15px",
               padding: "14px 22px",
+              background:
+                "linear-gradient(135deg, #9c7db6, #7f699a)",
+              color: "#fff",
               fontWeight: "700",
+              cursor: "pointer",
+              boxShadow:
+                "0 8px 20px rgba(127,105,154,0.22)",
             }}
           >
             + Add Transport
@@ -504,11 +517,13 @@ export default function WeddingTransportation() {
                     onClick={() =>
                       deleteVehicle(item.id)
                     }
-                    className="glow-btn"
                     style={{
+                      border: "none",
+                      background: "#f8eef0",
+                      color: "#a26f7c",
                       borderRadius: "13px",
                       padding: "11px 14px",
-                      color: "#a26f7c",
+                      cursor: "pointer",
                     }}
                   >
                     Delete
@@ -714,7 +729,6 @@ export default function WeddingTransportation() {
                   setShowForm(false);
                   setForm(emptyForm);
                 }}
-                className="glow-btn"
                 style={secondaryButton}
               >
                 Cancel
@@ -722,7 +736,6 @@ export default function WeddingTransportation() {
 
               <button
                 onClick={addVehicle}
-                className="glow-btn"
                 style={primaryButton}
               >
                 Save Transportation
@@ -779,11 +792,13 @@ export default function WeddingTransportation() {
                 onClick={() =>
                   setSelectedVehicle(null)
                 }
-                className="glow-btn"
                 style={{
+                  border: "none",
+                  background: "#f6f1f7",
                   borderRadius: "12px",
                   width: "38px",
                   height: "38px",
+                  cursor: "pointer",
                   fontSize: "20px",
                 }}
               >
@@ -868,7 +883,6 @@ export default function WeddingTransportation() {
               onClick={() =>
                 setSelectedVehicle(null)
               }
-              className="glow-btn"
               style={{
                 ...primaryButton,
                 width: "100%",
@@ -982,14 +996,22 @@ const inputStyle = {
 };
 
 const primaryButton = {
+  border: "none",
   borderRadius: "13px",
   padding: "12px 20px",
+  background:
+    "linear-gradient(135deg, #9c7db6, #7f699a)",
+  color: "#fff",
   fontWeight: "700",
+  cursor: "pointer",
 };
 
 const secondaryButton = {
+  border: "1px solid #e4dbe8",
   borderRadius: "13px",
   padding: "12px 20px",
-  fontWeight: "600",
+  background: "#fff",
   color: "#7e6a8d",
+  fontWeight: "600",
+  cursor: "pointer",
 };
