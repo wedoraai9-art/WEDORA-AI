@@ -265,7 +265,7 @@ const WedoraVenueDiscovery = () => {
     return mergedVenues;
   }, [searched, mergedVenues]);
 
-  const handleSearch = async () => {
+  const handleSearch = async (overrides = {}) => {
     setSearched(true);
     setSearchLoading(true);
     setSearchError('');
@@ -274,13 +274,46 @@ const WedoraVenueDiscovery = () => {
 
     // Every field below is optional. A plain natural-language query is enough.
     // Venue Discovery remains free for the user; no subscription check is made here.
+    const searchQuery =
+      typeof overrides.query === 'string'
+        ? overrides.query
+        : query.trim();
+
+    const searchType =
+      typeof overrides.type === 'string'
+        ? overrides.type
+        : selectedType;
+
     const payload = {
-      query: query.trim(),
-      location: parsedSearch.location || location || null,
-      guests: parsedSearch.guests ? Number(parsedSearch.guests) : guests ? Number(guests) : null,
-      budget: parsedSearch.budget ? Number(parsedSearch.budget) : budget ? Number(budget) : null,
-      venue_type: parsedSearch.type || selectedType || null,
-      rooms: parsedSearch.rooms ? Number(parsedSearch.rooms) : null,
+      query: searchQuery,
+      location:
+        typeof overrides.location === 'string'
+          ? overrides.location
+          : parsedSearch.location || location || null,
+      guests:
+        overrides.guests !== undefined
+          ? (overrides.guests ? Number(overrides.guests) : null)
+          : parsedSearch.guests
+            ? Number(parsedSearch.guests)
+            : guests
+              ? Number(guests)
+              : null,
+      budget:
+        overrides.budget !== undefined
+          ? (overrides.budget ? Number(overrides.budget) : null)
+          : parsedSearch.budget
+            ? Number(parsedSearch.budget)
+            : budget
+              ? Number(budget)
+              : null,
+      venue_type:
+        searchType || parsedSearch.type || null,
+      rooms:
+        overrides.rooms !== undefined
+          ? (overrides.rooms ? Number(overrides.rooms) : null)
+          : parsedSearch.rooms
+            ? Number(parsedSearch.rooms)
+            : null,
     };
 
     try {
@@ -324,6 +357,21 @@ const WedoraVenueDiscovery = () => {
   const useSuggestion = (suggestion) => {
     setQuery(suggestion);
     setSearched(false);
+    handleSearch({ query: suggestion });
+  };
+
+  const useVenueTypeShortcut = (typeName) => {
+    const nextType = selectedType === typeName ? '' : typeName;
+    const shortcutQuery = nextType
+      ? `${nextType} wedding venues`
+      : query.trim() || 'wedding venues';
+
+    setSelectedType(nextType);
+    setQuery(shortcutQuery);
+    handleSearch({
+      query: shortcutQuery,
+      type: nextType,
+    });
   };
 
   const clearSearch = () => {
@@ -622,7 +670,7 @@ const WedoraVenueDiscovery = () => {
                   <button
                     key={type.name}
                     onClick={() =>
-                      setSelectedType(active ? '' : type.name)
+                      useVenueTypeShortcut(type.name)
                     }
                     className={`rounded-2xl border p-6 text-center transition ${
                       active
