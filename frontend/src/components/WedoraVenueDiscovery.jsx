@@ -41,7 +41,6 @@ const sampleVenues = [
     city: 'Jaipur',
     type: 'Palace',
     capacity: 500,
-    hotelGuestOccupancy: 0,
     rooms: 80,
     startingPrice: 650000,
     location: 'Jaipur, Rajasthan',
@@ -55,7 +54,6 @@ const sampleVenues = [
     city: 'Jaipur',
     type: 'Garden',
     capacity: 800,
-    hotelGuestOccupancy: 0,
     rooms: 45,
     startingPrice: 450000,
     location: 'Jaipur, Rajasthan',
@@ -69,7 +67,6 @@ const sampleVenues = [
     city: 'Udaipur',
     type: 'Resort',
     capacity: 350,
-    hotelGuestOccupancy: 0,
     rooms: 110,
     startingPrice: 850000,
     location: 'Udaipur, Rajasthan',
@@ -142,10 +139,6 @@ const WedoraVenueDiscovery = () => {
       venueUpdates.forEach((item) => {
         if (item.field === 'Capacity') {
           updatedVenue.capacity = Number(item.correctedValue);
-        }
-
-        if (item.field === 'Hotel Guest Occupancy') {
-          updatedVenue.hotelGuestOccupancy = Number(item.correctedValue);
         }
 
         if (item.field === 'Starting Price') {
@@ -396,27 +389,7 @@ const WedoraVenueDiscovery = () => {
   };
 
   return (
-    <>
-      <style>{`
-        @keyframes wedoraChromaticSweep {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-
-        @keyframes wedoraChromaticPulse {
-          0%, 100% { opacity: 0.72; }
-          50% { opacity: 1; }
-        }
-
-        .wedora-discovery-button-border {
-          animation: wedoraChromaticSweep 3.2s linear infinite;
-        }
-
-        .wedora-discovery-button-glow {
-          animation: wedoraChromaticPulse 2.2s ease-in-out infinite;
-        }
-      `}</style>
-<div className="wedora-venue-page min-h-screen bg-gradient-to-b from-[#FBF9FF] via-[#FFFCFE] to-[#F8F6FF] text-[#2D2638]">
+    <div className="wedora-venue-page min-h-screen bg-gradient-to-b from-[#FBF9FF] via-[#FFFCFE] to-[#F8F6FF] text-[#2D2638]">
       {/* TRANSPARENT BACK CONTROL */}
       <div className="relative z-20 mx-auto max-w-7xl px-6 pt-[112px] md:pt-[120px]">
         <button
@@ -490,35 +463,10 @@ const WedoraVenueDiscovery = () => {
 
                 <button
                   onClick={handleSearch}
-                  disabled={searchLoading}
-                  aria-busy={searchLoading}
-                  className={`group relative flex min-h-[64px] items-center justify-center overflow-hidden rounded-2xl p-[1.5px] shadow-[0_10px_28px_rgba(70,55,40,0.12)] transition-all duration-300 ${
-                    searchLoading
-                      ? 'cursor-wait opacity-90'
-                      : 'hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(70,55,40,0.16)] active:translate-y-[1px] active:scale-[0.985]'
-                  }`}
+                  className="glow-btn flex min-h-[64px] items-center justify-center gap-2 text-sm tracking-wide"
                 >
-                  <span
-                    aria-hidden="true"
-                    className="wedora-discovery-button-border pointer-events-none absolute inset-[-65%] rounded-[30%] bg-[conic-gradient(from_0deg,transparent_0deg_300deg,rgba(255,76,128,0.95)_308deg_314deg,transparent_320deg_334deg,rgba(77,177,255,0.95)_338deg_344deg,transparent_350deg_360deg)]"
-                  />
-                  <span
-                    aria-hidden="true"
-                    className="wedora-discovery-button-glow pointer-events-none absolute inset-[1px] rounded-[14px] border border-[#30283A]/80 bg-white/25 blur-[0.4px]"
-                  />
-                  <span className="relative z-10 flex min-h-[61px] w-full items-center justify-center gap-2 rounded-[14px] bg-gradient-to-r from-[#D8C8FF] via-[#E8D3F4] to-[#BFE8F7] px-8 text-sm font-medium tracking-wide text-[#30283A] shadow-[inset_0_1px_0_rgba(255,255,255,0.78),0_6px_18px_rgba(155,124,246,0.14)] transition-all duration-300 group-hover:from-[#D4C2FF] group-hover:via-[#F0D3F0] group-hover:to-[#B8E5F5]">
-                    {searchLoading ? (
-                      <>
-                        <RefreshCw size={18} className="animate-spin" />
-                        Searching…
-                      </>
-                    ) : (
-                      <>
-                        <Search size={18} className="transition-transform duration-300 group-hover:scale-110" />
-                        Discover Venues
-                      </>
-                    )}
-                  </span>
+                  <Search size={18} />
+                  Discover Venues
                 </button>
 
               </div>
@@ -753,7 +701,7 @@ const WedoraVenueDiscovery = () => {
                   </p>
                   <button
                     onClick={handleSearch}
-                    className="mt-6 rounded-full bg-[#2D2638] px-5 py-3 text-xs text-white"
+                    className="glow-btn mt-6 text-xs"
                   >
                     Try again
                   </button>
@@ -839,23 +787,14 @@ const WedoraVenueDiscovery = () => {
 
                         </div>
 
-                        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        <div className="mt-5 grid grid-cols-2 gap-3">
 
                           <div className="rounded-xl bg-[#FBF9FD] p-3">
                             <p className="text-[10px] tracking-wide text-[#978d84]">
-                              EVENT CAPACITY
+                              CAPACITY
                             </p>
                             <p className="mt-1 text-sm">
-                              {venue.capacity ? `${venue.capacity} guests` : 'Not specified'}
-                            </p>
-                          </div>
-
-                          <div className="rounded-xl bg-[#FBF9FD] p-3">
-                            <p className="text-[10px] tracking-wide text-[#978d84]">
-                              HOTEL GUEST OCCUPANCY
-                            </p>
-                            <p className="mt-1 text-sm">
-                              {venue.hotelGuestOccupancy ? `${venue.hotelGuestOccupancy} guests` : 'Not specified'}
+                              {venue.capacity} guests
                             </p>
                           </div>
 
@@ -864,7 +803,7 @@ const WedoraVenueDiscovery = () => {
                               ROOMS
                             </p>
                             <p className="mt-1 text-sm">
-                              {venue.rooms || 'Not specified'}
+                              {venue.rooms}
                             </p>
                           </div>
 
@@ -987,7 +926,7 @@ const WedoraVenueDiscovery = () => {
             </h2>
 
             <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-[#82778E]">
-              Found an outdated price, incorrect event capacity, hotel guest occupancy, changed contact
+              Found an outdated price, incorrect capacity, changed contact
               information or another mistake? Submit an update and WEDORA
               can use verified corrections in future searches.
             </p>
@@ -1068,10 +1007,7 @@ const WedoraVenueDiscovery = () => {
                         Starting Price
                       </option>
                       <option value="Capacity">
-                        Event Capacity
-                      </option>
-                      <option value="Hotel Guest Occupancy">
-                        Hotel Guest Occupancy
+                        Guest Capacity
                       </option>
                       <option value="Rooms">
                         Number of Rooms
@@ -1203,7 +1139,6 @@ const WedoraVenueDiscovery = () => {
       )}
 
     </div>
-    </>
   );
 };
 
