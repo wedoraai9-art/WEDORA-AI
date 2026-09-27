@@ -3,6 +3,10 @@ import React, { useRef, useState } from 'react';
 import {
   apiUploadPortfolio,
   apiDeletePortfolio,
+  apiGetPortfolioCaseStudies,
+  apiCreatePortfolioCaseStudy,
+  apiUpdatePortfolioCaseStudy,
+  apiDeletePortfolioCaseStudy,
   fmtApiError,
 } from '@/lib/auth';
 import { toast } from 'sonner';
