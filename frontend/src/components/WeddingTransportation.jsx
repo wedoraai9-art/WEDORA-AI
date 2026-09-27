@@ -154,9 +154,8 @@ export default function WeddingTransportation() {
     <div
       style={{
         minHeight: "100vh",
-        backgroundImage: "radial-gradient(ellipse 55% 45% at 12% 8%, rgba(201,184,255,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 88% 12%, rgba(247,183,216,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 50% 92%, rgba(169,232,255,0.14), transparent 65%), linear-gradient(180deg, #FFFCF8 0%, #FDF9FC 100%)",
         background:
-          "linear-gradient(180deg, #FFFCF8 0%, #f7f3f6 100%)",
+          "radial-gradient(ellipse 55% 45% at 12% 8%, rgba(201,184,255,0.24), transparent 65%), radial-gradient(ellipse 55% 45% at 88% 12%, rgba(247,183,216,0.22), transparent 65%), radial-gradient(ellipse 55% 45% at 50% 92%, rgba(169,232,255,0.20), transparent 65%), linear-gradient(180deg, #FFFCF8 0%, #FDF9FC 100%)",
         color: "#17141F",
         fontFamily: "Arial, sans-serif",
         paddingBottom: "70px",
@@ -208,9 +207,10 @@ export default function WeddingTransportation() {
               fontSize: "38px",
               color: "#17141F",
               fontWeight: "700",
+              fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
-            Transportation
+            Photography
           </h1>
 
           <p
@@ -279,7 +279,7 @@ export default function WeddingTransportation() {
               padding: "14px 17px",
               borderRadius: "15px",
               border: "1px solid #e7dfe9",
-              background: "#fff",
+              background: "rgba(255,252,255,0.94)",
               outline: "none",
               fontSize: "14px",
               color: "#51455f",
@@ -288,17 +288,17 @@ export default function WeddingTransportation() {
 
           <button
             onClick={() => setShowForm(true)}
+            className="glow-btn"
             style={{
               border: "none",
               borderRadius: "15px",
               padding: "14px 22px",
-              background:
-                "linear-gradient(135deg, #9c7db6, #7f699a)",
+              background: "#17141F",
               color: "#fff",
               fontWeight: "700",
               cursor: "pointer",
-              boxShadow:
-                "0 8px 20px rgba(127,105,154,0.22)",
+              boxShadow: "0 8px 20px rgba(127,105,154,0.18)",
+              transition: "transform 220ms ease, box-shadow 220ms ease, background 220ms ease",
             }}
           >
             + Add Transport
@@ -310,7 +310,7 @@ export default function WeddingTransportation() {
         {filteredVehicles.length === 0 ? (
           <div
             style={{
-              background: "#fff",
+              background: "rgba(255,252,255,0.94)",
               borderRadius: "24px",
               padding: "55px 25px",
               textAlign: "center",
@@ -353,7 +353,7 @@ export default function WeddingTransportation() {
               <div
                 key={item.id}
                 style={{
-                  background: "#fff",
+                  background: "rgba(255,252,255,0.94)",
                   borderRadius: "24px",
                   padding: "22px",
                   border: "1px solid #eee5ef",
@@ -414,7 +414,7 @@ export default function WeddingTransportation() {
                 <div
                   style={{
                     marginTop: "18px",
-                    background: "#faf7fa",
+                    background: "linear-gradient(135deg, #F8F2FC, #FFF3F7, #F0F8FF)",
                     borderRadius: "15px",
                     padding: "13px",
                   }}
@@ -502,7 +502,7 @@ export default function WeddingTransportation() {
                       flex: 1,
                       border:
                         "1px solid #e6ddea",
-                      background: "#fff",
+                      background: "rgba(255,252,255,0.94)",
                       color: "#7e6794",
                       borderRadius: "13px",
                       padding: "11px",
@@ -557,7 +557,7 @@ export default function WeddingTransportation() {
               maxWidth: "680px",
               maxHeight: "90vh",
               overflowY: "auto",
-              background: "#fff",
+              background: "rgba(255,252,255,0.94)",
               borderRadius: "28px",
               padding: "28px",
               boxShadow:
@@ -765,7 +765,7 @@ export default function WeddingTransportation() {
             style={{
               width: "100%",
               maxWidth: "560px",
-              background: "#fff",
+              background: "rgba(255,252,255,0.94)",
               borderRadius: "28px",
               padding: "30px",
               boxShadow:
@@ -902,7 +902,7 @@ function StatCard({ icon, value, label }) {
   return (
     <div
       style={{
-        background: "#fff",
+        background: "rgba(255,252,255,0.94)",
         borderRadius: "22px",
         padding: "22px",
         boxShadow:
@@ -954,7 +954,7 @@ function InfoBox({ label, value }) {
   return (
     <div
       style={{
-        background: "#faf7fa",
+        background: "linear-gradient(135deg, #F8F2FC, #FFF3F7, #F0F8FF)",
         padding: "12px",
         borderRadius: "14px",
         minWidth: 0,
@@ -989,7 +989,7 @@ const inputStyle = {
   padding: "13px 15px",
   borderRadius: "13px",
   border: "1px solid #e5dce8",
-  background: "#fff",
+  background: "rgba(255,252,255,0.94)",
   outline: "none",
   fontSize: "14px",
   color: "#51455f",
@@ -999,18 +999,19 @@ const primaryButton = {
   border: "none",
   borderRadius: "13px",
   padding: "12px 20px",
-  background:
-    "linear-gradient(135deg, #9c7db6, #7f699a)",
+  background: "#17141F",
   color: "#fff",
   fontWeight: "700",
   cursor: "pointer",
+  boxShadow: "0 8px 20px rgba(127,105,154,0.18)",
+  transition: "transform 220ms ease, box-shadow 220ms ease, background 220ms ease",
 };
 
 const secondaryButton = {
   border: "1px solid #e4dbe8",
   borderRadius: "13px",
   padding: "12px 20px",
-  background: "#fff",
+  background: "rgba(255,252,255,0.94)",
   color: "#7e6a8d",
   fontWeight: "600",
   cursor: "pointer",
