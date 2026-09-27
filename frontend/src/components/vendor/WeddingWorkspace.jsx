@@ -2243,6 +2243,47 @@ ${message}`;
     return `₹${Number(amount).toLocaleString('en-IN')}`;
   };
 
+  // Derive invoice due status from the saved due date and remaining balance.
+  const getInvoiceDueStatus = (invoice) => {
+    const balance = Number(invoice?.balance_amount || 0);
+    if (String(invoice?.status || '').toLowerCase() === 'paid' || balance <= 0) {
+      return { key: 'paid', label: 'Paid', className: 'bg-[#eef8ef] text-[#4f875c]' };
+    }
+    if (!invoice?.due_date) {
+      return { key: 'no-date', label: 'Due date not set', className: 'bg-[#f1eff5] text-[#756d7d]' };
+    }
+    const dueDate = String(invoice.due_date).slice(0, 10);
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const dueMs = new Date(`${dueDate}T00:00:00`).getTime();
+    const todayMs = new Date(`${today}T00:00:00`).getTime();
+    if (!Number.isFinite(dueMs)) {
+      return { key: 'no-date', label: 'Check due date', className: 'bg-[#f1eff5] text-[#756d7d]' };
+    }
+    const days = Math.round((dueMs - todayMs) / 86400000);
+    if (days < 0) return { key: 'overdue', label: `Overdue by ${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'}`, className: 'bg-[#fff1f4] text-[#b25b70]' };
+    if (days === 0) return { key: 'today', label: 'Due today', className: 'bg-[#fff5e8] text-[#a66b25]' };
+    if (days <= 7) return { key: 'soon', label: `Due in ${days} day${days === 1 ? '' : 's'}`, className: 'bg-[#fff5e8] text-[#a66b25]' };
+    return { key: 'upcoming', label: 'Upcoming', className: 'bg-[#eaf7ff] text-[#557c9a]' };
+  };
+
+  const openInvoiceFollowUp = (invoice) => {
+    const client = String(invoice?.client_name || 'there').trim() || 'there';
+    const invoiceNumber = invoice?.invoice_number || 'your invoice';
+    const weddingName = wedding?.wedding_name || wedding?.name || 'your wedding';
+    const dueDateText = invoice?.due_date ? `, due on ${formatDate(invoice.due_date)}` : '';
+    const message = `Hello ${client}, a friendly payment reminder from ${vendorBusinessName} regarding ${invoiceNumber} for ${weddingName}. The outstanding balance is ${formatCurrency(invoice?.balance_amount)}${dueDateText}. Please let us know if you need any details. Thank you!`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const invoiceDueSummary = invoices.reduce((summary, invoice) => {
+    const status = getInvoiceDueStatus(invoice);
+    if (status.key === 'overdue') summary.overdue += 1;
+    if (status.key === 'today' || status.key === 'soon') summary.dueSoon += 1;
+    if (status.key === 'no-date' && Number(invoice?.balance_amount || 0) > 0) summary.missingDate += 1;
+    if (Number(invoice?.balance_amount || 0) > 0) summary.outstanding += Number(invoice.balance_amount || 0);
+    return summary;
+  }, { overdue: 0, dueSoon: 0, missingDate: 0, outstanding: 0 });
 
   // Decorator-only workspace modules.
   // Support the category names currently used across the vendor system.
@@ -3070,6 +3111,13 @@ ${message}`;
                   <button type="button" onClick={() => { setInvoiceForm(emptyInvoice(wedding)); setEditingInvoiceId(null); setShowInvoiceForm(true); }} className="rounded-xl bg-[#f4eafa] px-4 py-2 text-sm font-medium text-[#8B6AA8] hover:bg-[#eadcf5]"><Plus className="inline w-4 h-4 mr-1" />New Invoice</button>
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3" data-testid="invoice-due-overview">
+                  <div className="rounded-xl border border-[#eadff2] bg-white p-4"><p className="text-xs text-[#8B8194]">Outstanding balance</p><p className="mt-1 text-xl font-semibold text-[#3F3748]">{formatCurrency(invoiceDueSummary.outstanding)}</p></div>
+                  <div className="rounded-xl border border-[#f2d9df] bg-[#fff8fa] p-4"><p className="text-xs text-[#9b6473]">Overdue invoices</p><p className="mt-1 text-xl font-semibold text-[#b25b70]">{invoiceDueSummary.overdue}</p></div>
+                  <div className="rounded-xl border border-[#f0dfc7] bg-[#fffbf4] p-4"><p className="text-xs text-[#9b7949]">Due within 7 days</p><p className="mt-1 text-xl font-semibold text-[#a66b25]">{invoiceDueSummary.dueSoon}</p></div>
+                  <div className="rounded-xl border border-[#eadff2] bg-[#faf7ff] p-4"><p className="text-xs text-[#8B8194]">Missing due date</p><p className="mt-1 text-xl font-semibold text-[#3F3748]">{invoiceDueSummary.missingDate}</p></div>
+                </div>
+
                 {showInvoiceForm && (
                   <div className="rounded-xl border border-[#eadff2] bg-white p-5 space-y-4" data-testid="invoice-form">
                     <div className="flex items-center justify-between gap-3"><div><p className="text-sm text-[#8B8194]">{editingInvoiceId ? 'Update invoice details' : 'New invoice'}</p><h4 className="text-lg font-semibold text-[#3F3748] mt-1">Invoice Details</h4></div><button type="button" onClick={resetInvoiceForm} className="rounded-xl px-3 py-2 text-sm text-[#8B8194]">Close</button></div>
@@ -3122,8 +3170,8 @@ ${message}`;
                       {invoices.map((invoice) => (
                         <div key={invoice.id} className="rounded-xl border border-[#eadff2] bg-white p-4">
                           <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-                            <div className="flex-1 min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-medium text-[#3F3748]">{invoice.title || 'Invoice'}</p><span className={`rounded-full px-2.5 py-1 text-[11px] font-medium capitalize ${invoice.status === 'paid' ? 'bg-green-50 text-green-700' : invoice.status === 'partial' ? 'bg-amber-50 text-amber-700' : 'bg-[#fff1f4] text-[#b25b70]'}`}>{invoice.status || 'unpaid'}</span></div><p className="text-xs text-[#8B8194] mt-1">{invoice.invoice_number} · {invoice.client_name || 'No client name'}{invoice.due_date ? ` · Due ${invoice.due_date}` : ''}</p><p className="text-xs text-[#8B8194] mt-1">Total {formatCurrency(invoice.total)} · Paid {formatCurrency(invoice.paid_amount)} · Balance {formatCurrency(invoice.balance_amount)}</p></div>
-                            <div className="flex flex-wrap gap-2"><button type="button" onClick={() => printInvoice(invoice)} className="rounded-lg bg-[#eaf7ff] px-3 py-1.5 text-sm text-[#557c9a]"><Download className="inline w-3.5 h-3.5 mr-1" />PDF</button>{Number(invoice.balance_amount) > 0 && <button type="button" onClick={() => startInvoicePayment(invoice)} className="rounded-lg bg-[#eef8ef] px-3 py-1.5 text-sm text-green-700"><Plus className="inline w-3.5 h-3.5 mr-1" />Record payment</button>}<button type="button" onClick={() => editInvoice(invoice)} className="rounded-lg bg-[#f4eafa] px-3 py-1.5 text-sm text-[#8B6AA8]"><Edit3 className="inline w-3.5 h-3.5 mr-1" />Edit</button><button type="button" onClick={() => deleteInvoice(invoice.id)} className="rounded-lg bg-[#fff1f4] px-3 py-1.5 text-sm text-red-400"><Trash2 className="inline w-3.5 h-3.5 mr-1" />Delete</button></div>
+                            <div className="flex-1 min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-medium text-[#3F3748]">{invoice.title || 'Invoice'}</p><span className={`rounded-full px-2.5 py-1 text-[11px] font-medium capitalize ${invoice.status === 'paid' ? 'bg-green-50 text-green-700' : invoice.status === 'partial' ? 'bg-amber-50 text-amber-700' : 'bg-[#fff1f4] text-[#b25b70]'}`}>{invoice.status || 'unpaid'}</span></div><p className="text-xs text-[#8B8194] mt-1">{invoice.invoice_number} · {invoice.client_name || 'No client name'}{invoice.due_date ? ` · Due ${formatDate(invoice.due_date)}` : ''}</p><p className="text-xs text-[#8B8194] mt-1">Total {formatCurrency(invoice.total)} · Paid {formatCurrency(invoice.paid_amount)} · Balance {formatCurrency(invoice.balance_amount)}</p><div className="mt-2"><span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium ${getInvoiceDueStatus(invoice).className}`}>{getInvoiceDueStatus(invoice).label}</span></div></div>
+                            <div className="flex flex-wrap gap-2"><button type="button" onClick={() => printInvoice(invoice)} className="rounded-lg bg-[#eaf7ff] px-3 py-1.5 text-sm text-[#557c9a]"><Download className="inline w-3.5 h-3.5 mr-1" />PDF</button>{Number(invoice.balance_amount) > 0 && <button type="button" onClick={() => startInvoicePayment(invoice)} className="rounded-lg bg-[#eef8ef] px-3 py-1.5 text-sm text-green-700 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm"><Plus className="inline w-3.5 h-3.5 mr-1" />Record payment</button>}{Number(invoice.balance_amount) > 0 && <button type="button" onClick={() => openInvoiceFollowUp(invoice)} className="glow-btn rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5"><MessageCircle className="inline w-3.5 h-3.5 mr-1" />WhatsApp follow-up</button>}<button type="button" onClick={() => editInvoice(invoice)} className="rounded-lg bg-[#f4eafa] px-3 py-1.5 text-sm text-[#8B6AA8]"><Edit3 className="inline w-3.5 h-3.5 mr-1" />Edit</button><button type="button" onClick={() => deleteInvoice(invoice.id)} className="rounded-lg bg-[#fff1f4] px-3 py-1.5 text-sm text-red-400"><Trash2 className="inline w-3.5 h-3.5 mr-1" />Delete</button></div>
                           </div>
 
                           {payingInvoiceId === invoice.id && (
