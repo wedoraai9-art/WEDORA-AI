@@ -192,26 +192,26 @@ export default function WeddingTimeline() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFFCF8] text-[#2D2638]" style={{ backgroundImage: "radial-gradient(ellipse 55% 45% at 12% 8%, rgba(201,184,255,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 88% 12%, rgba(247,183,216,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 50% 92%, rgba(169,232,255,0.14), transparent 65%)" }}>
-      {/* HEADER */}
-      <header className="relative z-40 border-b border-[#E9E0D5] bg-[#FFFCF8]/95 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
+    <div
+      className="min-h-screen bg-[#FFFCF8] text-[#2D2638]"
+      style={{
+        backgroundImage:
+          "radial-gradient(ellipse 55% 45% at 12% 8%, rgba(201,184,255,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 88% 12%, rgba(247,183,216,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 50% 92%, rgba(169,232,255,0.14), transparent 65%)",
+      }}
+    >
+      {/* MAIN */}
+      <main className="mx-auto max-w-7xl px-5 pb-8 pt-28 md:px-8 md:pb-12 md:pt-32">
+        {/* BACK NAVIGATION */}
+        <div className="relative z-50 mb-7 flex items-center">
           <button
+            type="button"
             onClick={() => navigate("/wedding-planning")}
-            className="flex items-center gap-2 rounded-full border border-[#E6DCCD] bg-white px-4 py-2 text-sm font-medium text-[#4A3868] transition hover:bg-[#F3EDF7]"
+            className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[rgba(201,184,255,0.5)] bg-white/95 px-4 py-2 text-sm font-medium text-[#292431] shadow-[0_8px_24px_rgba(80,60,110,0.12)] backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:border-[#C9B8FF] hover:bg-white hover:shadow-[0_12px_28px_rgba(155,124,246,0.2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA] focus-visible:ring-offset-2"
           >
             <ArrowLeft size={17} />
-            Back to Command Center
+            <span>Back to Command Center</span>
           </button>
-
-          <div className="hidden items-center gap-2 text-sm font-semibold md:flex">
-            <Sparkles size={17} className="text-[#A77B9D]" />
-            WEDORA
-          </div>
         </div>
-      </header>
-
-      <main className="mx-auto max-w-7xl px-5 pb-8 pt-28 md:px-8 md:pb-12 md:pt-32">
         {/* HERO */}
         <section className="mb-8">
           <div className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-[#A77B9D]">
@@ -219,44 +219,47 @@ export default function WeddingTimeline() {
             Wedding Command Center
           </div>
 
-          <h1 className="text-4xl font-semibold tracking-tight text-[#17141F] md:text-5xl">
+          <h1
+            className="font-normal tracking-[-0.02em] text-[#17141F] md:text-6xl"
+            style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+          >
             Wedding Timeline
           </h1>
 
-          <p className="mt-3 max-w-2xl text-base leading-7 text-[#776B7F]">
+          <p className="mt-3 max-w-2xl text-base leading-7 text-[#6B617A]">
             Organize every ceremony, event and important moment of your
             wedding journey in one beautiful timeline.
           </p>
         </section>
 
         {/* PROGRESS */}
-        <section className="mb-8 overflow-hidden rounded-[28px] border border-[#E9E0D5] bg-white p-6 shadow-[0_15px_45px_rgba(64,42,91,0.06)] md:p-8">
+        <section className="mb-8 overflow-hidden rounded-[28px] border border-[rgba(201,184,255,0.28)] bg-white/70 p-6 shadow-[0_15px_45px_rgba(120,100,150,0.06)] backdrop-blur-sm md:p-8">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-sm font-medium text-[#8C7D91]">
+              <p className="text-sm font-medium text-[#6B617A]">
                 TIMELINE PROGRESS
               </p>
 
               <div className="mt-2 flex items-end gap-3">
-                <span className="text-4xl font-semibold text-[#17141F]">
+                <span className="text-4xl font-semibold text-[#2D2638]">
                   {progress}%
                 </span>
 
-                <span className="pb-1 text-sm text-[#8C7D91]">
+                <span className="pb-1 text-sm text-[#6B617A]">
                   {completedEvents} of {events.length} events completed
                 </span>
               </div>
             </div>
 
             <div className="w-full md:w-[320px]">
-              <div className="mb-2 flex justify-between text-xs text-[#8C7D91]">
+              <div className="mb-2 flex justify-between text-xs text-[#6B617A]">
                 <span>Your wedding journey</span>
                 <span>{progress}%</span>
               </div>
 
-              <div className="h-3 overflow-hidden rounded-full bg-[#F0EAE4]">
+              <div className="h-3 overflow-hidden rounded-full bg-[#F1EDF5]">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-[#B991B5] via-[#CBA4C5] to-[#D8B98F] transition-all duration-500"
+                  className="h-full rounded-full bg-gradient-to-r from-[#C9B8FF] via-[#F7B7D8] to-[#A9E8FF] transition-all duration-500"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -265,18 +268,18 @@ export default function WeddingTimeline() {
         </section>
 
         {/* ADD EVENT */}
-        <section className="mb-8 rounded-[28px] border border-[#E9E0D5] bg-white p-6 shadow-[0_15px_45px_rgba(64,42,91,0.05)] md:p-7">
+        <section className="mb-8 rounded-[28px] border border-[rgba(201,184,255,0.28)] bg-white/70 p-6 shadow-[0_15px_45px_rgba(120,100,150,0.06)] backdrop-blur-sm md:p-7">
           <div className="mb-5 flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#F1E4F0] to-[#F8EEDC] text-[#7D6284]">
               <Plus size={21} />
             </div>
 
             <div>
-              <h2 className="text-lg font-semibold text-[#17141F]">
+              <h2 className="text-lg font-semibold text-[#2D2638]">
                 Add Timeline Event
               </h2>
 
-              <p className="text-sm text-[#8C7D91]">
+              <p className="text-sm text-[#6B617A]">
                 Add ceremonies, meetings or important wedding moments.
               </p>
             </div>
@@ -293,27 +296,27 @@ export default function WeddingTimeline() {
                 }
               }}
               placeholder="Event name"
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm text-[#17141F] outline-none placeholder:text-[#B0A4AE] focus:border-[#B991B5] focus:ring-4 focus:ring-[#B991B5]/10"
+              className="h-12 rounded-2xl border border-[rgba(201,184,255,0.32)] bg-white px-4 text-sm text-[#2D2638] outline-none placeholder:text-[#B0A4AE] focus:border-[#C9B8FF] focus:ring-4 focus:ring-[#C9B8FF]/20"
             />
 
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm text-[#17141F] outline-none focus:border-[#B991B5]"
+              className="h-12 rounded-2xl border border-[rgba(201,184,255,0.32)] bg-white px-4 text-sm text-[#2D2638] outline-none focus:border-[#C9B8FF]"
             />
 
             <input
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm text-[#17141F] outline-none focus:border-[#B991B5]"
+              className="h-12 rounded-2xl border border-[rgba(201,184,255,0.32)] bg-white px-4 text-sm text-[#2D2638] outline-none focus:border-[#C9B8FF]"
             />
 
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm text-[#17141F] outline-none focus:border-[#B991B5]"
+              className="h-12 rounded-2xl border border-[rgba(201,184,255,0.32)] bg-white px-4 text-sm text-[#2D2638] outline-none focus:border-[#C9B8FF]"
             >
               {CATEGORIES.map((item) => (
                 <option key={item} value={item}>
@@ -322,9 +325,9 @@ export default function WeddingTimeline() {
               ))}
             </select>
 
-            <button className="glow-btn flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#17141F] px-6 text-sm font-semibold text-white transition hover:bg-[#46325F]"
+            <button
               onClick={addEvent}
-             
+              className="glow-btn flex h-12 items-center justify-center gap-2 rounded-2xl px-6 text-sm font-semibold"
             >
               <Plus size={17} />
               Add
@@ -341,11 +344,11 @@ export default function WeddingTimeline() {
                 className="mx-auto mb-4 text-[#B991B5]"
               />
 
-              <h3 className="text-lg font-semibold text-[#17141F]">
+              <h3 className="text-lg font-semibold text-[#2D2638]">
                 Your timeline is empty
               </h3>
 
-              <p className="mt-2 text-sm text-[#8C7D91]">
+              <p className="mt-2 text-sm text-[#6B617A]">
                 Add your first wedding event above.
               </p>
             </div>
@@ -358,14 +361,14 @@ export default function WeddingTimeline() {
                 {sortedEvents.map((event) => (
                   <div
                     key={event.id}
-                    className={`relative flex gap-4 rounded-[26px] border bg-white p-5 shadow-[0_10px_30px_rgba(64,42,91,0.04)] transition md:p-6 ${
+                    className={`relative flex gap-4 rounded-[26px] border bg-white/80 p-5 shadow-[0_10px_30px_rgba(120,100,150,0.05)] backdrop-blur-sm transition md:p-6 ${
                       event.completed
                         ? "border-[#E8E1D8] opacity-70"
-                        : "border-[#E9E0D5] hover:border-[#C9B0C7]"
+                        : "border-[rgba(201,184,255,0.28)] hover:border-[#C9B0C7]"
                     }`}
                   >
                     {/* TIMELINE DOT */}
-                    <div className="relative z-10 hidden h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#F4EAF2] text-[#9A7898] md:flex">
+                    <div className="relative z-10 hidden h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#E7DBFF] to-[#FBE0EE] text-[#75618F] md:flex">
                       <CalendarDays size={18} />
                     </div>
 
@@ -373,7 +376,7 @@ export default function WeddingTimeline() {
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                         <div>
                           <div className="mb-2 flex flex-wrap items-center gap-2">
-                            <span className="rounded-full bg-[#F5EDF4] px-3 py-1 text-xs font-semibold text-[#846B88]">
+                            <span className="rounded-full bg-[#F3ECFA] px-3 py-1 text-xs font-semibold text-[#75618F]">
                               {event.category}
                             </span>
 
@@ -387,14 +390,14 @@ export default function WeddingTimeline() {
                           <h3
                             className={`text-xl font-semibold ${
                               event.completed
-                                ? "text-[#9A909D] line-through"
-                                : "text-[#17141F]"
+                                ? "text-[#9B8FA8] line-through"
+                                : "text-[#2D2638]"
                             }`}
                           >
                             {event.title}
                           </h3>
 
-                          <div className="mt-3 flex flex-wrap gap-4 text-sm text-[#8C7D91]">
+                          <div className="mt-3 flex flex-wrap gap-4 text-sm text-[#6B617A]">
                             <span className="flex items-center gap-2">
                               <CalendarDays size={15} />
                               {formatDate(event.date)}
@@ -412,8 +415,8 @@ export default function WeddingTimeline() {
                             onClick={() => toggleEvent(event.id)}
                             className={`flex h-10 items-center gap-2 rounded-full px-4 text-xs font-semibold transition ${
                               event.completed
-                                ? "bg-[#F2ECE8] text-[#806F76]"
-                                : "bg-[#F3EAF2] text-[#765A78] hover:bg-[#EADCE8]"
+                                ? "bg-[#F1EDF5] text-[#6B617A]"
+                                : "border border-white/80 bg-gradient-to-r from-[#C9B8FF] via-[#F7B7D8] to-[#A9E8FF] text-[#2D2638] shadow-[0_8px_22px_rgba(247,183,216,0.18)] hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(155,124,246,0.18)]"
                             }`}
                           >
                             {event.completed ? (
@@ -427,7 +430,7 @@ export default function WeddingTimeline() {
 
                           <button
                             onClick={() => deleteEvent(event.id)}
-                            className="flex h-10 w-10 items-center justify-center rounded-full text-[#B2A7B0] transition hover:bg-[#FBEDED] hover:text-[#B86F76]"
+                            className="flex h-10 w-10 items-center justify-center rounded-full text-[#9B8FA8] transition hover:bg-[#FCEEF2] hover:text-[#B86F76]"
                             aria-label="Delete event"
                           >
                             <Trash2 size={17} />
@@ -442,7 +445,7 @@ export default function WeddingTimeline() {
           )}
         </section>
 
-        <div className="mt-8 flex items-center justify-center gap-2 text-center text-xs text-[#9B909B]">
+        <div className="mt-8 flex items-center justify-center gap-2 text-center text-xs text-[#9B8FA8]">
           <Sparkles size={14} />
           Your wedding timeline is automatically saved on this device.
         </div>
