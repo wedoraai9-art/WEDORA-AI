@@ -16,6 +16,7 @@ import {
   ExternalLink,
   Heart,
   CheckCircle2,
+  RefreshCw,
 } from 'lucide-react';
 
 const vendorCategories = [
