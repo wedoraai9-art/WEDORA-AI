@@ -142,7 +142,7 @@ export default function WeddingPhotography() {
   return (
     <div className="min-h-screen bg-[#FFFCF8] text-[#2D2638]" style={{ backgroundImage: "radial-gradient(ellipse 55% 45% at 12% 8%, rgba(201,184,255,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 88% 12%, rgba(247,183,216,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 50% 92%, rgba(169,232,255,0.14), transparent 65%)" }}>
       {/* HEADER */}
-      <header className="relative z-40 border-b border-[#E9E0D5] bg-[#FFFCF8]/95 backdrop-blur-xl">
+      <header className="relative z-40 mt-20 border-b border-[#E9E0D5] bg-[#FFFCF8]/95 backdrop-blur-xl md:mt-20">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
           <button
             onClick={() => navigate("/wedding-planning")}
@@ -159,7 +159,7 @@ export default function WeddingPhotography() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-5 pb-8 pt-28 md:px-8 md:pb-12 md:pt-32">
+      <main className="mx-auto max-w-7xl px-5 pb-8 pt-8 md:px-8 md:pb-12 md:pt-10">
         {/* HERO */}
         <section className="mb-8">
           <div className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-[#A77B9D]">
@@ -167,7 +167,7 @@ export default function WeddingPhotography() {
             Wedding Command Center
           </div>
 
-          <h1 className="text-4xl font-semibold tracking-tight text-[#17141F] md:text-5xl">
+          <h1 className="font-serif text-4xl font-semibold tracking-tight text-[#17141F] md:text-5xl" style={{ fontFamily: '"Cormorant Garamond", Georgia, serif' }}>
             Photography
           </h1>
 
@@ -344,7 +344,7 @@ export default function WeddingPhotography() {
             />
           </div>
 
-          <button className="glow-btn mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#17141F] px-6 text-sm font-semibold text-white transition hover:bg-[#46325F] md:w-auto"
+          <button className="glow-btn mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#17141F] px-6 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:bg-[#46325F] md:w-auto"
             onClick={addPhotographer}
            
           >
@@ -524,8 +524,8 @@ export default function WeddingPhotography() {
                           }
                           className={`flex items-center justify-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition ${
                             photographer.selected
-                              ? "bg-[#EEF5EF] text-[#66856D]"
-                              : "bg-[#17141F] text-white hover:bg-[#46325F]"
+                              ? "bg-gradient-to-r from-[#E7F4E9] via-[#EAF3FF] to-[#F6E8F2] text-[#526E60] shadow-[0_5px_16px_rgba(151,190,170,0.16)]"
+                              : "border border-[#D9C9E8] bg-gradient-to-r from-[#EEE7FF] via-[#FCE7F0] to-[#E4F4FF] text-[#514565] shadow-[0_5px_16px_rgba(155,124,246,0.12)] hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(155,124,246,0.2)]"
                           }`}
                         >
                           <CheckCircle2 size={15} />
