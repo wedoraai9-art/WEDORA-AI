@@ -293,7 +293,7 @@ export default function WeddingPlanner() {
                           window.location.href = "/wedding-planning/transportation";
                         }
                                       }}
-                  className="glow-btn group rounded-3xl border border-white bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+                  className="group rounded-3xl border border-white bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
                 >
                 <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#F7D7E8] via-[#EDE4FF] to-[#DDF1F8]">
                   <Icon className="h-6 w-6 text-[#2D2638]" />
@@ -343,7 +343,7 @@ export default function WeddingPlanner() {
             setSelectedFunction(null);
             setFunctionDate('');
           }}
-          className="glow-btn flex h-9 w-9 items-center justify-center rounded-full p-0 text-[#2D2638]"
+          className="flex h-9 w-9 items-center justify-center rounded-full p-0 text-[#2D2638]"
         >
           ×
         </button>
@@ -369,7 +369,7 @@ export default function WeddingPlanner() {
             setSelectedFunction(null);
             setFunctionDate('');
           }}
-          className="glow-btn flex-1 rounded-2xl border border-[#E8E0E8] bg-white px-5 py-3 font-medium text-[#6B6171]"
+          className="flex-1 rounded-2xl border border-[#E8E0E8] bg-white px-5 py-3 font-medium text-[#6B6171]"
         >
           Cancel
         </button>
