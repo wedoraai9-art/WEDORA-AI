@@ -129,26 +129,26 @@ export default function WeddingGuests() {
   ).length;
 
   return (
-    <div className="min-h-screen bg-[#FFFCF8] text-[#2D2638]" style={{ backgroundImage: "radial-gradient(ellipse 55% 45% at 12% 8%, rgba(201,184,255,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 88% 12%, rgba(247,183,216,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 50% 92%, rgba(169,232,255,0.14), transparent 65%)" }}>
-      {/* HEADER */}
-      <header className="relative z-40 border-b border-[#E9E0D5] bg-[#FFFCF8]/95 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
+    <div
+      className="min-h-screen bg-[#FFFCF8] text-[#2D2638]"
+      style={{
+        backgroundImage:
+          "radial-gradient(ellipse 55% 45% at 12% 8%, rgba(201,184,255,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 88% 12%, rgba(247,183,216,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 50% 92%, rgba(169,232,255,0.14), transparent 65%)",
+      }}
+    >
+      <main className="mx-auto max-w-7xl px-5 pb-8 pt-28 md:px-8 md:pb-12 md:pt-32">
+
+        {/* BACK NAVIGATION */}
+        <div className="relative z-50 mb-7 flex items-center">
           <button
+            type="button"
             onClick={() => navigate("/wedding-planning")}
-            className="flex items-center gap-2 rounded-full border border-[#E6DCCD] bg-white px-4 py-2 text-sm font-medium text-[#4A3868] transition hover:bg-[#F3EDF7]"
+            className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[rgba(201,184,255,0.48)] bg-white/90 px-4 py-2 text-sm font-medium text-[#30283A] shadow-[0_8px_24px_rgba(70,55,40,0.08)] backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-[#C9B8FF] hover:bg-white hover:shadow-[0_12px_28px_rgba(155,124,246,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA] focus-visible:ring-offset-2"
           >
             <ArrowLeft size={17} />
-            Back to Command Center
+            <span>Back to Command Center</span>
           </button>
-
-          <div className="hidden items-center gap-2 text-sm font-semibold md:flex">
-            <Sparkles size={17} className="text-[#A77B9D]" />
-            WEDORA
-          </div>
         </div>
-      </header>
-
-      <main className="mx-auto max-w-7xl px-5 pb-8 pt-28 md:px-8 md:pb-12 md:pt-32">
         {/* HERO */}
         <section className="mb-8">
           <div className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-[#A77B9D]">
@@ -156,7 +156,10 @@ export default function WeddingGuests() {
             Wedding Command Center
           </div>
 
-          <h1 className="text-4xl font-semibold tracking-tight text-[#17141F] md:text-5xl">
+          <h1
+            className="text-5xl font-normal tracking-[-0.02em] text-[#17141F] md:text-6xl"
+            style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+          >
             Guest Management
           </h1>
 
@@ -168,7 +171,7 @@ export default function WeddingGuests() {
 
         {/* STATS */}
         <section className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-[24px] border border-[#E9E0D5] bg-white p-5 shadow-[0_10px_30px_rgba(64,42,91,0.04)]">
+          <div className="rounded-[24px] border border-[rgba(201,184,255,0.28)] bg-white/75 p-5 shadow-[0_10px_30px_rgba(64,42,91,0.04)] backdrop-blur-sm">
             <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#F1E4F0] text-[#806281]">
               <Users size={20} />
             </div>
@@ -180,7 +183,7 @@ export default function WeddingGuests() {
             </p>
           </div>
 
-          <div className="rounded-[24px] border border-[#E9E0D5] bg-white p-5 shadow-[0_10px_30px_rgba(64,42,91,0.04)]">
+          <div className="rounded-[24px] border border-[rgba(201,184,255,0.28)] bg-white/75 p-5 shadow-[0_10px_30px_rgba(64,42,91,0.04)] backdrop-blur-sm">
             <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#EAF3EA] text-[#6A896F]">
               <CheckCircle2 size={20} />
             </div>
@@ -192,7 +195,7 @@ export default function WeddingGuests() {
             </p>
           </div>
 
-          <div className="rounded-[24px] border border-[#E9E0D5] bg-white p-5 shadow-[0_10px_30px_rgba(64,42,91,0.04)]">
+          <div className="rounded-[24px] border border-[rgba(201,184,255,0.28)] bg-white/75 p-5 shadow-[0_10px_30px_rgba(64,42,91,0.04)] backdrop-blur-sm">
             <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#F8EEDC] text-[#9A7C4F]">
               <Clock3 size={20} />
             </div>
@@ -204,7 +207,7 @@ export default function WeddingGuests() {
             </p>
           </div>
 
-          <div className="rounded-[24px] border border-[#E9E0D5] bg-white p-5 shadow-[0_10px_30px_rgba(64,42,91,0.04)]">
+          <div className="rounded-[24px] border border-[rgba(201,184,255,0.28)] bg-white/75 p-5 shadow-[0_10px_30px_rgba(64,42,91,0.04)] backdrop-blur-sm">
             <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#F8E9EA] text-[#A56D73]">
               <Hotel size={20} />
             </div>
@@ -218,7 +221,7 @@ export default function WeddingGuests() {
         </section>
 
         {/* ADD GUEST */}
-        <section className="mb-8 rounded-[28px] border border-[#E9E0D5] bg-white p-6 shadow-[0_15px_45px_rgba(64,42,91,0.05)] md:p-7">
+        <section className="mb-8 rounded-[28px] border border-[rgba(201,184,255,0.30)] bg-white/75 p-6 shadow-[0_15px_45px_rgba(64,42,91,0.05)] backdrop-blur-sm md:p-7">
           <div className="mb-5 flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#F1E4F0] to-[#F8EEDC] text-[#7D6284]">
               <Plus size={21} />
@@ -241,7 +244,7 @@ export default function WeddingGuests() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Guest name"
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm outline-none placeholder:text-[#B0A4AE] focus:border-[#B991B5] focus:ring-4 focus:ring-[#B991B5]/10"
+              className="h-12 rounded-2xl border border-[rgba(201,184,255,0.34)] bg-white/90 px-4 text-sm outline-none placeholder:text-[#B0A4AE] focus:border-[#BFA8F4] focus:ring-4 focus:ring-[#C9B8FF]/20"
             />
 
             <input
@@ -249,7 +252,7 @@ export default function WeddingGuests() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="Phone number"
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm outline-none placeholder:text-[#B0A4AE] focus:border-[#B991B5]"
+              className="h-12 rounded-2xl border border-[rgba(201,184,255,0.34)] bg-white/90 px-4 text-sm outline-none placeholder:text-[#B0A4AE] focus:border-[#BFA8F4] focus:ring-4 focus:ring-[#C9B8FF]/20"
             />
 
             <input
@@ -257,13 +260,13 @@ export default function WeddingGuests() {
               value={group}
               onChange={(e) => setGroup(e.target.value)}
               placeholder="Family / group"
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm outline-none placeholder:text-[#B0A4AE] focus:border-[#B991B5]"
+              className="h-12 rounded-2xl border border-[rgba(201,184,255,0.34)] bg-white/90 px-4 text-sm outline-none placeholder:text-[#B0A4AE] focus:border-[#BFA8F4] focus:ring-4 focus:ring-[#C9B8FF]/20"
             />
 
             <select
               value={rsvp}
               onChange={(e) => setRsvp(e.target.value)}
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm outline-none focus:border-[#B991B5]"
+              className="h-12 rounded-2xl border border-[rgba(201,184,255,0.34)] bg-white/90 px-4 text-sm outline-none focus:border-[#BFA8F4] focus:ring-4 focus:ring-[#C9B8FF]/20"
             >
               {RSVP_OPTIONS.map((option) => (
                 <option key={option} value={option}>
@@ -275,7 +278,7 @@ export default function WeddingGuests() {
             <select
               value={meal}
               onChange={(e) => setMeal(e.target.value)}
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm outline-none focus:border-[#B991B5]"
+              className="h-12 rounded-2xl border border-[rgba(201,184,255,0.34)] bg-white/90 px-4 text-sm outline-none focus:border-[#BFA8F4] focus:ring-4 focus:ring-[#C9B8FF]/20"
             >
               {MEAL_OPTIONS.map((option) => (
                 <option key={option} value={option}>
@@ -284,7 +287,7 @@ export default function WeddingGuests() {
               ))}
             </select>
 
-            <label className="flex h-12 cursor-pointer items-center gap-3 rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm text-[#6F6276]">
+            <label className="flex h-12 cursor-pointer items-center gap-3 rounded-2xl border border-[rgba(201,184,255,0.34)] bg-white/90 px-4 text-sm text-[#6F6276]">
               <input
                 type="checkbox"
                 checked={accommodation}
@@ -295,7 +298,7 @@ export default function WeddingGuests() {
             </label>
           </div>
 
-          <button className="glow-btn mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#17141F] px-6 text-sm font-semibold text-white transition hover:bg-[#46325F] md:w-auto"
+          <button className="glow-btn mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-6 text-sm font-semibold md:w-auto"
             onClick={addGuest}
            
           >
@@ -317,7 +320,7 @@ export default function WeddingGuests() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search guests..."
-              className="h-12 w-full rounded-full border border-[#E5DBD0] bg-white pl-11 pr-4 text-sm outline-none focus:border-[#B991B5]"
+              className="h-12 w-full rounded-full border border-[#E5DBD0] bg-white pl-11 pr-4 text-sm outline-none focus:border-[#BFA8F4] focus:ring-4 focus:ring-[#C9B8FF]/20"
             />
           </div>
 
@@ -341,7 +344,7 @@ export default function WeddingGuests() {
         {/* GUEST LIST */}
         <section className="space-y-3">
           {filteredGuests.length === 0 ? (
-            <div className="rounded-[28px] border border-dashed border-[#DCCFC1] bg-white px-6 py-16 text-center">
+            <div className="rounded-[28px] border border-dashed border-[rgba(201,184,255,0.45)] bg-white/75 px-6 py-16 text-center">
               <Users
                 size={36}
                 className="mx-auto mb-4 text-[#B991B5]"
@@ -359,7 +362,7 @@ export default function WeddingGuests() {
             filteredGuests.map((guest) => (
               <div
                 key={guest.id}
-                className="group rounded-[24px] border border-[#E9E0D5] bg-white p-5 shadow-[0_10px_30px_rgba(64,42,91,0.04)] transition hover:border-[#C9B0C7]"
+                className="group rounded-[24px] border border-[rgba(201,184,255,0.28)] bg-white/75 p-5 shadow-[0_10px_30px_rgba(64,42,91,0.04)] backdrop-blur-sm transition hover:border-[#C9B0C7]"
               >
                 <div className="flex flex-col gap-4 md:flex-row md:items-center">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#F1E4F0] to-[#F8EEDC] text-sm font-semibold text-[#765A78]">
