@@ -146,7 +146,7 @@ export default function WeddingPhotography() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
           <button
             onClick={() => navigate("/wedding-planning")}
-            className="flex items-center gap-2 rounded-full border border-[#E6DCCD] bg-white px-4 py-2 text-sm font-medium text-[#4A3868] transition hover:bg-[#F3EDF7]"
+            className="glow-btn flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#4A3868]"
           >
             <ArrowLeft size={17} />
             Back to Command Center
@@ -346,7 +346,7 @@ export default function WeddingPhotography() {
 
           <button
             onClick={addPhotographer}
-            className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#35244F] px-6 text-sm font-semibold text-white transition hover:bg-[#46325F] md:w-auto"
+            className="glow-btn mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-6 text-sm font-semibold text-[#2D2638] md:w-auto"
           >
             <Plus size={17} />
             Add Photographer
@@ -372,11 +372,7 @@ export default function WeddingPhotography() {
 
           <button
             onClick={() => setShowShortlisted(!showShortlisted)}
-            className={`flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition ${
-              showShortlisted
-                ? "bg-[#35244F] text-white"
-                : "border border-[#E6DCCD] bg-white text-[#6F6276] hover:bg-[#F5EFF6]"
-            }`}
+            className="glow-btn flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium text-[#6F6276]"
           >
             <Star size={16} />
             {showShortlisted
@@ -506,11 +502,7 @@ export default function WeddingPhotography() {
                           onClick={() =>
                             toggleShortlist(photographer.id)
                           }
-                          className={`flex items-center justify-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition ${
-                            photographer.shortlisted
-                              ? "bg-[#F8EEDC] text-[#9A7C4F]"
-                              : "border border-[#E6DCCD] bg-white text-[#6F6276] hover:bg-[#F5EFF6]"
-                          }`}
+                          className="glow-btn flex items-center justify-center gap-2 rounded-full px-4 py-2 text-xs font-semibold text-[#6F6276]"
                         >
                           <Star size={15} />
                           {photographer.shortlisted
@@ -522,11 +514,7 @@ export default function WeddingPhotography() {
                           onClick={() =>
                             selectPhotographer(photographer.id)
                           }
-                          className={`flex items-center justify-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition ${
-                            photographer.selected
-                              ? "bg-[#EEF5EF] text-[#66856D]"
-                              : "bg-[#35244F] text-white hover:bg-[#46325F]"
-                          }`}
+                          className="glow-btn flex items-center justify-center gap-2 rounded-full px-4 py-2 text-xs font-semibold text-[#2D2638]"
                         >
                           <CheckCircle2 size={15} />
                           {photographer.selected
@@ -538,7 +526,7 @@ export default function WeddingPhotography() {
                           onClick={() =>
                             deletePhotographer(photographer.id)
                           }
-                          className="flex h-9 w-9 items-center justify-center rounded-full text-[#B2A7B0] transition hover:bg-[#FBEDED] hover:text-[#B86F76]"
+                          className="glow-btn flex h-9 w-9 items-center justify-center rounded-full p-0 text-[#B86F76]"
                           aria-label="Delete photographer"
                         >
                           <Trash2 size={16} />
