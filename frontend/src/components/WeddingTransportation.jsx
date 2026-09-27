@@ -170,12 +170,10 @@ export default function WeddingTransportation() {
       >
         <button
           onClick={goBack}
+          className="glow-btn"
           style={{
-            border: "none",
-            background: "transparent",
             color: "#8c6fa8",
             fontSize: "15px",
-            cursor: "pointer",
             marginBottom: "22px",
           }}
         >
@@ -283,17 +281,11 @@ export default function WeddingTransportation() {
 
           <button
             onClick={() => setShowForm(true)}
+            className="glow-btn"
             style={{
-              border: "none",
               borderRadius: "15px",
               padding: "14px 22px",
-              background:
-                "linear-gradient(135deg, #9c7db6, #7f699a)",
-              color: "#fff",
               fontWeight: "700",
-              cursor: "pointer",
-              boxShadow:
-                "0 8px 20px rgba(127,105,154,0.22)",
             }}
           >
             + Add Transport
@@ -512,13 +504,11 @@ export default function WeddingTransportation() {
                     onClick={() =>
                       deleteVehicle(item.id)
                     }
+                    className="glow-btn"
                     style={{
-                      border: "none",
-                      background: "#f8eef0",
-                      color: "#a26f7c",
                       borderRadius: "13px",
                       padding: "11px 14px",
-                      cursor: "pointer",
+                      color: "#a26f7c",
                     }}
                   >
                     Delete
@@ -724,6 +714,7 @@ export default function WeddingTransportation() {
                   setShowForm(false);
                   setForm(emptyForm);
                 }}
+                className="glow-btn"
                 style={secondaryButton}
               >
                 Cancel
@@ -731,6 +722,7 @@ export default function WeddingTransportation() {
 
               <button
                 onClick={addVehicle}
+                className="glow-btn"
                 style={primaryButton}
               >
                 Save Transportation
@@ -787,13 +779,11 @@ export default function WeddingTransportation() {
                 onClick={() =>
                   setSelectedVehicle(null)
                 }
+                className="glow-btn"
                 style={{
-                  border: "none",
-                  background: "#f6f1f7",
                   borderRadius: "12px",
                   width: "38px",
                   height: "38px",
-                  cursor: "pointer",
                   fontSize: "20px",
                 }}
               >
@@ -878,6 +868,7 @@ export default function WeddingTransportation() {
               onClick={() =>
                 setSelectedVehicle(null)
               }
+              className="glow-btn"
               style={{
                 ...primaryButton,
                 width: "100%",
@@ -991,22 +982,14 @@ const inputStyle = {
 };
 
 const primaryButton = {
-  border: "none",
   borderRadius: "13px",
   padding: "12px 20px",
-  background:
-    "linear-gradient(135deg, #9c7db6, #7f699a)",
-  color: "#fff",
   fontWeight: "700",
-  cursor: "pointer",
 };
 
 const secondaryButton = {
-  border: "1px solid #e4dbe8",
   borderRadius: "13px",
   padding: "12px 20px",
-  background: "#fff",
-  color: "#7e6a8d",
   fontWeight: "600",
-  cursor: "pointer",
+  color: "#7e6a8d",
 };
