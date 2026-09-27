@@ -154,9 +154,8 @@ export default function WeddingCatering() {
     <div
       style={{
         minHeight: "100vh",
-        backgroundImage: "radial-gradient(ellipse 55% 45% at 12% 8%, rgba(201,184,255,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 88% 12%, rgba(247,183,216,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 50% 92%, rgba(169,232,255,0.14), transparent 65%), linear-gradient(180deg, #FFFCF8 0%, #FDF9FC 100%)",
         background:
-          "linear-gradient(180deg, #FFFCF8 0%, #f7f3f6 100%)",
+          "radial-gradient(ellipse 55% 45% at 12% 8%, rgba(201,184,255,0.24), transparent 65%), radial-gradient(ellipse 55% 45% at 88% 12%, rgba(247,183,216,0.22), transparent 65%), radial-gradient(ellipse 55% 45% at 50% 92%, rgba(169,232,255,0.20), transparent 65%), linear-gradient(180deg, #FFFCF8 0%, #FDF9FC 100%)",
         color: "#17141F",
         fontFamily: "Arial, sans-serif",
         paddingBottom: "60px",
@@ -206,6 +205,7 @@ export default function WeddingCatering() {
               fontSize: "38px",
               color: "#17141F",
               fontWeight: "700",
+              fontFamily: '"Cormorant Garamond", Georgia, serif',
             }}
           >
             Catering
@@ -313,16 +313,17 @@ export default function WeddingCatering() {
 
           <button
             onClick={() => setShowForm(true)}
+            className="glow-btn"
             style={{
               border: "none",
               borderRadius: "15px",
               padding: "14px 22px",
-              background:
-                "linear-gradient(135deg, #9c7db6, #7f699a)",
+              background: "#17141F",
               color: "#fff",
               fontWeight: "700",
               cursor: "pointer",
               boxShadow: "0 8px 20px rgba(127,105,154,0.22)",
+              transition: "transform 220ms ease, box-shadow 220ms ease, background 220ms ease",
             }}
           >
             + Add Caterer
@@ -863,21 +864,24 @@ export default function WeddingCatering() {
 const inputStyle = {
   padding: "13px 15px",
   borderRadius: "13px",
-  border: "1px solid #e5dce8",
-  background: "#fff",
+  border: "1px solid #DCCFF0",
+  background: "rgba(255,252,255,0.92)",
   outline: "none",
   fontSize: "14px",
   color: "#51455f",
+  boxShadow: "0 3px 12px rgba(110,85,140,0.035)",
 };
 
 const primaryButton = {
   border: "none",
   borderRadius: "13px",
   padding: "12px 20px",
-  background: "linear-gradient(135deg, #9c7db6, #7f699a)",
+  background: "#17141F",
   color: "#fff",
   fontWeight: "700",
   cursor: "pointer",
+  boxShadow: "0 8px 20px rgba(127,105,154,0.18)",
+  transition: "transform 220ms ease, box-shadow 220ms ease, background 220ms ease",
 };
 
 const secondaryButton = {
