@@ -179,26 +179,20 @@ export default function WeddingChecklist() {
           "radial-gradient(ellipse 55% 45% at 12% 8%, rgba(201,184,255,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 88% 12%, rgba(247,183,216,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 50% 92%, rgba(169,232,255,0.14), transparent 65%)",
       }}
     >
-      {/* HEADER */}
-      <header className="sticky top-0 z-40 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
+      {/* MAIN */}
+      <main className="mx-auto max-w-7xl px-5 pb-8 pt-28 md:px-8 md:pb-12 md:pt-32">
+        {/* BACK NAVIGATION */}
+        <div className="relative z-50 mb-7 flex items-center">
           <button
+            type="button"
             onClick={() => navigate("/wedding-planning")}
-            className="flex items-center gap-2 rounded-full border border-[rgba(201,184,255,0.35)] bg-white/85 px-4 py-2 text-sm font-medium text-[#4A4257] shadow-[0_6px_20px_rgba(120,100,150,0.06)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-[#C9B8FF] hover:bg-white hover:text-[#2D2638] hover:shadow-[0_10px_24px_rgba(155,124,246,0.12)]"
+            className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[rgba(201,184,255,0.5)] bg-white/95 px-4 py-2 text-sm font-medium text-[#292431] shadow-[0_8px_24px_rgba(80,60,110,0.12)] backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:border-[#C9B8FF] hover:bg-white hover:shadow-[0_12px_28px_rgba(155,124,246,0.2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA] focus-visible:ring-offset-2"
           >
             <ArrowLeft size={17} />
-            Back to Command Center
+            <span>Back to Command Center</span>
           </button>
-
-          <div className="hidden items-center gap-2 font-semibold md:flex">
-            <Sparkles size={17} className="" />
-            WEDORA
-          </div>
         </div>
-      </header>
 
-      {/* MAIN */}
-      <main className="mx-auto max-w-7xl px-5 py-8 md:px-8 md:py-12">
         {/* HERO */}
         <section className="mb-8">
           <div className="mb-3 flex items-center gap-2 font-semibold uppercase tracking-[0.18em] text-[#9B8FA8]">
@@ -207,7 +201,7 @@ export default function WeddingChecklist() {
           </div>
 
           <h1
-            className="font-normal tracking-[-0.02em] text-[#2D2638] md:text-6xl"
+            className="font-normal tracking-[-0.02em] text-[#17141F] md:text-6xl"
             style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
           >
             Wedding Checklist
