@@ -172,20 +172,20 @@ export default function WeddingChecklist() {
       : Math.round((completedTasks / totalTasks) * 100);
 
   return (
-    <div className="min-h-screen bg-[#F8F5F0] text-[#33254F]">
+    <div className="min-h-screen">
       {/* HEADER */}
-      <header className="sticky top-0 z-40 border-b border-[#E9E0D5] bg-[#F8F5F0]/95 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
-          <button
+          <button className="flex items-center gap-2 rounded-full border border-[#E6DCCD] bg-white px-4 py-2 text-sm font-medium text-[#4A3868] transition hover:bg-[#F3EDF7]"
             onClick={() => navigate("/wedding-planning")}
-            className="flex items-center gap-2 rounded-full border border-[#E6DCCD] bg-white px-4 py-2 text-sm font-medium text-[#4A3868] transition hover:bg-[#F3EDF7]"
+            className="flex items-center gap-2 rounded-full border px-4 py-2 font-medium"
           >
             <ArrowLeft size={17} />
             Back to Command Center
           </button>
 
-          <div className="hidden items-center gap-2 text-sm font-semibold md:flex">
-            <Sparkles size={17} className="text-[#A77B9D]" />
+          <div className="hidden items-center gap-2 font-semibold md:flex">
+            <Sparkles size={17} className="" />
             WEDORA
           </div>
         </div>
@@ -195,16 +195,16 @@ export default function WeddingChecklist() {
       <main className="mx-auto max-w-7xl px-5 py-8 md:px-8 md:py-12">
         {/* HERO */}
         <section className="mb-8">
-          <div className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-[#A77B9D]">
+          <div className="mb-3 flex items-center gap-2 font-semibold uppercase tracking-[0.18em]">
             <CheckCircle2 size={18} />
             Wedding Command Center
           </div>
 
-          <h1 className="text-4xl font-semibold tracking-tight text-[#35244F] md:text-5xl">
+          <h1 className="font-semibold tracking-tight md:text-5xl">
             Wedding Checklist
           </h1>
 
-          <p className="mt-3 max-w-2xl text-base leading-7 text-[#776B7F]">
+          <p className="mt-3 max-w-2xl leading-7">
             Keep every wedding task organized in one beautiful place.
             Complete tasks, add your own, and stay in control of your
             celebration.
@@ -212,33 +212,33 @@ export default function WeddingChecklist() {
         </section>
 
         {/* PROGRESS CARD */}
-        <section className="mb-8 overflow-hidden rounded-[28px] border border-[#E9E0D5] bg-white p-6 shadow-[0_15px_45px_rgba(64,42,91,0.06)] md:p-8">
+        <section className="mb-8 overflow-hidden rounded-[28px] border p-6 md:p-8">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-sm font-medium text-[#8C7D91]">
+              <p className="font-medium">
                 YOUR PROGRESS
               </p>
 
               <div className="mt-2 flex items-end gap-3">
-                <span className="text-4xl font-semibold text-[#35244F]">
+                <span className="font-semibold">
                   {progress}%
                 </span>
 
-                <span className="pb-1 text-sm text-[#8C7D91]">
+                <span className="pb-1">
                   {completedTasks} of {totalTasks} tasks completed
                 </span>
               </div>
             </div>
 
             <div className="w-full md:w-[320px]">
-              <div className="mb-2 flex justify-between text-xs text-[#8C7D91]">
+              <div className="mb-2 flex justify-between">
                 <span>Wedding planning</span>
                 <span>{progress}%</span>
               </div>
 
-              <div className="h-3 overflow-hidden rounded-full bg-[#F0EAE4]">
+              <div className="h-3 overflow-hidden rounded-full">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-[#B991B5] via-[#CBA4C5] to-[#D8B98F] transition-all duration-500"
+                  className="h-full rounded-full from-[#B991B5] via-[#CBA4C5] to-[#D8B98F] duration-500"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -247,18 +247,18 @@ export default function WeddingChecklist() {
         </section>
 
         {/* ADD TASK */}
-        <section className="mb-8 rounded-[28px] border border-[#E9E0D5] bg-white p-6 shadow-[0_15px_45px_rgba(64,42,91,0.05)]">
+        <section className="mb-8 rounded-[28px] border p-6">
           <div className="mb-5 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#F1E4F0] to-[#F8EEDC] text-[#7D6284]">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl from-[#F1E4F0] to-[#F8EEDC]">
               <Plus size={21} />
             </div>
 
             <div>
-              <h2 className="text-lg font-semibold text-[#35244F]">
+              <h2 className="font-semibold">
                 Add a Wedding Task
               </h2>
 
-              <p className="text-sm text-[#8C7D91]">
+              <p className="">
                 Add anything you need to remember.
               </p>
             </div>
@@ -275,13 +275,13 @@ export default function WeddingChecklist() {
                 }
               }}
               placeholder="e.g. Book mehndi artist"
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FCFAF7] px-4 text-sm text-[#35244F] outline-none transition placeholder:text-[#B0A4AE] focus:border-[#B991B5] focus:ring-4 focus:ring-[#B991B5]/10"
+              className="h-12 rounded-2xl border px-4 outline-none placeholder:text-[#B0A4AE] focus:border-[#B991B5] focus:ring-4 focus:ring-[#B991B5]/10"
             />
 
             <select
               value={newCategory}
               onChange={(e) => setNewCategory(e.target.value)}
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FCFAF7] px-4 text-sm text-[#35244F] outline-none focus:border-[#B991B5]"
+              className="h-12 rounded-2xl border px-4 outline-none focus:border-[#B991B5]"
             >
               {categories
                 .filter((category) => category !== "All")
@@ -294,7 +294,7 @@ export default function WeddingChecklist() {
 
             <button
               onClick={addTask}
-              className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#35244F] px-6 text-sm font-semibold text-white transition hover:bg-[#46325F]"
+              className="glow-btn flex h-12 items-center justify-center gap-2 rounded-2xl px-6 font-semibold"
             >
               <Plus size={17} />
               Add Task
@@ -324,17 +324,17 @@ export default function WeddingChecklist() {
         {/* TASK LIST */}
         <section className="space-y-3">
           {filteredTasks.length === 0 ? (
-            <div className="rounded-[28px] border border-dashed border-[#DCCFC1] bg-white px-6 py-16 text-center">
+            <div className="rounded-[28px] border px-6 py-16">
               <CalendarDays
                 size={34}
-                className="mx-auto mb-4 text-[#B991B5]"
+                className="mx-auto mb-4"
               />
 
-              <h3 className="text-lg font-semibold text-[#35244F]">
+              <h3 className="font-semibold">
                 No tasks here yet
               </h3>
 
-              <p className="mt-2 text-sm text-[#8C7D91]">
+              <p className="mt-2">
                 Add a new task above to start planning.
               </p>
             </div>
@@ -382,7 +382,7 @@ export default function WeddingChecklist() {
                   </h3>
 
                   <div className="mt-1 flex items-center gap-2">
-                    <span className="rounded-full bg-[#F5EDF4] px-2.5 py-1 text-xs font-medium text-[#846B88]">
+                    <span className="rounded-full px-2.5 py-1 font-medium">
                       {task.category}
                     </span>
                   </div>
@@ -392,7 +392,7 @@ export default function WeddingChecklist() {
                 <button
                   onClick={() => deleteTask(task.id)}
                   aria-label="Delete task"
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#B2A7B0] opacity-100 transition hover:bg-[#FBEDED] hover:text-[#B86F76] md:opacity-0 md:group-hover:opacity-100"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100"
                 >
                   <Trash2 size={17} />
                 </button>
@@ -402,7 +402,7 @@ export default function WeddingChecklist() {
         </section>
 
         {/* FOOTER NOTE */}
-        <div className="mt-8 flex items-center justify-center gap-2 text-center text-xs text-[#9B909B]">
+        <div className="mt-8 flex items-center justify-center gap-2">
           <Sparkles size={14} />
           Your checklist is automatically saved on this device.
         </div>
