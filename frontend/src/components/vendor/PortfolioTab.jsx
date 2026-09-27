@@ -1,3 +1,4 @@
+
 import React, { useRef, useState } from 'react';
 import {
   apiUploadPortfolio,
@@ -142,6 +143,16 @@ export const PortfolioTab = ({ vendor, planDetails, onSaved }) => {
             {portfolio.length} / {limitLabel} photos on{' '}
             {planDetails?.label || 'Free'} plan
           </p>
+
+          {/* Portfolio upload requirements */}
+          <p
+            className="mt-1 text-xs leading-relaxed text-[#8A8199]"
+            data-testid="portfolio-upload-requirements"
+          >
+            Supported image formats: JPG, JPEG, PNG, WEBP,
+            GIF and other browser-supported image formats.
+            Maximum file size: 8 MB per image.
+          </p>
         </div>
 
         <button
@@ -177,8 +188,8 @@ export const PortfolioTab = ({ vendor, planDetails, onSaved }) => {
           <Lock className="mx-auto mb-3 h-6 w-6 text-[#C9B8FF]" />
 
           <p>
-            Your portfolio is empty. Add your first photo — couples
-            love seeing real work.
+            Your portfolio is empty. Add your first photo —
+            couples love seeing real work.
           </p>
         </div>
       ) : (
