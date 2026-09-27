@@ -223,9 +223,10 @@ export default function WeddingCouple() {
     <div
       style={{
         minHeight: "100vh",
+        backgroundImage: "radial-gradient(ellipse 55% 45% at 12% 8%, rgba(201,184,255,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 88% 12%, rgba(247,183,216,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 50% 92%, rgba(169,232,255,0.14), transparent 65%), linear-gradient(180deg, #FFFCF8 0%, #FDF9FC 100%)",
         background:
-          "linear-gradient(180deg, #fffaf7 0%, #f7f3f6 100%)",
-        color: "#4d4260",
+          "linear-gradient(180deg, #FFFCF8 0%, #f7f3f6 100%)",
+        color: "#17141F",
         fontFamily: "Arial, sans-serif",
         paddingBottom: "70px",
       }}
@@ -234,15 +235,19 @@ export default function WeddingCouple() {
         style={{
           maxWidth: "1250px",
           margin: "0 auto",
-          padding: "34px 22px",
+          padding: "112px 22px 60px",
         }}
       >
         <button
           onClick={goBack}
           style={{
             border: "none",
-            background: "transparent",
-            color: "#8c6fa8",
+            background: "rgba(255,255,255,0.96)",
+            color: "#292431",
+            border: "1px solid #DCCFF0",
+            borderRadius: "999px",
+            padding: "10px 16px",
+            boxShadow: "0 8px 24px rgba(80,60,110,0.12)",
             fontSize: "15px",
             cursor: "pointer",
             marginBottom: "22px",
@@ -270,7 +275,7 @@ export default function WeddingCouple() {
             style={{
               margin: 0,
               fontSize: "38px",
-              color: "#4d4260",
+              color: "#17141F",
               fontWeight: "700",
             }}
           >
