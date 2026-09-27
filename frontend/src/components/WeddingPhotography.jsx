@@ -140,13 +140,13 @@ export default function WeddingPhotography() {
     `₹${Number(amount || 0).toLocaleString("en-IN")}`;
 
   return (
-    <div className="min-h-screen bg-[#F8F5F0] text-[#33254F]">
+    <div className="min-h-screen bg-[#FFFCF8] text-[#2D2638]" style={{ backgroundImage: "radial-gradient(ellipse 55% 45% at 12% 8%, rgba(201,184,255,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 88% 12%, rgba(247,183,216,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 50% 92%, rgba(169,232,255,0.14), transparent 65%)" }}>
       {/* HEADER */}
-      <header className="sticky top-0 z-40 border-b border-[#E9E0D5] bg-[#F8F5F0]/95 backdrop-blur-xl">
+      <header className="relative z-40 border-b border-[#E9E0D5] bg-[#FFFCF8]/95 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
           <button
             onClick={() => navigate("/wedding-planning")}
-            className="glow-btn flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#4A3868]"
+            className="flex items-center gap-2 rounded-full border border-[#E6DCCD] bg-white px-4 py-2 text-sm font-medium text-[#4A3868] transition hover:bg-[#F3EDF7]"
           >
             <ArrowLeft size={17} />
             Back to Command Center
@@ -159,7 +159,7 @@ export default function WeddingPhotography() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-5 py-8 md:px-8 md:py-12">
+      <main className="mx-auto max-w-7xl px-5 pb-8 pt-28 md:px-8 md:pb-12 md:pt-32">
         {/* HERO */}
         <section className="mb-8">
           <div className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-[#A77B9D]">
@@ -167,7 +167,7 @@ export default function WeddingPhotography() {
             Wedding Command Center
           </div>
 
-          <h1 className="text-4xl font-semibold tracking-tight text-[#35244F] md:text-5xl">
+          <h1 className="text-4xl font-semibold tracking-tight text-[#17141F] md:text-5xl">
             Photography
           </h1>
 
@@ -187,7 +187,7 @@ export default function WeddingPhotography() {
                   Selected Photographer
                 </div>
 
-                <h2 className="text-2xl font-semibold text-[#35244F]">
+                <h2 className="text-2xl font-semibold text-[#17141F]">
                   {selectedPhotographer.name}
                 </h2>
 
@@ -201,7 +201,7 @@ export default function WeddingPhotography() {
                   Package Cost
                 </p>
 
-                <p className="mt-1 text-xl font-semibold text-[#35244F]">
+                <p className="mt-1 text-xl font-semibold text-[#17141F]">
                   {formatCurrency(selectedPhotographer.cost)}
                 </p>
               </div>
@@ -220,7 +220,7 @@ export default function WeddingPhotography() {
               Photographers
             </p>
 
-            <p className="mt-1 text-3xl font-semibold text-[#35244F]">
+            <p className="mt-1 text-3xl font-semibold text-[#17141F]">
               {photographers.length}
             </p>
           </div>
@@ -234,7 +234,7 @@ export default function WeddingPhotography() {
               Shortlisted
             </p>
 
-            <p className="mt-1 text-3xl font-semibold text-[#35244F]">
+            <p className="mt-1 text-3xl font-semibold text-[#17141F]">
               {photographers.filter((p) => p.shortlisted).length}
             </p>
           </div>
@@ -248,7 +248,7 @@ export default function WeddingPhotography() {
               Selected
             </p>
 
-            <p className="mt-1 text-xl font-semibold text-[#35244F]">
+            <p className="mt-1 text-xl font-semibold text-[#17141F]">
               {selectedPhotographer ? "1 Photographer" : "None"}
             </p>
           </div>
@@ -262,7 +262,7 @@ export default function WeddingPhotography() {
             </div>
 
             <div>
-              <h2 className="text-lg font-semibold text-[#35244F]">
+              <h2 className="text-lg font-semibold text-[#17141F]">
                 Add Photographer
               </h2>
 
@@ -278,13 +278,13 @@ export default function WeddingPhotography() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Photographer / studio"
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FCFAF7] px-4 text-sm outline-none placeholder:text-[#B0A4AE] focus:border-[#B991B5]"
+              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm outline-none placeholder:text-[#B0A4AE] focus:border-[#B991B5]"
             />
 
             <select
               value={type}
               onChange={(e) => setType(e.target.value)}
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FCFAF7] px-4 text-sm outline-none focus:border-[#B991B5]"
+              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm outline-none focus:border-[#B991B5]"
             >
               {PHOTOGRAPHY_TYPES.map((item) => (
                 <option key={item}>{item}</option>
@@ -295,7 +295,7 @@ export default function WeddingPhotography() {
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FCFAF7] px-4 text-sm outline-none focus:border-[#B991B5]"
+              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm outline-none focus:border-[#B991B5]"
             />
 
             <input
@@ -304,7 +304,7 @@ export default function WeddingPhotography() {
               value={cost}
               onChange={(e) => setCost(e.target.value)}
               placeholder="Package cost ₹"
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FCFAF7] px-4 text-sm outline-none placeholder:text-[#B0A4AE] focus:border-[#B991B5]"
+              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm outline-none placeholder:text-[#B0A4AE] focus:border-[#B991B5]"
             />
 
             <input
@@ -312,13 +312,13 @@ export default function WeddingPhotography() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="Contact number"
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FCFAF7] px-4 text-sm outline-none placeholder:text-[#B0A4AE] focus:border-[#B991B5]"
+              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm outline-none placeholder:text-[#B0A4AE] focus:border-[#B991B5]"
             />
 
             <select
               value={video}
               onChange={(e) => setVideo(e.target.value)}
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FCFAF7] px-4 text-sm outline-none focus:border-[#B991B5]"
+              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm outline-none focus:border-[#B991B5]"
             >
               <option>Included</option>
               <option>Not Included</option>
@@ -328,7 +328,7 @@ export default function WeddingPhotography() {
             <select
               value={album}
               onChange={(e) => setAlbum(e.target.value)}
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FCFAF7] px-4 text-sm outline-none focus:border-[#B991B5]"
+              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm outline-none focus:border-[#B991B5]"
             >
               <option>Included</option>
               <option>Not Included</option>
@@ -340,13 +340,13 @@ export default function WeddingPhotography() {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Notes"
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FCFAF7] px-4 text-sm outline-none placeholder:text-[#B0A4AE] focus:border-[#B991B5]"
+              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm outline-none placeholder:text-[#B0A4AE] focus:border-[#B991B5]"
             />
           </div>
 
-          <button
+          <button className="glow-btn mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#17141F] px-6 text-sm font-semibold text-white transition hover:bg-[#46325F] md:w-auto"
             onClick={addPhotographer}
-            className="glow-btn mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-6 text-sm font-semibold text-[#2D2638] md:w-auto"
+           
           >
             <Plus size={17} />
             Add Photographer
@@ -372,7 +372,11 @@ export default function WeddingPhotography() {
 
           <button
             onClick={() => setShowShortlisted(!showShortlisted)}
-            className="glow-btn flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium text-[#6F6276]"
+            className={`flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition ${
+              showShortlisted
+                ? "bg-gradient-to-r from-[#D8C8FF] via-[#F4B4CF] to-[#A9E8FF] text-[#292431] shadow-[0_6px_18px_rgba(155,124,246,0.16)]"
+                : "border border-[#E6DCCD] bg-white text-[#6F6276] hover:bg-[#F5EFF6]"
+            }`}
           >
             <Star size={16} />
             {showShortlisted
@@ -390,7 +394,7 @@ export default function WeddingPhotography() {
                 className="mx-auto mb-4 text-[#B991B5]"
               />
 
-              <h3 className="text-lg font-semibold text-[#35244F]">
+              <h3 className="text-lg font-semibold text-[#17141F]">
                 No photographers found
               </h3>
 
@@ -417,7 +421,7 @@ export default function WeddingPhotography() {
                     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-xl font-semibold text-[#35244F]">
+                          <h3 className="text-xl font-semibold text-[#17141F]">
                             {photographer.name}
                           </h3>
 
@@ -444,14 +448,14 @@ export default function WeddingPhotography() {
                           Package Cost
                         </p>
 
-                        <p className="mt-1 text-xl font-semibold text-[#35244F]">
+                        <p className="mt-1 text-xl font-semibold text-[#17141F]">
                           {formatCurrency(photographer.cost)}
                         </p>
                       </div>
                     </div>
 
                     <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                      <div className="rounded-2xl bg-[#FCFAF7] p-3">
+                      <div className="rounded-2xl bg-[#FFFCF8] p-3">
                         <div className="flex items-center gap-2 text-xs text-[#8C7D91]">
                           <CalendarDays size={14} />
                           Event Date
@@ -462,7 +466,7 @@ export default function WeddingPhotography() {
                         </p>
                       </div>
 
-                      <div className="rounded-2xl bg-[#FCFAF7] p-3">
+                      <div className="rounded-2xl bg-[#FFFCF8] p-3">
                         <div className="flex items-center gap-2 text-xs text-[#8C7D91]">
                           <Video size={14} />
                           Video
@@ -473,7 +477,7 @@ export default function WeddingPhotography() {
                         </p>
                       </div>
 
-                      <div className="rounded-2xl bg-[#FCFAF7] p-3">
+                      <div className="rounded-2xl bg-[#FFFCF8] p-3">
                         <div className="flex items-center gap-2 text-xs text-[#8C7D91]">
                           <BookOpen size={14} />
                           Album
@@ -484,7 +488,7 @@ export default function WeddingPhotography() {
                         </p>
                       </div>
 
-                      <div className="rounded-2xl bg-[#FCFAF7] p-3">
+                      <div className="rounded-2xl bg-[#FFFCF8] p-3">
                         <div className="flex items-center gap-2 text-xs text-[#8C7D91]">
                           <Phone size={14} />
                           Contact
@@ -502,7 +506,11 @@ export default function WeddingPhotography() {
                           onClick={() =>
                             toggleShortlist(photographer.id)
                           }
-                          className="glow-btn flex items-center justify-center gap-2 rounded-full px-4 py-2 text-xs font-semibold text-[#6F6276]"
+                          className={`flex items-center justify-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition ${
+                            photographer.shortlisted
+                              ? "bg-[#F8EEDC] text-[#9A7C4F]"
+                              : "border border-[#E6DCCD] bg-white text-[#6F6276] hover:bg-[#F5EFF6]"
+                          }`}
                         >
                           <Star size={15} />
                           {photographer.shortlisted
@@ -514,7 +522,11 @@ export default function WeddingPhotography() {
                           onClick={() =>
                             selectPhotographer(photographer.id)
                           }
-                          className="glow-btn flex items-center justify-center gap-2 rounded-full px-4 py-2 text-xs font-semibold text-[#2D2638]"
+                          className={`flex items-center justify-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition ${
+                            photographer.selected
+                              ? "bg-[#EEF5EF] text-[#66856D]"
+                              : "bg-[#17141F] text-white hover:bg-[#46325F]"
+                          }`}
                         >
                           <CheckCircle2 size={15} />
                           {photographer.selected
@@ -526,7 +538,7 @@ export default function WeddingPhotography() {
                           onClick={() =>
                             deletePhotographer(photographer.id)
                           }
-                          className="glow-btn flex h-9 w-9 items-center justify-center rounded-full p-0 text-[#B86F76]"
+                          className="flex h-9 w-9 items-center justify-center rounded-full text-[#B2A7B0] transition hover:bg-[#FBEDED] hover:text-[#B86F76]"
                           aria-label="Delete photographer"
                         >
                           <Trash2 size={16} />
@@ -535,7 +547,7 @@ export default function WeddingPhotography() {
                     </div>
 
                     {photographer.notes && (
-                      <div className="mt-4 rounded-2xl bg-[#FCFAF7] p-4 text-sm leading-6 text-[#776B7F]">
+                      <div className="mt-4 rounded-2xl bg-[#FFFCF8] p-4 text-sm leading-6 text-[#776B7F]">
                         <strong className="font-semibold text-[#5D5064]">
                           Notes:
                         </strong>{" "}
