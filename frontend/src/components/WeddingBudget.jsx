@@ -176,9 +176,9 @@ export default function WeddingBudget() {
       : 0;
 
   return (
-    <div className="min-h-screen bg-[#F8F5F0] text-[#33254F]">
+    <div className="min-h-screen bg-[#FFFCF8] text-[#2D2638]" style={{ backgroundImage: "radial-gradient(ellipse 55% 45% at 12% 8%, rgba(201,184,255,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 88% 12%, rgba(247,183,216,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 50% 92%, rgba(169,232,255,0.14), transparent 65%)" }}>
       {/* HEADER */}
-      <header className="sticky top-0 z-40 border-b border-[#E9E0D5] bg-[#F8F5F0]/95 backdrop-blur-xl">
+      <header className="relative z-40 border-b border-[#E9E0D5] bg-[#FFFCF8]/95 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
           <button
             onClick={() => navigate("/wedding-planning")}
@@ -195,7 +195,7 @@ export default function WeddingBudget() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-5 py-8 md:px-8 md:py-12">
+      <main className="mx-auto max-w-7xl px-5 pb-8 pt-28 md:px-8 md:pb-12 md:pt-32">
         {/* HERO */}
         <section className="mb-8">
           <div className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-[#A77B9D]">
@@ -203,7 +203,7 @@ export default function WeddingBudget() {
             Wedding Command Center
           </div>
 
-          <h1 className="text-4xl font-semibold tracking-tight text-[#35244F] md:text-5xl">
+          <h1 className="text-4xl font-semibold tracking-tight text-[#17141F] md:text-5xl">
             Budget Planning
           </h1>
 
@@ -224,7 +224,7 @@ export default function WeddingBudget() {
               <div className="mt-2 flex items-center gap-2">
                 <IndianRupee size={28} className="text-[#B991B5]" />
 
-                <span className="text-4xl font-semibold text-[#35244F]">
+                <span className="text-4xl font-semibold text-[#17141F]">
                   {formatCurrency(budget)}
                 </span>
               </div>
@@ -237,12 +237,12 @@ export default function WeddingBudget() {
                 value={budgetInput}
                 onChange={(e) => setBudgetInput(e.target.value)}
                 placeholder="Enter total budget"
-                className="h-12 w-full rounded-2xl border border-[#E5DBD0] bg-[#FCFAF7] px-4 text-sm outline-none focus:border-[#B991B5] md:w-56"
+                className="h-12 w-full rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm outline-none focus:border-[#B991B5] md:w-56"
               />
 
-              <button
+              <button className="glow-btn h-12 rounded-2xl bg-[#17141F] px-5 text-sm font-semibold text-white transition hover:bg-[#46325F]"
                 onClick={() => saveBudget(budgetInput)}
-                className="h-12 rounded-2xl bg-[#35244F] px-5 text-sm font-semibold text-white transition hover:bg-[#46325F]"
+               
               >
                 Save
               </button>
@@ -273,7 +273,7 @@ export default function WeddingBudget() {
 
             <p className="text-sm text-[#8C7D91]">Planned Spending</p>
 
-            <p className="mt-1 text-2xl font-semibold text-[#35244F]">
+            <p className="mt-1 text-2xl font-semibold text-[#17141F]">
               {formatCurrency(totals.plannedTotal)}
             </p>
           </div>
@@ -285,7 +285,7 @@ export default function WeddingBudget() {
 
             <p className="text-sm text-[#8C7D91]">Actual Spending</p>
 
-            <p className="mt-1 text-2xl font-semibold text-[#35244F]">
+            <p className="mt-1 text-2xl font-semibold text-[#17141F]">
               {formatCurrency(totals.actualTotal)}
             </p>
           </div>
@@ -304,7 +304,7 @@ export default function WeddingBudget() {
             <p
               className={`mt-1 text-2xl font-semibold ${
                 totals.remaining >= 0
-                  ? "text-[#35244F]"
+                  ? "text-[#17141F]"
                   : "text-[#A56D73]"
               }`}
             >
@@ -319,7 +319,7 @@ export default function WeddingBudget() {
 
             <p className="text-sm text-[#8C7D91]">Expenses</p>
 
-            <p className="mt-1 text-2xl font-semibold text-[#35244F]">
+            <p className="mt-1 text-2xl font-semibold text-[#17141F]">
               {expenses.length}
             </p>
           </div>
@@ -333,7 +333,7 @@ export default function WeddingBudget() {
             </div>
 
             <div>
-              <h2 className="text-lg font-semibold text-[#35244F]">
+              <h2 className="text-lg font-semibold text-[#17141F]">
                 Add Wedding Expense
               </h2>
 
@@ -349,13 +349,13 @@ export default function WeddingBudget() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Expense / vendor"
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FCFAF7] px-4 text-sm outline-none placeholder:text-[#B0A4AE] focus:border-[#B991B5]"
+              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm outline-none placeholder:text-[#B0A4AE] focus:border-[#B991B5]"
             />
 
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FCFAF7] px-4 text-sm outline-none focus:border-[#B991B5]"
+              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm outline-none focus:border-[#B991B5]"
             >
               {CATEGORIES.map((item) => (
                 <option key={item} value={item}>
@@ -370,7 +370,7 @@ export default function WeddingBudget() {
               value={planned}
               onChange={(e) => setPlanned(e.target.value)}
               placeholder="Planned ₹"
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FCFAF7] px-4 text-sm outline-none placeholder:text-[#B0A4AE] focus:border-[#B991B5]"
+              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm outline-none placeholder:text-[#B0A4AE] focus:border-[#B991B5]"
             />
 
             <input
@@ -379,13 +379,13 @@ export default function WeddingBudget() {
               value={actual}
               onChange={(e) => setActual(e.target.value)}
               placeholder="Actual ₹"
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FCFAF7] px-4 text-sm outline-none placeholder:text-[#B0A4AE] focus:border-[#B991B5]"
+              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm outline-none placeholder:text-[#B0A4AE] focus:border-[#B991B5]"
             />
 
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FCFAF7] px-4 text-sm outline-none focus:border-[#B991B5]"
+              className="h-12 rounded-2xl border border-[#E5DBD0] bg-[#FFFCF8] px-4 text-sm outline-none focus:border-[#B991B5]"
             >
               {STATUS_OPTIONS.map((item) => (
                 <option key={item} value={item}>
@@ -395,9 +395,9 @@ export default function WeddingBudget() {
             </select>
           </div>
 
-          <button
+          <button className="glow-btn mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#17141F] px-6 text-sm font-semibold text-white transition hover:bg-[#46325F] md:w-auto"
             onClick={addExpense}
-            className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#35244F] px-6 text-sm font-semibold text-white transition hover:bg-[#46325F] md:w-auto"
+           
           >
             <Plus size={17} />
             Add Expense
@@ -428,7 +428,7 @@ export default function WeddingBudget() {
                 onClick={() => setFilter(item)}
                 className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${
                   filter === item
-                    ? "bg-[#35244F] text-white"
+                    ? "bg-gradient-to-r from-[#D8C8FF] via-[#F4B4CF] to-[#A9E8FF] text-[#292431] shadow-[0_6px_18px_rgba(155,124,246,0.16)]"
                     : "border border-[#E6DCCD] bg-white text-[#6F6276] hover:bg-[#F5EFF6]"
                 }`}
               >
@@ -447,7 +447,7 @@ export default function WeddingBudget() {
                 className="mx-auto mb-4 text-[#B991B5]"
               />
 
-              <h3 className="text-lg font-semibold text-[#35244F]">
+              <h3 className="text-lg font-semibold text-[#17141F]">
                 No expenses found
               </h3>
 
@@ -468,7 +468,7 @@ export default function WeddingBudget() {
 
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-semibold text-[#35244F]">
+                      <h3 className="text-lg font-semibold text-[#17141F]">
                         {expense.title}
                       </h3>
 
