@@ -41,7 +41,6 @@ const sampleVenues = [
     city: 'Jaipur',
     type: 'Palace',
     capacity: 500,
-    hotelGuestOccupancy: 0,
     rooms: 80,
     startingPrice: 650000,
     location: 'Jaipur, Rajasthan',
@@ -55,7 +54,6 @@ const sampleVenues = [
     city: 'Jaipur',
     type: 'Garden',
     capacity: 800,
-    hotelGuestOccupancy: 0,
     rooms: 45,
     startingPrice: 450000,
     location: 'Jaipur, Rajasthan',
@@ -69,7 +67,6 @@ const sampleVenues = [
     city: 'Udaipur',
     type: 'Resort',
     capacity: 350,
-    hotelGuestOccupancy: 0,
     rooms: 110,
     startingPrice: 850000,
     location: 'Udaipur, Rajasthan',
@@ -142,10 +139,6 @@ const WedoraVenueDiscovery = () => {
       venueUpdates.forEach((item) => {
         if (item.field === 'Capacity') {
           updatedVenue.capacity = Number(item.correctedValue);
-        }
-
-        if (item.field === 'Hotel Guest Occupancy') {
-          updatedVenue.hotelGuestOccupancy = Number(item.correctedValue);
         }
 
         if (item.field === 'Starting Price') {
@@ -470,10 +463,25 @@ const WedoraVenueDiscovery = () => {
 
                 <button
                   onClick={handleSearch}
-                  className="flex min-h-[64px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#D8C8FF] via-[#E8D3F4] to-[#F7C5D9] px-8 text-sm font-medium tracking-wide text-[#30283A] shadow-[0_8px_24px_rgba(155,124,246,0.16)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(155,124,246,0.22)] active:scale-[0.97] active:translate-y-[1px] transition-transform duration-150 active:scale-[0.97] active:translate-y-[1px]"
+                  disabled={searchLoading}
+                  aria-busy={searchLoading}
+                  className={`flex min-h-[64px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#D8C8FF] via-[#E8D3F4] to-[#F7C5D9] px-8 text-sm font-medium tracking-wide text-[#30283A] shadow-[0_8px_24px_rgba(155,124,246,0.16)] transition-all duration-300 ${
+                    searchLoading
+                      ? 'cursor-wait opacity-90 shadow-[0_10px_30px_rgba(155,124,246,0.24)]'
+                      : 'hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(155,124,246,0.22)] active:scale-[0.97] active:translate-y-[1px]'
+                  }`}
                 >
-                  <Search size={18} />
-                  Discover Venues
+                  {searchLoading ? (
+                    <>
+                      <RefreshCw size={18} className="animate-spin" />
+                      Searching…
+                    </>
+                  ) : (
+                    <>
+                      <Search size={18} />
+                      Discover Venues
+                    </>
+                  )}
                 </button>
 
               </div>
@@ -794,23 +802,14 @@ const WedoraVenueDiscovery = () => {
 
                         </div>
 
-                        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        <div className="mt-5 grid grid-cols-2 gap-3">
 
                           <div className="rounded-xl bg-[#FBF9FD] p-3">
                             <p className="text-[10px] tracking-wide text-[#978d84]">
-                              EVENT CAPACITY
+                              CAPACITY
                             </p>
                             <p className="mt-1 text-sm">
-                              {venue.capacity ? `${venue.capacity} guests` : 'Not specified'}
-                            </p>
-                          </div>
-
-                          <div className="rounded-xl bg-[#FBF9FD] p-3">
-                            <p className="text-[10px] tracking-wide text-[#978d84]">
-                              HOTEL GUEST OCCUPANCY
-                            </p>
-                            <p className="mt-1 text-sm">
-                              {venue.hotelGuestOccupancy ? `${venue.hotelGuestOccupancy} guests` : 'Not specified'}
+                              {venue.capacity} guests
                             </p>
                           </div>
 
@@ -819,7 +818,7 @@ const WedoraVenueDiscovery = () => {
                               ROOMS
                             </p>
                             <p className="mt-1 text-sm">
-                              {venue.rooms || 'Not specified'}
+                              {venue.rooms}
                             </p>
                           </div>
 
@@ -942,7 +941,7 @@ const WedoraVenueDiscovery = () => {
             </h2>
 
             <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-[#82778E]">
-              Found an outdated price, incorrect event capacity, hotel guest occupancy, changed contact
+              Found an outdated price, incorrect capacity, changed contact
               information or another mistake? Submit an update and WEDORA
               can use verified corrections in future searches.
             </p>
@@ -1023,10 +1022,7 @@ const WedoraVenueDiscovery = () => {
                         Starting Price
                       </option>
                       <option value="Capacity">
-                        Event Capacity
-                      </option>
-                      <option value="Hotel Guest Occupancy">
-                        Hotel Guest Occupancy
+                        Guest Capacity
                       </option>
                       <option value="Rooms">
                         Number of Rooms
