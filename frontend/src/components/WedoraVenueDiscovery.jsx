@@ -396,7 +396,7 @@ const WedoraVenueDiscovery = () => {
   };
 
   return (
-    
+    <>
       <style>{`
         @keyframes wedoraChromaticSweep {
           0% { transform: rotate(0deg); }
@@ -1203,6 +1203,7 @@ const WedoraVenueDiscovery = () => {
       )}
 
     </div>
+    </>
   );
 };
 
