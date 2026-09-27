@@ -135,7 +135,7 @@ export default function WeddingGuests() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
           <button
             onClick={() => navigate("/wedding-planning")}
-            className="flex items-center gap-2 rounded-full border border-[#E6DCCD] bg-white px-4 py-2 text-sm font-medium text-[#4A3868] transition hover:bg-[#F3EDF7]"
+            className="glow-btn flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#4A3868]"
           >
             <ArrowLeft size={17} />
             Back to Command Center
@@ -297,7 +297,7 @@ export default function WeddingGuests() {
 
           <button
             onClick={addGuest}
-            className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#35244F] px-6 text-sm font-semibold text-white transition hover:bg-[#46325F] md:w-auto"
+            className="glow-btn mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-6 text-sm font-semibold text-[#2D2638] md:w-auto"
           >
             <Plus size={17} />
             Add Guest
@@ -326,11 +326,7 @@ export default function WeddingGuests() {
               <button
                 key={option}
                 onClick={() => setFilter(option)}
-                className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${
-                  filter === option
-                    ? "bg-[#35244F] text-white"
-                    : "border border-[#E6DCCD] bg-white text-[#6F6276] hover:bg-[#F5EFF6]"
-                }`}
+                className="glow-btn whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium text-[#6F6276]"
               >
                 {option}
               </button>
@@ -420,7 +416,7 @@ export default function WeddingGuests() {
 
                   <button
                     onClick={() => deleteGuest(guest.id)}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center self-end rounded-full text-[#B2A7B0] transition hover:bg-[#FBEDED] hover:text-[#B86F76] md:self-center"
+                    className="glow-btn flex h-10 w-10 shrink-0 items-center justify-center self-end rounded-full p-0 text-[#B86F76] md:self-center"
                     aria-label="Delete guest"
                   >
                     <Trash2 size={17} />
