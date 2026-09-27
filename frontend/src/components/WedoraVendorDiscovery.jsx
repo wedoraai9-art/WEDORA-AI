@@ -615,27 +615,40 @@ const WedoraVendorDiscovery = () => {
   };
 
   return (
-   
+   <div className="wedora-vendor-page min-h-screen bg-gradient-to-b from-[#FBF9FF] via-[#FFFCFE] to-[#F8F6FF] text-[#2D2638]">
       <style>{`
-        @keyframes wedoraChromaticSweep {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
+        .wedora-discovery-button {
+          position: relative;
+          isolation: isolate;
+          overflow: hidden;
         }
-
-        @keyframes wedoraChromaticPulse {
-          0%, 100% { opacity: 0.72; }
-          50% { opacity: 1; }
+        .wedora-discovery-button::before {
+          content: '';
+          position: absolute;
+          inset: -2px;
+          border-radius: 9999px;
+          padding: 2px;
+          background: conic-gradient(from 0deg, transparent 0deg, #ff6f91 35deg, #8b7cff 95deg, #62d7ff 150deg, transparent 205deg, #ff6f91 250deg, transparent 330deg);
+          -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          opacity: 0;
+          transform: rotate(0deg);
+          transition: opacity .25s ease;
+          z-index: -1;
         }
-
-        .wedora-discovery-button-border {
-          animation: wedoraChromaticSweep 3.2s linear infinite;
+        .wedora-discovery-button:hover::before,
+        .wedora-discovery-button[data-loading='true']::before {
+          opacity: 1;
+          animation: wedoraChromaticEdge 1.8s linear infinite;
         }
-
-        .wedora-discovery-button-glow {
-          animation: wedoraChromaticPulse 2.2s ease-in-out infinite;
+        .wedora-discovery-button[data-loading='true'] {
+          cursor: wait;
+        }
+        @keyframes wedoraChromaticEdge {
+          to { transform: rotate(360deg); }
         }
       `}</style>
-<div className="wedora-vendor-page min-h-screen bg-gradient-to-b from-[#FBF9FF] via-[#FFFCFE] to-[#F8F6FF] text-[#2D2638]">
 
       {/* TRANSPARENT BACK CONTROL */}
       <div className="relative z-20 mx-auto max-w-7xl px-6 pt-[112px] md:pt-[120px]">
@@ -745,30 +758,19 @@ const WedoraVendorDiscovery = () => {
                   onClick={handleSearch}
                   disabled={searchLoading}
                   aria-busy={searchLoading}
-                  aria-label={searchLoading ? "Searching vendors" : "Discover Vendors"}
-                  className={`group relative flex min-h-[64px] items-center justify-center overflow-hidden rounded-full p-[1.5px] shadow-[0_10px_28px_rgba(70,55,40,0.12)] backdrop-blur-sm transition-all duration-300 ${
-                    searchLoading
-                      ? "cursor-wait opacity-90"
-                      : "hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(70,55,40,0.16)] active:translate-y-0 active:scale-[0.985]"
-                  }`}
+                  aria-label={searchLoading ? 'Searching vendors' : 'Discover vendors'}
+                  data-loading={searchLoading ? 'true' : 'false'}
+                  className="wedora-discovery-button group relative flex min-h-[64px] items-center justify-center rounded-full border border-white/90 bg-white/75 px-3 shadow-[0_10px_28px_rgba(155,124,246,0.12)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_rgba(155,124,246,0.18)] active:translate-y-0 active:scale-[0.985] disabled:opacity-95"
                 >
-                  <span
-                    aria-hidden="true"
-                    className="wedora-discovery-button-border pointer-events-none absolute inset-[-65%] rounded-[30%] bg-[conic-gradient(from_0deg,transparent_0deg_300deg,rgba(255,76,128,0.95)_308deg_314deg,transparent_320deg_334deg,rgba(77,177,255,0.95)_338deg_344deg,transparent_350deg_360deg)]"
-                  />
-                  <span
-                    aria-hidden="true"
-                    className="wedora-discovery-button-glow pointer-events-none absolute inset-[1px] rounded-full border border-[#30283A]/80 bg-white/25 blur-[0.4px]"
-                  />
-                  <span className="relative z-10 flex min-h-[61px] w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#D8C8FF] via-[#E8D3F4] to-[#BFE8F7] px-8 text-sm font-medium text-[#30283A] shadow-[inset_0_1px_0_rgba(255,255,255,0.78),0_6px_18px_rgba(155,124,246,0.14)] transition-all duration-300 group-hover:from-[#D4C2FF] group-hover:via-[#F0D3F0] group-hover:to-[#B8E5F5]">
+                  <span className="relative z-10 flex min-h-[46px] items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#D8C8FF] via-[#E8D3F4] to-[#BFE8F7] px-8 text-sm font-medium text-[#30283A] shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_6px_18px_rgba(155,124,246,0.14)] transition-all duration-300 ease-out group-hover:scale-[1.025] group-hover:from-[#D4C2FF] group-hover:via-[#F0D3F0] group-hover:to-[#B8E5F5] group-active:scale-[0.985]">
                     {searchLoading ? (
                       <>
-                        <RefreshCw size={17} className="animate-spin" />
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#8B7CF5]/25 border-t-[#8B7CF5]" />
                         <span>Searching…</span>
                       </>
                     ) : (
                       <>
-                        <Search size={17} className="transition-transform duration-300 group-hover:scale-110" />
+                        <Search size={17} className="transition-transform duration-300 group-hover:scale-105" />
                         <span>Discover Vendors</span>
                       </>
                     )}
