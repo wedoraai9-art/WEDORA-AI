@@ -438,6 +438,7 @@ const VendorDashboard = () => {
   const [dashboardWeddings, setDashboardWeddings] = useState([]);
   const [dashboardTasks, setDashboardTasks] = useState([]);
   const [dashboardNotifications, setDashboardNotifications] = useState([]);
+  const [dashboardInvoices, setDashboardInvoices] = useState([]);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [busy, setBusy] = useState(true);
   const previousNewLeads = useRef(null);
@@ -491,6 +492,7 @@ const VendorDashboard = () => {
       const activeWeddings = nextWeddings.filter((wedding) => !isCompletedWedding(wedding));
       const taskResults = [];
       const notificationResults = [];
+      const invoiceResults = [];
 
       // Limit concurrent requests so larger PRO accounts do not flood the API.
       for (let index = 0; index < activeWeddings.length; index += 8) {
@@ -499,9 +501,10 @@ const VendorDashboard = () => {
           const weddingId = wedding.id || wedding._id;
           if (!weddingId) return { tasks: [], notifications: [] };
 
-          const [tasksResponse, notificationsResponse] = await Promise.allSettled([
+          const [tasksResponse, notificationsResponse, invoicesResponse] = await Promise.allSettled([
             authAxios.get(`/vendor/weddings/${weddingId}/tasks`),
             authAxios.get(`/vendor/weddings/${weddingId}/notifications`),
+            authAxios.get(`/vendor/weddings/${weddingId}/invoices`),
           ]);
 
           const weddingTasks = tasksResponse.status === 'fulfilled' &&
@@ -511,6 +514,10 @@ const VendorDashboard = () => {
           const weddingNotifications = notificationsResponse.status === 'fulfilled' &&
             Array.isArray(notificationsResponse.value?.data?.notifications)
             ? notificationsResponse.value.data.notifications
+            : [];
+          const weddingInvoices = invoicesResponse.status === 'fulfilled' &&
+            Array.isArray(invoicesResponse.value?.data?.invoices)
+            ? invoicesResponse.value.data.invoices
             : [];
 
           return {
@@ -524,17 +531,24 @@ const VendorDashboard = () => {
               wedding_id: weddingId,
               wedding_name: wedding.wedding_name || wedding.name || 'Wedding',
             })),
+            invoices: weddingInvoices.map((invoice) => ({
+              ...invoice,
+              wedding_id: weddingId,
+              wedding_name: wedding.wedding_name || wedding.name || 'Wedding',
+            })),
           };
         }));
 
         batchResults.forEach((result) => {
           taskResults.push(...result.tasks);
           notificationResults.push(...result.notifications);
+          invoiceResults.push(...result.invoices);
         });
       }
 
       setDashboardTasks(taskResults);
       setDashboardNotifications(notificationResults);
+      setDashboardInvoices(invoiceResults);
     } catch (e) {
       toast.error(
         fmtApiError(
@@ -629,6 +643,23 @@ const VendorDashboard = () => {
   const unreadNotificationCount = dashboardNotifications.filter(
     (notification) => !notification.read
   ).length;
+  const dashboardInvoiceDueSummary = dashboardInvoices.reduce((summary, invoice) => {
+    const balance = Number(invoice?.balance_amount || 0);
+    if (String(invoice?.status || '').toLowerCase() === 'paid' || balance <= 0) return summary;
+    summary.outstanding += balance;
+    if (!invoice?.due_date) {
+      summary.missingDate += 1;
+      return summary;
+    }
+    const dueDate = dateKey(invoice.due_date);
+    if (!dueDate) {
+      summary.missingDate += 1;
+      return summary;
+    }
+    if (dueDate < today) summary.overdue += 1;
+    else if (dueDate <= dateKey(new Date(Date.now() + 7 * 86400000))) summary.dueSoon += 1;
+    return summary;
+  }, { overdue: 0, dueSoon: 0, missingDate: 0, outstanding: 0 });
 
   const openWeddingWorkspace = (weddingId = null) => {
     const wedding =
@@ -851,13 +882,33 @@ const VendorDashboard = () => {
                 value={dashboardLoading ? '…' : unreadNotificationCount}
                 testid="stat-unread-reminders"
               />
-              <div className="pearl-card p-5" data-testid="stat-payment-deadlines">
+              <button
+                type="button"
+                className="pearl-card p-5 text-left hover:bg-white/90 transition"
+                data-testid="stat-payment-deadlines"
+                onClick={() => {
+                  const invoiceWithBalance = dashboardInvoices.find((invoice) => Number(invoice?.balance_amount || 0) > 0);
+                  if (invoiceWithBalance?.wedding_id) openWeddingWorkspace(invoiceWithBalance.wedding_id);
+                  else if (activeWeddings.length) openWeddingWorkspace(activeWeddings[0].id || activeWeddings[0]._id);
+                  else toast.info('Create a wedding and invoice to track payment deadlines.');
+                }}
+              >
                 <div className="flex items-center gap-2 text-[#988FA6] text-xs uppercase tracking-widest mb-2">
                   <CreditCard className="w-4 h-4" /> Payment Deadlines
                 </div>
-                <p className="font-display text-xl text-[#2D2638]">Not tracked yet</p>
-                <p className="text-xs text-[#6B617A] mt-1">Payment records have dates, but no due-date field.</p>
-              </div>
+                <p className="font-display text-xl text-[#2D2638]">
+                  {dashboardLoading ? '…' : `${dashboardInvoiceDueSummary.overdue} overdue`}
+                </p>
+                <p className="text-xs text-[#6B617A] mt-1">
+                  {dashboardLoading
+                    ? 'Loading invoice deadlines…'
+                    : `${dashboardInvoiceDueSummary.dueSoon} due within 7 days · ₹${dashboardInvoiceDueSummary.outstanding.toLocaleString('en-IN', { maximumFractionDigits: 2 })} outstanding`}
+                </p>
+                {dashboardInvoiceDueSummary.missingDate > 0 && (
+                  <p className="text-[11px] text-[#8B6AA8] mt-1">{dashboardInvoiceDueSummary.missingDate} unpaid invoice(s) need a due date</p>
+                )}
+                <p className="text-[11px] text-[#8B6AA8] mt-2">Open payment details →</p>
+              </button>
             </div>
 
             <section className="pearl-card p-5 md:p-6">
