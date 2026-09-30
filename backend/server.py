@@ -2555,8 +2555,6 @@ async def marketplace_vendors(
     search: Optional[str] = None,
 ):
     query = {}
-    if city:
-        query["city"] = {"$regex": re.escape(city), "$options": "i"}
     if category:
         query["category"] = {"$regex": re.escape(category), "$options": "i"}
     if search:
@@ -2566,9 +2564,17 @@ async def marketplace_vendors(
             {"city": {"$regex": re.escape(search), "$options": "i"}},
         ]
 
-    vendors = await db.vendors.find(query, {"_id": 0, "password_hash": 0}).sort(
-        "created_at", -1
-    ).to_list(200)
+    vendors = await db.vendors.find(
+        query, {"_id": 0, "password_hash": 0}
+    ).to_list(None)
+
+    # Show WEDORA Pro vendors first, followed by other vendors.
+    vendors.sort(
+        key=lambda vendor: (
+            str(vendor.get("plan", "")).lower() != "pro",
+            str(vendor.get("created_at", "")),
+        )
+    )
 
     return {"vendors": vendors}
 
