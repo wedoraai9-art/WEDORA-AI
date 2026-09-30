@@ -1,7 +1,7 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Request, UploadFile, File, Header, Query, Form
 from fastapi.responses import StreamingResponse, Response
 from dotenv import load_dotenv
-from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.cors import CORSMiddleware 
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
