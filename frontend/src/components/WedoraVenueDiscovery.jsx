@@ -197,6 +197,11 @@ const WedoraVenueDiscovery = () => {
       const foundCity = knownCities.find((city) => text.includes(city));
       if (foundCity) {
         parsedLocation = foundCity;
+      } else {
+        // Also recognize city names beyond the small preset list, e.g.
+        // 'hotel with 200 rooms in Mumbai' or 'venue in Hyderabad'.
+        const cityMatch = text.match(/\bin\s+([a-z][a-z .'-]{1,40}?)(?=\s+(?:under|below|within|for|with|having|upto|up to|budget|₹|rs\b)|$)/i);
+        if (cityMatch) parsedLocation = cityMatch[1].trim().replace(/[.,]+$/, '');
       }
     }
 
@@ -235,6 +240,8 @@ const WedoraVenueDiscovery = () => {
     if (!parsedType) {
       if (/palace|fort|heritage/i.test(text)) {
         parsedType = 'Palace';
+      } else if (/\bhotel\b/i.test(text)) {
+        parsedType = 'Hotel';
       } else if (/resort/i.test(text)) {
         parsedType = 'Resort';
       } else if (/banquet|indoor/i.test(text)) {
