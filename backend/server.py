@@ -2750,55 +2750,136 @@ async def get_venues():
 
 @api_router.post("/venues/search")
 async def search_venues(payload: dict):
-    """Search venue records without requiring a separate frontend-specific model.
+    """Search WEDORA venue records and public web listings.
 
-    Searches MongoDB's venues collection when available and falls back to the
-    small built-in sample list. Accepts common search keys used by discovery UIs.
+    Natural-language requirements are converted into a focused web query.
+    Public results are clearly marked as unverified; budget, capacity and room
+    details are only shown when present in the source snippet.
     """
-    query = str(
-        payload.get("query")
-        or payload.get("search")
-        or payload.get("search_query")
-        or payload.get("keyword")
-        or payload.get("q")
-        or ""
-    ).strip().lower()
-    city = str(payload.get("city") or payload.get("location") or "").strip().lower()
-    category = str(payload.get("category") or payload.get("venue_type") or "").strip().lower()
-    venue_type = str(payload.get("type") or "").strip().lower()
+    raw_query = str(
+        payload.get("query") or payload.get("search") or payload.get("search_query")
+        or payload.get("keyword") or payload.get("q") or ""
+    ).strip()
+    city = str(payload.get("city") or payload.get("location") or "").strip()
+    category = str(payload.get("category") or payload.get("venue_type") or payload.get("type") or "").strip()
+    guests = payload.get("guests") or payload.get("capacity")
+    rooms = payload.get("rooms") or payload.get("room_count")
+    budget = payload.get("budget") or payload.get("max_budget")
 
-    sample_venues = [
-        {"id": "1", "name": "The Oberoi Rajvilas", "city": "Jaipur", "capacity": "500", "category": "Resort"},
-        {"id": "2", "name": "Rambagh Palace", "city": "Jaipur", "capacity": "800", "category": "Palace"},
-    ]
+    # Use the natural-language query when no structured fields were extracted.
+    constraints = []
+    if category:
+        constraints.append(f"{category} wedding venue")
+    else:
+        constraints.append("wedding venue")
+    if city:
+        constraints.append(f"in {city}, India")
+    else:
+        constraints.append("in India")
+    if guests:
+        constraints.append(f"for {guests} guests")
+    if rooms:
+        constraints.append(f"hotel resort with {rooms} rooms")
+    if budget:
+        amount = int(float(budget)) if str(budget).replace('.', '', 1).isdigit() else budget
+        constraints.append(f"under budget ₹{amount}")
+    if raw_query:
+        constraints.append(raw_query)
+    web_query = " ".join(dict.fromkeys(constraints)) + " venue address website wedding"
 
-    venues = []
+    registered = []
     try:
-        cursor = db.venues.find({}, {"_id": 0}).limit(500)
-        venues = await cursor.to_list(length=500)
+        registered = await db.venues.find({}, {"_id": 0}).limit(500).to_list(length=500)
     except Exception as exc:
-        logging.warning("Venue collection lookup failed; using sample venues: %s", exc)
+        logging.warning("Venue collection lookup failed: %s", exc)
 
-    if not venues:
-        venues = sample_venues
+    public_venues = []
+    sources = []
+    web_error = None
+    try:
+        tavily_key = (os.environ.get("TAVILY_API_KEY") or "").strip()
+        headers = {"Content-Type": "application/json"}
+        if tavily_key:
+            headers["Authorization"] = f"Bearer {tavily_key}"
+        async with httpx.AsyncClient(timeout=20.0) as http:
+            response = await http.post(
+                "https://api.tavily.com/search",
+                headers=headers,
+                json={
+                    "query": web_query,
+                    "search_depth": "basic",
+                    "topic": "general",
+                    "max_results": 20,
+                    "include_answer": False,
+                    "include_raw_content": False,
+                    "country": "india",
+                },
+            )
+            response.raise_for_status()
+            web_data = response.json()
+        for index, item in enumerate(web_data.get("results") or []):
+            title = str(item.get("title") or "Wedding Venue Listing").strip()
+            url = str(item.get("url") or "").strip()
+            content = str(item.get("content") or "").strip()
+            if not url:
+                continue
+            public_venues.append({
+                "id": f"web-venue-{index}-{uuid.uuid5(uuid.NAMESPACE_URL, url).hex[:12]}",
+                "name": title,
+                "city": city or "India",
+                "location": city or "India",
+                "category": category or "Venue",
+                "type": category or "Venue",
+                "description": content[:900] or "Public web result. Open the source to confirm venue details.",
+                "source_url": url,
+                "website": url,
+                "source_name": "Public web search",
+                "status": "Public listing — unverified",
+                "verified": False,
+                "public_listing": True,
+                "listing_type": "web",
+                "capacity": "Not listed",
+                "rooms": "Not listed",
+                "starting_price": 0,
+                "price_label": "Check source",
+            })
+            sources.append({"title": title, "url": url})
+    except Exception as exc:
+        logging.warning("Public venue web search unavailable: %s", exc)
+        web_error = "Public web search is temporarily unavailable. Showing registered WEDORA venues where available."
 
-    def matches(venue):
-        searchable = " ".join(
-            str(venue.get(key, ""))
-            for key in ("name", "city", "category", "type", "venue_type", "address", "description")
-        ).lower()
-        if query and query not in searchable:
-            return False
-        if city and city not in str(venue.get("city", venue.get("location", ""))).lower():
-            return False
-        if category and category not in str(venue.get("category", venue.get("venue_type", ""))).lower():
-            return False
-        if venue_type and venue_type not in str(venue.get("type", venue.get("category", ""))).lower():
-            return False
-        return True
+    def matches_city(venue):
+        if not city:
+            return True
+        venue_city = str(venue.get("city") or venue.get("location") or venue.get("address") or "").lower()
+        return city.lower() in venue_city
 
-    results = [venue for venue in venues if matches(venue)]
-    return {"success": True, "venues": results, "results": results, "total": len(results)}
+    # City-filter registered records; public web search is already city-scoped.
+    registered = [v for v in registered if matches_city(v)]
+    seen = {str(v.get("source_url") or v.get("website") or "").lower().rstrip("/") for v in registered}
+    seen_names = {str(v.get("name") or v.get("business_name") or "").lower().strip() for v in registered}
+    merged = list(registered)
+    for venue in public_venues:
+        url_key = str(venue.get("source_url") or "").lower().rstrip("/")
+        name_key = str(venue.get("name") or "").lower().strip()
+        if url_key in seen or name_key in seen_names:
+            continue
+        merged.append(venue)
+        seen.add(url_key)
+        seen_names.add(name_key)
+
+    return {
+        "success": True,
+        "venues": merged,
+        "results": merged,
+        "sources": sources,
+        "total": len(merged),
+        "registered_count": len(registered),
+        "web_count": len(merged) - len(registered),
+        "web_search_error": web_error,
+        "search_query": web_query,
+        "filters": {"city": city or None, "venue_type": category or None, "guests": guests, "rooms": rooms, "budget": budget},
+    }
 
 @api_router.get("/vendors")
 async def get_vendors():
