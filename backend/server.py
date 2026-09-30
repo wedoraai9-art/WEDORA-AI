@@ -2643,6 +2643,59 @@ async def get_venues():
         {"id": "2", "name": "Rambagh Palace", "city": "Jaipur", "capacity": "800"}
     ]
 
+
+@api_router.post("/venues/search")
+async def search_venues(payload: dict):
+    """Search venue records without requiring a separate frontend-specific model.
+
+    Searches MongoDB's venues collection when available and falls back to the
+    small built-in sample list. Accepts common search keys used by discovery UIs.
+    """
+    query = str(
+        payload.get("query")
+        or payload.get("search")
+        or payload.get("search_query")
+        or payload.get("keyword")
+        or payload.get("q")
+        or ""
+    ).strip().lower()
+    city = str(payload.get("city") or payload.get("location") or "").strip().lower()
+    category = str(payload.get("category") or payload.get("venue_type") or "").strip().lower()
+    venue_type = str(payload.get("type") or "").strip().lower()
+
+    sample_venues = [
+        {"id": "1", "name": "The Oberoi Rajvilas", "city": "Jaipur", "capacity": "500", "category": "Resort"},
+        {"id": "2", "name": "Rambagh Palace", "city": "Jaipur", "capacity": "800", "category": "Palace"},
+    ]
+
+    venues = []
+    try:
+        cursor = db.venues.find({}, {"_id": 0}).limit(500)
+        venues = await cursor.to_list(length=500)
+    except Exception as exc:
+        logging.warning("Venue collection lookup failed; using sample venues: %s", exc)
+
+    if not venues:
+        venues = sample_venues
+
+    def matches(venue):
+        searchable = " ".join(
+            str(venue.get(key, ""))
+            for key in ("name", "city", "category", "type", "venue_type", "address", "description")
+        ).lower()
+        if query and query not in searchable:
+            return False
+        if city and city not in str(venue.get("city", venue.get("location", ""))).lower():
+            return False
+        if category and category not in str(venue.get("category", venue.get("venue_type", ""))).lower():
+            return False
+        if venue_type and venue_type not in str(venue.get("type", venue.get("category", ""))).lower():
+            return False
+        return True
+
+    results = [venue for venue in venues if matches(venue)]
+    return {"success": True, "venues": results, "results": results, "total": len(results)}
+
 @api_router.get("/vendors")
 async def get_vendors():
     return [
