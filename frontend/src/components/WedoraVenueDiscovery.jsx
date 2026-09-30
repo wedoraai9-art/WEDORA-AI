@@ -285,7 +285,7 @@ const WedoraVenueDiscovery = () => {
         : selectedType;
 
     const payload = {
-      query: searchQuery,
+      query: (parsedSearch.location || parsedSearch.type || parsedSearch.guests || parsedSearch.budget || parsedSearch.rooms) ? '' : searchQuery,
       location:
         typeof overrides.location === 'string'
           ? overrides.location
@@ -332,7 +332,22 @@ const WedoraVenueDiscovery = () => {
         throw new Error(data.detail || `Venue search failed (${response.status})`);
       }
 
-      setLiveVenues(Array.isArray(data.results) ? data.results : []);
+      const results = Array.isArray(data.results) ? data.results : Array.isArray(data.venues) ? data.venues : [];
+      setLiveVenues(results.map((venue, index) => ({
+        ...venue,
+        id: venue.id || venue._id || `venue-${index}`,
+        type: venue.type || venue.venue_type || venue.category || 'Venue',
+        city: venue.city || venue.location || '',
+        location: venue.location || [venue.city, venue.state].filter(Boolean).join(', '),
+        capacity: venue.capacity ?? venue.guest_capacity ?? 'Not listed',
+        rooms: venue.rooms ?? venue.room_count ?? 'Not listed',
+        startingPrice: venue.startingPrice ?? venue.starting_price ?? venue.price ?? 0,
+        priceLabel: venue.priceLabel || venue.price_label || '',
+        status: venue.status || (venue.verified ? 'Verified' : 'Public listing'),
+        lastUpdated: venue.lastUpdated || venue.last_updated || 'Not listed',
+        sourceUrl: venue.sourceUrl || venue.source_url || '',
+        source: venue.source || venue.source_name || '',
+      })));
       setSearchSources(Array.isArray(data.sources) ? data.sources : []);
     } catch (error) {
       console.error('WEDORA live venue search failed:', error);
