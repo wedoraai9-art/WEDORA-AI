@@ -1,7 +1,7 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Request, UploadFile, File, Header, Query, Form
 from fastapi.responses import StreamingResponse, Response
 from dotenv import load_dotenv
-from starlette.middleware.cors import CORSMiddleware 
+from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
@@ -2554,29 +2554,127 @@ async def marketplace_vendors(
     category: Optional[str] = None,
     search: Optional[str] = None,
 ):
+    """Search WEDORA vendor profiles and public web listings.
+
+    Public search uses Tavily's web search endpoint. TAVILY_API_KEY is optional
+    for keyless trials, but configuring a key is recommended for reliable use.
+    """
     query = {}
     if category:
         query["category"] = {"$regex": re.escape(category), "$options": "i"}
+    if city:
+        query["city"] = {"$regex": re.escape(city), "$options": "i"}
     if search:
         query["$or"] = [
             {"business_name": {"$regex": re.escape(search), "$options": "i"}},
             {"category": {"$regex": re.escape(search), "$options": "i"}},
             {"city": {"$regex": re.escape(search), "$options": "i"}},
+            {"description": {"$regex": re.escape(search), "$options": "i"}},
         ]
 
-    vendors = await db.vendors.find(
+    registered = await db.vendors.find(
         query, {"_id": 0, "password_hash": 0}
-    ).to_list(None)
-
-    # Show WEDORA Pro vendors first, followed by other vendors.
-    vendors.sort(
+    ).to_list(200)
+    registered.sort(
         key=lambda vendor: (
-            str(vendor.get("plan", "")).lower() != "pro",
+            str(vendor.get("plan", vendor.get("subscription_plan", ""))).lower()
+            not in {"pro", "premium", "platinum"},
             str(vendor.get("created_at", "")),
         )
     )
 
-    return {"vendors": vendors}
+    # Convert the selected filters into a focused public-web query. Explicit
+    # city/category filters are included so Jaipur searches do not return India-wide results.
+    terms = [str(search or "").strip(), str(category or "").strip()]
+    terms = [term for term in terms if term]
+    if not terms:
+        terms = ["wedding vendors"]
+    web_query = " ".join(dict.fromkeys(terms))
+    if city:
+        web_query += f" in {city}, India"
+    else:
+        web_query += " in India"
+    web_query += " wedding business contact website"
+
+    public_vendors = []
+    sources = []
+    web_error = None
+    try:
+        tavily_key = (os.environ.get("TAVILY_API_KEY") or "").strip()
+        headers = {"Content-Type": "application/json"}
+        if tavily_key:
+            headers["Authorization"] = f"Bearer {tavily_key}"
+        async with httpx.AsyncClient(timeout=20.0) as http:
+            response = await http.post(
+                "https://api.tavily.com/search",
+                headers=headers,
+                json={
+                    "query": web_query,
+                    "search_depth": "basic",
+                    "topic": "general",
+                    "max_results": 10,
+                    "include_answer": False,
+                    "include_raw_content": False,
+                    "country": "india",
+                },
+            )
+            response.raise_for_status()
+            web_data = response.json()
+
+        for index, item in enumerate(web_data.get("results") or []):
+            title = str(item.get("title") or "Wedding Vendor Listing").strip()
+            url = str(item.get("url") or "").strip()
+            content = str(item.get("content") or "").strip()
+            if not url:
+                continue
+            # Search snippets are not verified business records; label them as
+            # public web listings and avoid fabricating phone numbers or ratings.
+            public_vendors.append({
+                "id": f"web-{index}-{uuid.uuid5(uuid.NAMESPACE_URL, url).hex[:12]}",
+                "name": title,
+                "business_name": title,
+                "category": category or "Wedding Vendor",
+                "city": city or "India",
+                "description": content[:700] or "Public web result. Open the source to view business details.",
+                "website": url,
+                "website_url": url,
+                "source_url": url,
+                "source_name": "Public web search",
+                "verified": False,
+                "wedora_verified": False,
+                "public_listing": True,
+                "listing_type": "web",
+                "plan": "",
+            })
+            sources.append({"title": title, "url": url})
+    except Exception as exc:
+        logging.warning("Public vendor web search unavailable: %s", exc)
+        web_error = "Public web search is temporarily unavailable. Showing registered WEDORA vendors where available."
+
+    # Keep WEDORA profiles first; append deduplicated public listings.
+    known_urls = {
+        str(v.get("website") or v.get("website_url") or v.get("source_url") or "").lower().rstrip("/")
+        for v in registered
+    }
+    known_names = {str(v.get("business_name") or v.get("name") or "").lower().strip() for v in registered}
+    merged = list(registered)
+    for vendor in public_vendors:
+        url_key = str(vendor.get("website") or "").lower().rstrip("/")
+        name_key = str(vendor.get("name") or "").lower().strip()
+        if url_key in known_urls or name_key in known_names:
+            continue
+        merged.append(vendor)
+        known_urls.add(url_key)
+        known_names.add(name_key)
+
+    return {
+        "vendors": merged,
+        "sources": sources,
+        "total": len(merged),
+        "registered_count": len(registered),
+        "web_count": len(merged) - len(registered),
+        "web_search_error": web_error,
+    }
 
 
 @api_router.get("/marketplace/vendors/{slug}")
