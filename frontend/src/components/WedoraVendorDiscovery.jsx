@@ -266,7 +266,7 @@ const WedoraVendorDiscovery = () => {
   // Live India-wide vendor discovery. The Gemini API key stays on the
   // FastAPI/Render backend; it is never exposed in this React file.
   const VENDOR_SEARCH_API =
-    'https://wedora-ai.onrender.com/api/vendors/search';
+    'https://wedora-ai.onrender.com/api/marketplace/vendors';
 
   const [searched, setSearched] = useState(false);
   const [liveVendors, setLiveVendors] = useState([]);
@@ -448,8 +448,9 @@ const WedoraVendorDiscovery = () => {
       const instagram = vendor.instagram || '';
 
       return {
-        id: vendor.id || `live-vendor-${index}-${vendor.name || 'vendor'}`,
-        name: vendor.name || 'Unnamed Vendor',
+        id: vendor.id || vendor._id || `live-vendor-${index}-${vendor.name || vendor.business_name || 'vendor'}`,
+        name: vendor.name || vendor.business_name || 'Unnamed Vendor',
+        plan: String(vendor.plan || vendor.subscription_plan || vendor.subscription || '').toLowerCase(),
         category: vendor.category || vendor.role || parsedSearch.category || 'Wedding Vendor',
         city: vendor.city || '',
         state: vendor.state || '',
@@ -480,7 +481,11 @@ const WedoraVendorDiscovery = () => {
 
   const displayedVendors = useMemo(() => {
     if (searched && liveVendors.length > 0) {
-      return normalizedLiveVendors;
+      return [...normalizedLiveVendors].sort((a, b) => {
+        const aPro = /pro|premium|platinum/.test(a.plan);
+        const bPro = /pro|premium|platinum/.test(b.plan);
+        return Number(bPro) - Number(aPro);
+      });
     }
 
     const search = query.toLowerCase().trim();
@@ -564,13 +569,13 @@ const WedoraVendorDiscovery = () => {
     }
 
     try {
-      const response = await fetch(VENDOR_SEARCH_API, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const params = new URLSearchParams();
+      if (payload.query) params.set('search', payload.query);
+      if (payload.location) params.set('city', payload.location);
+      if (payload.category) params.set('category', payload.category);
+      const response = await fetch(`${VENDOR_SEARCH_API}?${params.toString()}`, {
+        method: 'GET',
         credentials: 'omit',
-        body: JSON.stringify(payload),
       });
 
       const data = await response.json().catch(() => ({}));
@@ -581,10 +586,11 @@ const WedoraVendorDiscovery = () => {
         );
       }
 
-      setLiveVendors(Array.isArray(data.results) ? data.results : []);
+      const vendors = Array.isArray(data.vendors) ? data.vendors : Array.isArray(data.results) ? data.results : [];
+      setLiveVendors(vendors);
       setSearchSources(Array.isArray(data.sources) ? data.sources : []);
 
-      if (!Array.isArray(data.results) || data.results.length === 0) {
+      if (vendors.length === 0) {
         setSearchError(
           'No live vendors matched this search. Try a broader city, category or service.'
         );
