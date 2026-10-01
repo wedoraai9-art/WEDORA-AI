@@ -3095,6 +3095,36 @@ async def staff_task_update(task_id: str, payload: VendorStaffTaskUpdateIn, auth
     return {"message": "Task updated"}
 
 
+@api_router.get("/staff/weddings")
+async def staff_wedding_list(authorization: str = Header(None)):
+    user = await get_current_user(authorization)
+    if user.get("role") != "vendor_staff" or not user.get("vendor_id"):
+        raise HTTPException(status_code=403, detail="Staff account required")
+    staff = await db.vendor_staff.find_one({"id": user.get("staff_id"), "vendor_id": user["vendor_id"], "is_active": True})
+    if not staff:
+        raise HTTPException(status_code=403, detail="Staff account is inactive or unavailable")
+    if "view_weddings" not in staff.get("permissions", []):
+        raise HTTPException(status_code=403, detail="You do not have permission to view weddings")
+    weddings = await db.vendor_weddings.find({"vendor_id": user["vendor_id"]}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    return {"weddings": weddings}
+
+
+@api_router.get("/staff/clients")
+async def staff_client_list(authorization: str = Header(None)):
+    user = await get_current_user(authorization)
+    if user.get("role") != "vendor_staff" or not user.get("vendor_id"):
+        raise HTTPException(status_code=403, detail="Staff account required")
+    staff = await db.vendor_staff.find_one({"id": user.get("staff_id"), "vendor_id": user["vendor_id"], "is_active": True})
+    if not staff:
+        raise HTTPException(status_code=403, detail="Staff account is inactive or unavailable")
+    if "view_clients" not in staff.get("permissions", []):
+        raise HTTPException(status_code=403, detail="You do not have permission to view clients")
+    clients = await db.vendor_clients.find({"vendor_id": user["vendor_id"]}, {"_id": 0}).sort("created_at", -1).to_list(300)
+    wedding_clients = await db.vendor_wedding_clients.find({"vendor_id": user["vendor_id"]}, {"_id": 0}).sort("created_at", -1).to_list(300)
+    # Return both vendor-level and wedding-linked client records without modifying stored data.
+    return {"clients": clients, "wedding_clients": wedding_clients}
+
+
 @api_router.post("/vendor/business-ai")
 async def vendor_business_ai(
     payload: VendorBusinessAIIn,
