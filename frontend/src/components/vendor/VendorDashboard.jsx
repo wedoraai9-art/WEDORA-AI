@@ -52,6 +52,7 @@ const TABS = [
   { id: 'portfolio', label: 'Portfolio', icon: Images },
   { id: 'leads', label: 'Leads', icon: Inbox },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+  { id: 'team', label: 'Team', icon: Users },
   { id: 'subscription', label: 'Subscription', icon: CreditCard },
   { id: 'settings', label: 'Settings', icon: SettingsIcon },
 ];
@@ -464,6 +465,12 @@ const VendorDashboard = () => {
   const [dashboardNotifications, setDashboardNotifications] = useState([]);
   const [dashboardInvoices, setDashboardInvoices] = useState([]);
   const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [teamTasks, setTeamTasks] = useState([]);
+  const [teamBusy, setTeamBusy] = useState(false);
+  const [teamError, setTeamError] = useState('');
+  const [staffForm, setStaffForm] = useState({ name: '', email: '', password: '', role_title: 'Coordinator', permissions: ['view_assigned_tasks', 'update_assigned_tasks', 'view_weddings', 'view_clients'] });
+  const [taskForm, setTaskForm] = useState({ title: '', assigned_to: '', wedding_id: '', due_date: '', priority: 'normal', description: '' });
   const [businessAiMessages, setBusinessAiMessages] = useState([]);
   const [businessAiInput, setBusinessAiInput] = useState('');
   const [businessAiLoading, setBusinessAiLoading] = useState(false);
@@ -580,6 +587,63 @@ const VendorDashboard = () => {
       );
     } finally {
       setBusinessAiLoading(false);
+    }
+  };
+
+  const loadTeamWorkspace = useCallback(async () => {
+    setTeamBusy(true);
+    setTeamError('');
+    try {
+      const [membersResponse, tasksResponse] = await Promise.all([
+        authAxios.get('/vendor/team'),
+        authAxios.get('/vendor/team/tasks'),
+      ]);
+      setTeamMembers(Array.isArray(membersResponse.data?.staff) ? membersResponse.data.staff : []);
+      setTeamTasks(Array.isArray(tasksResponse.data?.tasks) ? tasksResponse.data.tasks : []);
+    } catch (error) {
+      setTeamError(error?.response?.data?.detail || 'Could not load team workspace.');
+    } finally {
+      setTeamBusy(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tab === 'team' && user?.role === 'vendor') loadTeamWorkspace();
+  }, [tab, user?.role, loadTeamWorkspace]);
+
+  const createStaffMember = async (event) => {
+    event.preventDefault();
+    setTeamError('');
+    try {
+      await authAxios.post('/vendor/team', staffForm);
+      setStaffForm({ name: '', email: '', password: '', role_title: 'Coordinator', permissions: ['view_assigned_tasks', 'update_assigned_tasks', 'view_weddings', 'view_clients'] });
+      toast.success('Staff login created. Share the temporary password securely.');
+      await loadTeamWorkspace();
+    } catch (error) {
+      setTeamError(error?.response?.data?.detail || 'Could not create staff login.');
+    }
+  };
+
+  const createTeamTask = async (event) => {
+    event.preventDefault();
+    setTeamError('');
+    try {
+      await authAxios.post('/vendor/team/tasks', taskForm);
+      setTaskForm({ title: '', assigned_to: '', wedding_id: '', due_date: '', priority: 'normal', description: '' });
+      toast.success('Task assigned to team member.');
+      await loadTeamWorkspace();
+    } catch (error) {
+      setTeamError(error?.response?.data?.detail || 'Could not assign task.');
+    }
+  };
+
+  const toggleStaffStatus = async (member) => {
+    try {
+      await authAxios.put(`/vendor/team/${member.id}`, { is_active: !member.is_active });
+      toast.success(member.is_active ? 'Staff access deactivated.' : 'Staff access reactivated.');
+      await loadTeamWorkspace();
+    } catch (error) {
+      setTeamError(error?.response?.data?.detail || 'Could not update staff access.');
     }
   };
 
@@ -1333,6 +1397,70 @@ const VendorDashboard = () => {
               </div>
             )}
           </div>
+        )}
+
+        {tab === 'team' && vendor && (
+          <section className="pearl-card p-5 md:p-8 space-y-6" data-testid="team-tab">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-widest text-[#988FA6]">WEDORA PRO · TEAM WORKSPACE</p>
+                <h2 className="font-display text-2xl md:text-3xl text-[#2D2638] mt-1">Staff & Team Management</h2>
+                <p className="text-sm text-[#6B617A] mt-2">Create staff logins, control permissions and assign wedding tasks.</p>
+              </div>
+              <span className="rounded-full px-3 py-1.5 text-xs bg-gradient-to-r from-[#C9B8FF]/50 to-[#F7B7D8]/50">Owner managed</span>
+            </div>
+            {teamError && <p role="alert" className="rounded-xl bg-red-50 text-red-700 p-3 text-sm">{teamError}</p>}
+            {teamBusy && <p className="text-sm text-[#8B8194]">Loading team workspace…</p>}
+            <div className="grid lg:grid-cols-2 gap-5">
+              <form onSubmit={createStaffMember} className="rounded-2xl border border-[#E8DDF3] bg-white/70 p-4 space-y-3">
+                <h3 className="font-semibold text-[#332B3E]">Create staff login</h3>
+                <input required minLength={2} maxLength={100} value={staffForm.name} onChange={e=>setStaffForm({...staffForm,name:e.target.value})} placeholder="Staff full name" className="w-full rounded-xl border border-[#DED0EE] bg-white px-3 py-2 text-sm" />
+                <input required type="email" value={staffForm.email} onChange={e=>setStaffForm({...staffForm,email:e.target.value})} placeholder="Staff email address" className="w-full rounded-xl border border-[#DED0EE] bg-white px-3 py-2 text-sm" />
+                <input required type="password" minLength={12} value={staffForm.password} onChange={e=>setStaffForm({...staffForm,password:e.target.value})} placeholder="Temporary password (12+ characters)" className="w-full rounded-xl border border-[#DED0EE] bg-white px-3 py-2 text-sm" />
+                <select value={staffForm.role_title} onChange={e=>setStaffForm({...staffForm,role_title:e.target.value})} className="w-full rounded-xl border border-[#DED0EE] bg-white px-3 py-2 text-sm">
+                  {['Designer','Coordinator','Decorator','Photographer','Custom'].map(role=><option key={role}>{role}</option>)}
+                </select>
+                <div className="text-xs text-[#6B617A]">Permissions</div>
+                <div className="grid grid-cols-2 gap-2 text-xs text-[#4A4257]">
+                  {[
+                    ['view_assigned_tasks','View assigned tasks'],['update_assigned_tasks','Update assigned tasks'],
+                    ['view_weddings','View weddings'],['view_clients','View clients'],
+                  ].map(([key,label])=><label key={key} className="flex items-center gap-2"><input type="checkbox" checked={staffForm.permissions.includes(key)} onChange={e=>setStaffForm(old=>({...old,permissions:e.target.checked?[...old.permissions,key]:old.permissions.filter(x=>x!==key)}))}/>{label}</label>)}
+                </div>
+                <button type="submit" className="glow-btn !py-2.5 !px-5 !text-sm">Create staff account</button>
+                <p className="text-[11px] text-[#8B8194]">Use a unique temporary password and share it privately. Existing account emails cannot be reused.</p>
+              </form>
+              <form onSubmit={createTeamTask} className="rounded-2xl border border-[#E8DDF3] bg-white/70 p-4 space-y-3">
+                <h3 className="font-semibold text-[#332B3E]">Assign a team task</h3>
+                <input required value={taskForm.title} onChange={e=>setTaskForm({...taskForm,title:e.target.value})} placeholder="Task title" className="w-full rounded-xl border border-[#DED0EE] bg-white px-3 py-2 text-sm" />
+                <select required value={taskForm.assigned_to} onChange={e=>setTaskForm({...taskForm,assigned_to:e.target.value})} className="w-full rounded-xl border border-[#DED0EE] bg-white px-3 py-2 text-sm">
+                  <option value="">Choose team member</option>
+                  {teamMembers.filter(m=>m.is_active).map(m=><option key={m.id} value={m.id}>{m.name} · {m.role_title}</option>)}
+                </select>
+                <select value={taskForm.wedding_id} onChange={e=>setTaskForm({...taskForm,wedding_id:e.target.value})} className="w-full rounded-xl border border-[#DED0EE] bg-white px-3 py-2 text-sm">
+                  <option value="">General task (no wedding)</option>
+                  {dashboardWeddings.map(w=><option key={w.id || w._id} value={w.id || w._id}>{w.name || w.wedding_name || w.client_name || 'Wedding'}</option>)}
+                </select>
+                <div className="grid grid-cols-2 gap-3">
+                  <input type="date" value={taskForm.due_date} onChange={e=>setTaskForm({...taskForm,due_date:e.target.value})} className="min-w-0 rounded-xl border border-[#DED0EE] bg-white px-3 py-2 text-sm" />
+                  <select value={taskForm.priority} onChange={e=>setTaskForm({...taskForm,priority:e.target.value})} className="min-w-0 rounded-xl border border-[#DED0EE] bg-white px-3 py-2 text-sm"><option value="low">Low priority</option><option value="normal">Normal priority</option><option value="high">High priority</option><option value="urgent">Urgent</option></select>
+                </div>
+                <textarea rows={3} maxLength={2000} value={taskForm.description} onChange={e=>setTaskForm({...taskForm,description:e.target.value})} placeholder="Task details (optional)" className="w-full rounded-xl border border-[#DED0EE] bg-white px-3 py-2 text-sm" />
+                <button type="submit" disabled={!teamMembers.some(m=>m.id===taskForm.assigned_to && m.is_active)} className="glow-btn !py-2.5 !px-5 !text-sm disabled:opacity-50">Assign task</button>
+              </form>
+            </div>
+            <div className="rounded-2xl border border-[#E8DDF3] bg-white/70 p-4">
+              <h3 className="font-semibold text-[#332B3E] mb-3">Team members ({teamMembers.length})</h3>
+              {teamMembers.length ? <div className="space-y-2">{teamMembers.map(member=><div key={member.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#F0E8F5] p-3">
+                <div><p className="text-sm font-medium text-[#332B3E]">{member.name} <span className="text-xs text-[#8B8194]">· {member.role_title}</span></p><p className="text-xs text-[#6B617A]">{member.email}</p><p className="text-[11px] text-[#8B8194] mt-1">{member.permissions.join(' · ')}</p></div>
+                <div className="flex items-center gap-2"><span className={`text-xs ${member.is_active?'text-emerald-700':'text-red-600'}`}>{member.is_active?'Active':'Inactive'}</span><button type="button" onClick={()=>toggleStaffStatus(member)} className="rounded-full border border-[#DED0EE] px-3 py-1.5 text-xs">{member.is_active?'Deactivate':'Reactivate'}</button></div>
+              </div>)}</div> : <p className="text-sm text-[#8B8194]">No staff accounts yet. Create the first login above.</p>}
+            </div>
+            <div className="rounded-2xl border border-[#E8DDF3] bg-white/70 p-4">
+              <h3 className="font-semibold text-[#332B3E] mb-3">Assigned tasks ({teamTasks.length})</h3>
+              {teamTasks.length ? <div className="space-y-2">{teamTasks.map(task=><div key={task.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#F0E8F5] p-3"><div><p className="text-sm font-medium text-[#332B3E]">{task.title}</p><p className="text-xs text-[#6B617A]">{task.assigned_name || 'Team member'} · {task.due_date || 'No due date'} · {task.priority}</p></div><span className="text-xs rounded-full bg-[#F2EAFE] px-3 py-1 text-[#5D4C78]">{task.status.replace('_',' ')}</span></div>)}</div> : <p className="text-sm text-[#8B8194]">No team tasks assigned yet.</p>}
+            </div>
+          </section>
         )}
 
         {/* PRO Business Assistant */}
