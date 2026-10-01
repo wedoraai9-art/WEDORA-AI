@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NAV } from '@/constants/testIds';
@@ -26,25 +25,21 @@ export const Navigation = ({ introActive = false }) => {
     const onScroll = () => setScrolled(window.scrollY > 20);
 
     window.addEventListener('scroll', onScroll);
-    onScroll();
-
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  useEffect(() => {
-    setOpen(false);
-  }, []);
-
   const scrollTo = (href) => {
-    // Internal React Router pages
+    // Internal React Router pages: navigate without a full browser reload.
     if (href.startsWith('/')) {
       navigate(href);
       setOpen(false);
+
+      // Start the destination page from the top.
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
-    // Homepage section links
+    // Homepage section links.
     const el = document.querySelector(href);
 
     if (el) {
@@ -56,11 +51,13 @@ export const Navigation = ({ introActive = false }) => {
       return;
     }
 
-    // Return to Home if the section is not on the current page
+    // If the section does not exist on the current page, return to Home.
+    // The intro will NOT replay because App.jsx stores the intro state
+    // in sessionStorage.
     navigate('/');
     setOpen(false);
 
-    // Wait for Home to render before scrolling
+    // Wait for the Home page to render before scrolling to the section.
     window.setTimeout(() => {
       const target = document.querySelector(href);
 
@@ -70,7 +67,7 @@ export const Navigation = ({ introActive = false }) => {
           block: 'start',
         });
       }
-    }, 100);
+    }, 80);
   };
 
   const entranceClass = introActive
@@ -138,21 +135,13 @@ export const Navigation = ({ introActive = false }) => {
         }
 
         @keyframes wedora-nav-fade-in {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
 
         @keyframes wedora-nav-item-fade {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -167,133 +156,54 @@ export const Navigation = ({ introActive = false }) => {
       `}</style>
 
       <nav
-        className={`
-          fixed top-4 left-1/2 -translate-x-1/2 z-50
-          w-[95%] max-w-6xl
-          transition-all duration-500
-          ${scrolled ? 'shadow-sm' : ''}
-          ${entranceClass}
-        `}
+        className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 transition-all duration-500 ${
+          scrolled ? 'w-[95%] max-w-6xl' : 'w-[95%] max-w-6xl'
+        } ${entranceClass}`}
       >
-        {/* Main navigation bar */}
-        <div
-          className="
-            liquid-glass rounded-full
-            px-3 sm:px-4 md:px-6
-            py-2.5
-            flex items-center justify-between
-            gap-2 sm:gap-3
-            min-w-0
-          "
-        >
-          {/* Logo */}
+        <div className="liquid-glass rounded-full px-4 md:px-6 py-2.5 flex items-center justify-between">
           <button
             data-testid={NAV.logo}
             onClick={() => scrollTo('#hero')}
-            className="
-              wedora-nav-logo
-              flex items-center gap-2 pl-1
-              shrink-0
-            "
-            aria-label="WEDORA AI Home"
+            className="wedora-nav-logo flex items-center gap-2 pl-1"
           >
             <img
               src={LOGO_URL}
               alt="WEDORA"
-              className="
-                w-9 h-9 rounded-full
-                object-cover
-                ring-1 ring-white/70
-                shrink-0
-              "
+              className="w-9 h-9 rounded-full object-cover ring-1 ring-white/70"
             />
-
-            <span
-              className="
-                font-heading font-semibold tracking-wide
-                text-[#2D2638]
-                hidden sm:inline
-                whitespace-nowrap
-              "
-            >
+            <span className="font-heading font-semibold tracking-wide text-[#2D2638] hidden sm:inline">
               WEDORA <span className="iridescent-text">AI</span>
             </span>
           </button>
 
-          {/* Desktop navigation links: visible on very wide screens */}
-          <div
-            className="
-              wedora-nav-links
-              hidden 2xl:flex
-              flex-1 min-w-0
-              items-center justify-center
-              gap-0.5
-            "
-          >
+          <div className="wedora-nav-links hidden lg:flex items-center gap-1">
             {links.map((link) => (
               <button
                 key={link.id}
                 data-testid={link.id}
                 onClick={() => scrollTo(link.href)}
-                className="
-                  text-sm text-[#4a4257]
-                  hover:text-[#2D2638]
-                  px-2.5 py-1.5
-                  rounded-full
-                  transition
-                  hover:bg-white/50
-                  whitespace-nowrap
-                  shrink-0
-                "
+                className="text-sm text-[#4a4257] hover:text-[#2D2638] px-3 py-1.5 rounded-full transition hover:bg-white/50"
               >
                 {link.label}
               </button>
             ))}
           </div>
 
-          {/* Right-side actions */}
-          <div
-            className="
-              wedora-nav-actions
-              flex items-center
-              gap-2
-              shrink-0
-              ml-auto
-              2xl:ml-0
-            "
-          >
-            {/* Start Planning */}
+          <div className="wedora-nav-actions flex items-center gap-2">
             <button
               data-testid={NAV.startPlanning}
               onClick={() => scrollTo('#hero')}
-              className="
-                glow-btn
-                text-sm
-                hidden md:inline-flex
-                items-center justify-center
-                whitespace-nowrap
-                shrink-0
-                px-4
-              "
+              className="glow-btn text-sm hidden sm:inline-block"
             >
               Start Planning
             </button>
 
-            {/* Mobile and tablet menu toggle */}
             <button
               data-testid={NAV.mobileToggle}
-              className="
-                2xl:hidden
-                p-2
-                rounded-full
-                hover:bg-white/60
-                transition
-                shrink-0
-              "
-              onClick={() => setOpen((previous) => !previous)}
-              aria-label={open ? 'Close navigation menu' : 'Open navigation menu'}
+              className="lg:hidden p-2 rounded-full hover:bg-white/60"
+              onClick={() => setOpen(!open)}
+              aria-label="Menu"
               aria-expanded={open}
-              aria-controls="wedora-mobile-navigation"
             >
               {open ? (
                 <X className="w-5 h-5" />
@@ -304,58 +214,21 @@ export const Navigation = ({ introActive = false }) => {
           </div>
         </div>
 
-        {/* Mobile and tablet dropdown menu */}
         {open && (
-          <div
-            id="wedora-mobile-navigation"
-            className="
-              2xl:hidden
-              mt-2
-              liquid-glass-strong
-              rounded-3xl
-              p-3
-              flex flex-col gap-1
-              max-h-[75vh]
-              overflow-y-auto
-              shadow-lg
-            "
-          >
+          <div className="lg:hidden mt-2 liquid-glass-strong rounded-3xl p-3 flex flex-col gap-1">
             {links.map((link) => (
               <button
                 key={`${link.id}-m`}
                 data-testid={`${link.id}-mobile`}
-                onClick={() => scrollTo(link.href)}
-                className="
-                  w-full
-                  text-left
-                  px-4 py-3
-                  rounded-2xl
-                  text-[#4a4257]
-                  hover:text-[#2D2638]
-                  hover:bg-white/50
-                  transition
-                "
+                onClick={() => {
+                  scrollTo(link.href);
+                  setOpen(false);
+                }}
+                className="text-left px-4 py-2 rounded-2xl text-[#4a4257] hover:bg-white/50 transition"
               >
                 {link.label}
               </button>
             ))}
-
-            {/* Start Planning inside the dropdown on narrow screens */}
-            <button
-              data-testid={`${NAV.startPlanning}-mobile`}
-              onClick={() => scrollTo('#hero')}
-              className="
-                md:hidden
-                mt-2
-                glow-btn
-                w-full
-                text-sm
-                py-3
-                rounded-full
-              "
-            >
-              Start Planning
-            </button>
           </div>
         )}
       </nav>
