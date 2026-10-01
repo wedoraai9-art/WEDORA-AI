@@ -475,6 +475,9 @@ async def auth_login(payload: AuthLoginIn):
             detail="Invalid email or password"
         )
 
+    if user.get("role") == "vendor_staff" and not user.get("is_active", False):
+        raise HTTPException(status_code=403, detail="This staff account is inactive. Contact your business owner.")
+
     token = create_token(
         user["id"],
         user.get("role", "couple")
@@ -2821,6 +2824,48 @@ async def get_vendors():
 
 # ================= PRO VENDOR BUSINESS ASSISTANT =================
 
+class VendorStaffCreateIn(BaseModel):
+    name: str
+    email: str
+    password: str
+    role_title: str = "Coordinator"
+    permissions: List[str] = Field(default_factory=lambda: ["view_assigned_tasks", "update_assigned_tasks"])
+
+class VendorStaffUpdateIn(BaseModel):
+    name: Optional[str] = None
+    role_title: Optional[str] = None
+    permissions: Optional[List[str]] = None
+    is_active: Optional[bool] = None
+
+class VendorStaffTaskIn(BaseModel):
+    title: str
+    wedding_id: Optional[str] = None
+    description: Optional[str] = ""
+    due_date: Optional[str] = ""
+    assigned_to: str
+    priority: str = "normal"
+
+class VendorStaffTaskUpdateIn(BaseModel):
+    status: Optional[str] = None
+    due_date: Optional[str] = None
+    description: Optional[str] = None
+
+STAFF_PERMISSION_KEYS = {
+    "view_assigned_tasks",
+    "update_assigned_tasks",
+    "view_weddings",
+    "view_clients",
+    "manage_team",
+    "manage_tasks",
+}
+STAFF_ROLE_DEFAULTS = {
+    "Designer": ["view_assigned_tasks", "update_assigned_tasks", "view_weddings"],
+    "Coordinator": ["view_assigned_tasks", "update_assigned_tasks", "view_weddings", "view_clients"],
+    "Decorator": ["view_assigned_tasks", "update_assigned_tasks", "view_weddings"],
+    "Photographer": ["view_assigned_tasks", "update_assigned_tasks", "view_weddings"],
+    "Custom": ["view_assigned_tasks", "update_assigned_tasks"],
+}
+
 class VendorBusinessAIIn(BaseModel):
     session_id: Optional[str] = None
     message: str
@@ -2835,6 +2880,187 @@ def _require_business_ai_plan(vendor: dict):
             detail="Business Assistant is available on WEDORA PRO.",
         )
     return plan
+
+
+def _staff_public_record(staff: dict):
+    return {
+        "id": staff.get("id"),
+        "name": staff.get("name"),
+        "email": staff.get("email"),
+        "role_title": staff.get("role_title", "Coordinator"),
+        "permissions": staff.get("permissions", []),
+        "is_active": bool(staff.get("is_active", True)),
+        "created_at": staff.get("created_at"),
+    }
+
+
+async def _vendor_owner_context(authorization: str):
+    user = await get_vendor_user(authorization)
+    if user.get("role") != "vendor":
+        raise HTTPException(status_code=403, detail="Only the vendor account owner can manage staff")
+    vendor = await _ensure_vendor_profile(user)
+    return user, vendor
+
+
+@api_router.get("/vendor/team")
+async def vendor_team_list(authorization: str = Header(None)):
+    _, vendor = await _vendor_owner_context(authorization)
+    staff = await db.vendor_staff.find(
+        {"vendor_id": vendor["id"]}, {"_id": 0, "password_hash": 0}
+    ).sort("created_at", -1).to_list(200)
+    return {"staff": [_staff_public_record(item) for item in staff]}
+
+
+@api_router.post("/vendor/team")
+async def vendor_team_create(payload: VendorStaffCreateIn, authorization: str = Header(None)):
+    _, vendor = await _vendor_owner_context(authorization)
+    name = payload.name.strip()
+    email = payload.email.strip().lower()
+    if len(name) < 2 or len(name) > 100:
+        raise HTTPException(status_code=422, detail="Enter a staff name between 2 and 100 characters")
+    if not re.fullmatch(r"[^@\\s]+@[^@\\s]+\\.[^@\\s]+", email):
+        raise HTTPException(status_code=422, detail="Enter a valid staff email address")
+    if len(payload.password) < 12:
+        raise HTTPException(status_code=422, detail="Temporary password must be at least 12 characters")
+    if await db.users.find_one({"email": email}):
+        raise HTTPException(status_code=409, detail="An account already exists with this email")
+    requested = list(dict.fromkeys(payload.permissions or STAFF_ROLE_DEFAULTS.get(payload.role_title, STAFF_ROLE_DEFAULTS["Custom"])))
+    if any(key not in STAFF_PERMISSION_KEYS for key in requested):
+        raise HTTPException(status_code=422, detail="One or more staff permissions are not supported")
+    now = datetime.now(timezone.utc).isoformat()
+    staff_id = str(uuid.uuid4())
+    user_id = str(uuid.uuid4())
+    staff_user = {
+        "id": user_id, "email": email, "name": name, "role": "vendor_staff",
+        "vendor_id": vendor["id"], "staff_id": staff_id, "is_active": True,
+        "password_hash": hash_password(payload.password), "created_at": now,
+    }
+    staff_record = {
+        "id": staff_id, "user_id": user_id, "vendor_id": vendor["id"],
+        "name": name, "email": email, "role_title": payload.role_title.strip()[:60],
+        "permissions": requested, "is_active": True, "created_at": now,
+        "updated_at": now,
+    }
+    try:
+        await db.users.insert_one(staff_user)
+        await db.vendor_staff.insert_one(staff_record)
+    except Exception:
+        await db.users.delete_one({"id": user_id})
+        await db.vendor_staff.delete_one({"id": staff_id})
+        raise
+    return {"staff": _staff_public_record(staff_record), "message": "Staff account created. Share the temporary password securely."}
+
+
+@api_router.put("/vendor/team/{staff_id}")
+async def vendor_team_update(staff_id: str, payload: VendorStaffUpdateIn, authorization: str = Header(None)):
+    _, vendor = await _vendor_owner_context(authorization)
+    staff = await db.vendor_staff.find_one({"id": staff_id, "vendor_id": vendor["id"]})
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    updates = payload.model_dump(exclude_none=True)
+    if "name" in updates:
+        updates["name"] = updates["name"].strip()[:100]
+        if len(updates["name"]) < 2:
+            raise HTTPException(status_code=422, detail="Staff name is too short")
+    if "role_title" in updates:
+        updates["role_title"] = updates["role_title"].strip()[:60]
+    if "permissions" in updates:
+        updates["permissions"] = list(dict.fromkeys(updates["permissions"]))
+        if any(key not in STAFF_PERMISSION_KEYS for key in updates["permissions"]):
+            raise HTTPException(status_code=422, detail="One or more staff permissions are not supported")
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.vendor_staff.update_one({"id": staff_id, "vendor_id": vendor["id"]}, {"$set": updates})
+    user_updates = {key: updates[key] for key in ("name", "is_active") if key in updates}
+    if user_updates:
+        await db.users.update_one({"id": staff["user_id"], "vendor_id": vendor["id"]}, {"$set": user_updates})
+    refreshed = await db.vendor_staff.find_one({"id": staff_id, "vendor_id": vendor["id"]}, {"_id": 0, "password_hash": 0})
+    return {"staff": _staff_public_record(refreshed)}
+
+
+@api_router.post("/vendor/team/tasks")
+async def vendor_team_task_create(payload: VendorStaffTaskIn, authorization: str = Header(None)):
+    _, vendor = await _vendor_owner_context(authorization)
+    staff = await db.vendor_staff.find_one({"id": payload.assigned_to, "vendor_id": vendor["id"], "is_active": True})
+    if not staff:
+        raise HTTPException(status_code=404, detail="Active team member not found")
+    if payload.wedding_id and not await db.weddings.find_one({"id": payload.wedding_id, "vendor_id": vendor["id"]}):
+        raise HTTPException(status_code=404, detail="Wedding not found for this business")
+    if payload.priority not in {"low", "normal", "high", "urgent"}:
+        raise HTTPException(status_code=422, detail="Invalid task priority")
+    now = datetime.now(timezone.utc).isoformat()
+    task = {
+        "id": str(uuid.uuid4()), "vendor_id": vendor["id"], "title": payload.title.strip()[:160],
+        "description": (payload.description or "").strip()[:2000], "wedding_id": payload.wedding_id,
+        "due_date": payload.due_date or "", "assigned_to": payload.assigned_to,
+        "assigned_name": staff.get("name"), "priority": payload.priority,
+        "status": "todo", "created_at": now, "updated_at": now,
+    }
+    if not task["title"]:
+        raise HTTPException(status_code=422, detail="Task title is required")
+    await db.vendor_staff_tasks.insert_one(task.copy())
+    return {"task": task}
+
+
+@api_router.get("/vendor/team/tasks")
+async def vendor_team_task_list(authorization: str = Header(None)):
+    _, vendor = await _vendor_owner_context(authorization)
+    tasks = await db.vendor_staff_tasks.find({"vendor_id": vendor["id"]}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return {"tasks": tasks}
+
+
+@api_router.get("/staff/me")
+async def staff_me(authorization: str = Header(None)):
+    user = await get_current_user(authorization)
+    if user.get("role") != "vendor_staff" or not user.get("vendor_id"):
+        raise HTTPException(status_code=403, detail="Staff account required")
+    staff = await db.vendor_staff.find_one(
+        {"id": user.get("staff_id"), "vendor_id": user["vendor_id"], "is_active": True},
+        {"_id": 0, "password_hash": 0},
+    )
+    if not staff:
+        raise HTTPException(status_code=403, detail="Staff account is inactive or unavailable")
+    return {"staff": _staff_public_record(staff), "vendor_id": user["vendor_id"]}
+
+
+@api_router.get("/staff/tasks")
+async def staff_task_list(authorization: str = Header(None)):
+    user = await get_current_user(authorization)
+    if user.get("role") != "vendor_staff" or not user.get("vendor_id"):
+        raise HTTPException(status_code=403, detail="Staff account required")
+    staff = await db.vendor_staff.find_one({"id": user.get("staff_id"), "vendor_id": user["vendor_id"], "is_active": True})
+    if not staff:
+        raise HTTPException(status_code=403, detail="Staff account is inactive or unavailable")
+    if "view_assigned_tasks" not in staff.get("permissions", []):
+        raise HTTPException(status_code=403, detail="You do not have permission to view tasks")
+    tasks = await db.vendor_staff_tasks.find(
+        {"vendor_id": user["vendor_id"], "assigned_to": staff["id"]}, {"_id": 0}
+    ).sort("created_at", -1).to_list(300)
+    return {"tasks": tasks}
+
+
+@api_router.patch("/staff/tasks/{task_id}")
+async def staff_task_update(task_id: str, payload: VendorStaffTaskUpdateIn, authorization: str = Header(None)):
+    user = await get_current_user(authorization)
+    if user.get("role") != "vendor_staff" or not user.get("vendor_id"):
+        raise HTTPException(status_code=403, detail="Staff account required")
+    staff = await db.vendor_staff.find_one({"id": user.get("staff_id"), "vendor_id": user["vendor_id"], "is_active": True})
+    if not staff:
+        raise HTTPException(status_code=403, detail="Staff account is inactive or unavailable")
+    if "update_assigned_tasks" not in staff.get("permissions", []):
+        raise HTTPException(status_code=403, detail="You do not have permission to update tasks")
+    task = await db.vendor_staff_tasks.find_one(
+        {"id": task_id, "vendor_id": user["vendor_id"], "assigned_to": staff["id"]}
+    )
+    if not task:
+        raise HTTPException(status_code=404, detail="Assigned task not found")
+    updates = payload.model_dump(exclude_none=True)
+    if "status" in updates and updates["status"] not in {"todo", "in_progress", "done", "blocked"}:
+        raise HTTPException(status_code=422, detail="Invalid task status")
+    if "description" in updates:
+        updates["description"] = updates["description"][:2000]
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.vendor_staff_tasks.update_one({"id": task_id, "vendor_id": user["vendor_id"], "assigned_to": staff["id"]}, {"$set": updates})
+    return {"message": "Task updated"}
 
 
 @api_router.post("/vendor/business-ai")
