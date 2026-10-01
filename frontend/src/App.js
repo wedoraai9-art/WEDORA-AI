@@ -165,10 +165,11 @@ const StaffLoginRoute = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!authLoading && user) {
-      if (user.role === 'vendor_staff') navigate('/staff/dashboard', { replace: true });
-      else if (user.role === 'vendor') navigate('/vendor/dashboard', { replace: true });
-      else if (user.role === 'admin') navigate('/admin/dashboard', { replace: true });
+    // Only redirect an already-authenticated staff member.
+    // Vendors/admins must be able to open this page and sign in with a
+    // separate staff account; successful login will replace the auth token.
+    if (!authLoading && user?.role === 'vendor_staff') {
+      navigate('/staff/dashboard', { replace: true });
     }
   }, [authLoading, user, navigate]);
 
