@@ -627,8 +627,43 @@ const VendorDashboard = () => {
   const createTeamTask = async (event) => {
     event.preventDefault();
     setTeamError('');
+
+    // Prevent accidental duplicate assignments only within the same wedding
+    // and for the same staff member. The same task remains assignable to
+    // another wedding or another staff member.
+    const normalizedTitle = String(taskForm.title || '').trim().toLowerCase();
+    const selectedStaffId = String(taskForm.assigned_to || '');
+    const selectedWeddingId = String(taskForm.wedding_id || '');
+
+    const duplicateExists = teamTasks.some((task) => {
+      const existingTitle = String(task.title || '').trim().toLowerCase();
+      const existingStaffId = String(
+        task.assigned_to || task.staff_id || task.assignee_id || ''
+      );
+      const existingWeddingId = String(task.wedding_id || '');
+
+      return (
+        existingTitle === normalizedTitle &&
+        existingStaffId === selectedStaffId &&
+        existingWeddingId === selectedWeddingId
+      );
+    });
+
+    if (duplicateExists) {
+      const message =
+        'This task is already assigned to this team member for this wedding. You can assign it to a different wedding or team member.';
+      setTeamError(message);
+      toast.error(message);
+      return;
+    }
+
     try {
-      await authAxios.post('/vendor/team/tasks', taskForm);
+      await authAxios.post('/vendor/team/tasks', {
+        ...taskForm,
+        title: String(taskForm.title || '').trim(),
+        assigned_to: selectedStaffId,
+        wedding_id: selectedWeddingId,
+      });
       setTaskForm({ title: '', assigned_to: '', wedding_id: '', due_date: '', priority: 'normal', description: '' });
       toast.success('Task assigned to team member.');
       await loadTeamWorkspace();
