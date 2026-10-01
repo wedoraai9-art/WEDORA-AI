@@ -264,6 +264,15 @@ const styles = {
     fontSize: 13,
     lineHeight: 1.7,
   },
+  detailBackdrop: { position: "fixed", inset: 0, zIndex: 1000, display: "grid", placeItems: "center", padding: 18, background: "rgba(42,31,57,.38)", backdropFilter: "blur(5px)" },
+  detailPanel: { width: "min(560px, 100%)", maxHeight: "80vh", overflowY: "auto", padding: 24, border: "1px solid rgba(255,255,255,.9)", borderRadius: 20, background: "linear-gradient(145deg,#fff,#fcf8ff)", boxShadow: "0 24px 80px rgba(42,31,57,.22)" },
+  detailHeader: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, marginBottom: 18 },
+  detailClose: { width: 36, height: 36, border: `1px solid ${COLORS.border}`, borderRadius: 10, background: "#fff", color: COLORS.text, fontSize: 20, cursor: "pointer" },
+  detailGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 },
+  detailField: { padding: 13, border: `1px solid ${COLORS.border}`, borderRadius: 12, background: "rgba(255,255,255,.9)", minWidth: 0 },
+  detailLabel: { marginBottom: 5, color: COLORS.muted, fontSize: 10, fontWeight: 750, textTransform: "uppercase", letterSpacing: ".08em" },
+  detailValue: { color: COLORS.text, fontSize: 13, lineHeight: 1.55, overflowWrap: "anywhere" },
+  clickableRecord: { cursor: "pointer", transition: "transform 160ms ease, box-shadow 160ms ease" },
   notice: {
     marginTop: 24,
     padding: 14,
@@ -331,6 +340,7 @@ export default function StaffDashboard({
   const [filter, setFilter] = useState("all");
   const [updatingId, setUpdatingId] = useState("");
   const [error, setError] = useState("");
+  const [selectedRecord, setSelectedRecord] = useState(null);
 
   const safeTasks = Array.isArray(tasks) ? tasks : [];
 
@@ -497,7 +507,7 @@ export default function StaffDashboard({
             ) : (
               <section style={styles.taskList}>
                 {weddings.map((wedding, index) => (
-                  <article key={wedding.id || index} style={styles.task}>
+                  <article key={wedding.id || index} style={{ ...styles.task, ...styles.clickableRecord }} role="button" tabIndex={0} aria-label={`Open wedding details for ${wedding.name || wedding.wedding_name || "Wedding"}`} onClick={() => setSelectedRecord({ type: "wedding", record: wedding })} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedRecord({ type: "wedding", record: wedding }); } }}>
                     <div>
                       <h3 style={styles.taskTitle}>{wedding.name || wedding.wedding_name || "Wedding"}</h3>
                       <div style={styles.taskMeta}>
@@ -522,7 +532,7 @@ export default function StaffDashboard({
             ) : (
               <section style={styles.taskList}>
                 {clients.map((client, index) => (
-                  <article key={client.id || index} style={styles.task}>
+                  <article key={client.id || index} style={{ ...styles.task, ...styles.clickableRecord }} role="button" tabIndex={0} aria-label={`Open client details for ${client.name || client.client_name || client.full_name || "Client"}`} onClick={() => setSelectedRecord({ type: "client", record: client })} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedRecord({ type: "client", record: client }); } }}>
                     <div>
                       <h3 style={styles.taskTitle}>{client.name || client.client_name || client.full_name || "Client"}</h3>
                       <div style={styles.taskMeta}>
@@ -679,6 +689,24 @@ export default function StaffDashboard({
               );
             })}
           </section>
+        )}
+
+        {selectedRecord && (
+          <div style={styles.detailBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedRecord(null); }}>
+            <section style={styles.detailPanel} role="dialog" aria-modal="true" aria-labelledby="staff-record-detail-title">
+              <div style={styles.detailHeader}>
+                <div>
+                  <div style={styles.eyebrow}>{selectedRecord.type === "wedding" ? "WEDDING DETAILS" : "CLIENT DETAILS"}</div>
+                  <h2 id="staff-record-detail-title" style={{ ...styles.heroName, marginTop: 7 }}>{selectedRecord.type === "wedding" ? selectedRecord.record.name || selectedRecord.record.wedding_name || "Wedding" : selectedRecord.record.name || selectedRecord.record.client_name || selectedRecord.record.full_name || "Client"}</h2>
+                </div>
+                <button type="button" style={styles.detailClose} onClick={() => setSelectedRecord(null)} aria-label="Close details">×</button>
+              </div>
+              <div style={styles.detailGrid}>
+                {(selectedRecord.type === "wedding" ? [["Event date", selectedRecord.record.event_date || selectedRecord.record.wedding_date], ["Venue", selectedRecord.record.venue], ["City", selectedRecord.record.city], ["Status", selectedRecord.record.status]] : [["Email", selectedRecord.record.email], ["Phone", selectedRecord.record.phone], ["Wedding", selectedRecord.record.wedding_name || selectedRecord.record.wedding]]).filter(([, value]) => value != null && String(value).trim() !== "").map(([label, value]) => <div key={label} style={styles.detailField}><div style={styles.detailLabel}>{label}</div><div style={styles.detailValue}>{String(value)}</div></div>)}
+              </div>
+              <p style={{ ...styles.heroText, marginTop: 16 }}>Details shown here are limited to the information supplied to your staff workspace.</p>
+            </section>
+          </div>
         )}
 
         <div style={styles.notice}>
