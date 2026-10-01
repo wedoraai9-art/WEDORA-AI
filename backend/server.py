@@ -1506,7 +1506,25 @@ async def _vendor_profit_loss_payload(vendor_id: str, month: str, wedding_id: Op
         {"_id": 0},
     ).to_list(5000)
 
-    monthly_payments = [p for p in payments if _record_month(p.get("payment_date")) == month]
+    # Budget payments are stored in vendor_wedding_payments. Invoice receipts are
+    # stored inside each invoice's `payments` array, so include both sources in
+    # the report. This keeps receipts recorded from Invoices & Receipts visible
+    # in monthly income and the wedding breakdown.
+    invoice_receipts = []
+    for invoice in invoices:
+        for receipt in (invoice.get("payments") or []):
+            if not isinstance(receipt, dict):
+                continue
+            invoice_receipts.append({
+                **receipt,
+                "vendor_id": vendor_id,
+                "wedding_id": invoice.get("wedding_id"),
+                "payment_type": receipt.get("payment_type") or "payment",
+                "payment_date": receipt.get("payment_date") or receipt.get("date") or "",
+            })
+
+    all_payments = payments + invoice_receipts
+    monthly_payments = [p for p in all_payments if _record_month(p.get("payment_date")) == month]
     monthly_expenses = [e for e in expenses if _record_month(e.get("expense_date")) == month]
 
     def payment_value(payment):
@@ -1516,18 +1534,8 @@ async def _vendor_profit_loss_payload(vendor_id: str, month: str, wedding_id: Op
     income = round(sum(payment_value(p) for p in monthly_payments), 2)
     expense_total = round(sum(_report_amount(e.get("amount")) for e in monthly_expenses), 2)
     invoice_balance_due = round(sum(
-        max(
-            _report_amount(invoice.get("balance_amount"))
-            if invoice.get("balance_amount") is not None
-            else (
-                _report_amount(invoice.get("total_amount"))
-                - _report_amount(invoice.get("paid_amount"))
-            ),
-            0,
-        )
-        for invoice in invoices
-        if str(invoice.get("status") or "").lower()
-        not in {"paid", "cancelled", "canceled", "void"}
+        max(_report_amount(i.get("total_amount")) - _report_amount(i.get("paid_amount")), 0)
+        for i in invoices
     ), 2)
 
     by_wedding = []
@@ -1544,7 +1552,7 @@ async def _vendor_profit_loss_payload(vendor_id: str, month: str, wedding_id: Op
             })
 
     monthly_totals = {}
-    for payment in payments:
+    for payment in all_payments:
         key = _record_month(payment.get("payment_date"))
         monthly_totals.setdefault(key, {"income": 0.0, "expenses": 0.0})
         monthly_totals[key]["income"] += payment_value(payment)
