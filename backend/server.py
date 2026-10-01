@@ -2983,20 +2983,52 @@ async def vendor_team_task_create(payload: VendorStaffTaskIn, authorization: str
     staff = await db.vendor_staff.find_one({"id": payload.assigned_to, "vendor_id": vendor["id"], "is_active": True})
     if not staff:
         raise HTTPException(status_code=404, detail="Active team member not found")
-    if payload.wedding_id and not await db.weddings.find_one({"id": payload.wedding_id, "vendor_id": vendor["id"]}):
+    # Vendor-created weddings are stored in vendor_weddings. Validate against
+    # that collection so valid weddings selected in the owner dashboard resolve.
+    if payload.wedding_id and not await db.vendor_weddings.find_one(
+        {"id": payload.wedding_id, "vendor_id": vendor["id"]},
+        {"_id": 0, "id": 1},
+    ):
         raise HTTPException(status_code=404, detail="Wedding not found for this business")
+
     if payload.priority not in {"low", "normal", "high", "urgent"}:
         raise HTTPException(status_code=422, detail="Invalid task priority")
+
+    title = (payload.title or "").strip()[:160]
+    if not title:
+        raise HTTPException(status_code=422, detail="Task title is required")
+
+    # A task title may be reused for another wedding or another staff member.
+    # Block only an exact duplicate for this vendor + wedding + assignee.
+    duplicate_query = {
+        "vendor_id": vendor["id"],
+        "wedding_id": payload.wedding_id or None,
+        "assigned_to": payload.assigned_to,
+        "$or": [
+            {"title": title},
+            {"title_normalized": title.casefold()},
+        ],
+    }
+    duplicate = await db.vendor_staff_tasks.find_one(
+        duplicate_query,
+        {"_id": 0, "id": 1},
+    )
+    if duplicate:
+        raise HTTPException(
+            status_code=409,
+            detail="This task is already assigned to this team member for this wedding.",
+        )
+
     now = datetime.now(timezone.utc).isoformat()
     task = {
-        "id": str(uuid.uuid4()), "vendor_id": vendor["id"], "title": payload.title.strip()[:160],
-        "description": (payload.description or "").strip()[:2000], "wedding_id": payload.wedding_id,
+        "id": str(uuid.uuid4()), "vendor_id": vendor["id"], "title": title,
+        "title_normalized": title.casefold(),
+        "description": (payload.description or "").strip()[:2000],
+        "wedding_id": payload.wedding_id or None,
         "due_date": payload.due_date or "", "assigned_to": payload.assigned_to,
         "assigned_name": staff.get("name"), "priority": payload.priority,
         "status": "todo", "created_at": now, "updated_at": now,
     }
-    if not task["title"]:
-        raise HTTPException(status_code=422, detail="Task title is required")
     await db.vendor_staff_tasks.insert_one(task.copy())
     return {"task": task}
 
