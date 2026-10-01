@@ -632,6 +632,33 @@ class WeddingDocumentUpdateIn(BaseModel):
     title: Optional[str] = None
     category: Optional[str] = None
 
+
+class WeddingInvoiceLineItemIn(BaseModel):
+    description: str = ""
+    quantity: float = 1
+    unit: Optional[str] = "service"
+    unit_price: float = 0
+
+
+class WeddingInvoiceIn(BaseModel):
+    title: str = "Wedding invoice"
+    client_name: Optional[str] = ""
+    issue_date: Optional[str] = ""
+    due_date: Optional[str] = ""
+    line_items: List[WeddingInvoiceLineItemIn] = Field(default_factory=list)
+    discount_type: Optional[str] = "amount"
+    discount_value: float = 0
+    tax_percent: float = 0
+    terms: Optional[str] = ""
+    notes: Optional[str] = ""
+
+
+class WeddingInvoicePaymentIn(BaseModel):
+    amount: float
+    payment_date: Optional[str] = ""
+    payment_method: Optional[str] = "Other"
+    notes: Optional[str] = ""
+
 class WeddingDesignIn(BaseModel):
     theme: Optional[str] = ""
     concept: Optional[str] = ""
@@ -1576,6 +1603,263 @@ async def vendor_delete_wedding_payment(
         raise HTTPException(status_code=404, detail="Payment not found")
 
     return {"success": True}
+
+
+# ================= WEDDING INVOICES & RECEIPTS =================
+
+def _invoice_status(total_amount: float, paid_amount: float, due_date: str) -> str:
+    balance = max(round(total_amount - paid_amount, 2), 0)
+    if balance <= 0:
+        return "paid"
+    if due_date:
+        try:
+            due = datetime.fromisoformat(str(due_date).replace("Z", "+00:00")).date()
+            if due < datetime.now(timezone.utc).date():
+                return "overdue"
+        except (TypeError, ValueError):
+            pass
+    return "partial" if paid_amount > 0 else "unpaid"
+
+
+def _invoice_response(invoice: dict) -> dict:
+    if not invoice:
+        return {}
+    result = {key: value for key, value in invoice.items() if key != "_id"}
+    result.setdefault("payments", [])
+    result["line_items"] = result.get("line_items") or []
+    result["total_amount"] = round(float(result.get("total_amount") or 0), 2)
+    result["paid_amount"] = round(float(result.get("paid_amount") or 0), 2)
+    result["balance_amount"] = round(
+        max(result["total_amount"] - result["paid_amount"], 0), 2
+    )
+    result["status"] = _invoice_status(
+        result["total_amount"], result["paid_amount"], result.get("due_date") or ""
+    )
+    return result
+
+
+def _calculate_invoice(payload: WeddingInvoiceIn) -> dict:
+    line_items = []
+    subtotal = 0.0
+    for item in payload.line_items or []:
+        description = (item.description or "").strip()
+        quantity = float(item.quantity)
+        unit_price = float(item.unit_price)
+        if not description:
+            continue
+        if quantity <= 0 or unit_price < 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Each invoice line needs a description, positive quantity, and non-negative price.",
+            )
+        amount = round(quantity * unit_price, 2)
+        subtotal += amount
+        line_items.append({
+            "description": description[:300],
+            "quantity": quantity,
+            "unit": (item.unit or "service").strip()[:40] or "service",
+            "unit_price": round(unit_price, 2),
+            "amount": amount,
+        })
+
+    if not line_items:
+        raise HTTPException(status_code=400, detail="Add at least one valid invoice line item.")
+
+    discount_type = (payload.discount_type or "amount").strip().lower()
+    if discount_type not in {"amount", "percent"}:
+        discount_type = "amount"
+    discount_value = max(float(payload.discount_value or 0), 0)
+    discount_amount = (
+        subtotal * min(discount_value, 100) / 100
+        if discount_type == "percent"
+        else min(discount_value, subtotal)
+    )
+    taxable_amount = max(subtotal - discount_amount, 0)
+    tax_percent = min(max(float(payload.tax_percent or 0), 0), 100)
+    tax_amount = taxable_amount * tax_percent / 100
+    total_amount = round(taxable_amount + tax_amount, 2)
+
+    return {
+        "title": (payload.title or "Invoice").strip()[:160] or "Invoice",
+        "client_name": (payload.client_name or "").strip()[:160],
+        "issue_date": (payload.issue_date or "").strip(),
+        "due_date": (payload.due_date or "").strip(),
+        "line_items": line_items,
+        "discount_type": discount_type,
+        "discount_value": round(discount_value, 2),
+        "discount_amount": round(discount_amount, 2),
+        "tax_percent": round(tax_percent, 2),
+        "tax_amount": round(tax_amount, 2),
+        "subtotal": round(subtotal, 2),
+        "total_amount": total_amount,
+        "terms": (payload.terms or "").strip()[:4000],
+        "notes": (payload.notes or "").strip()[:4000],
+    }
+
+
+@api_router.get("/vendor/weddings/{wedding_id}/invoices")
+async def vendor_get_wedding_invoices(
+    wedding_id: str,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    invoices = await db.vendor_wedding_invoices.find(
+        {"wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(500)
+    return {"invoices": [_invoice_response(item) for item in invoices]}
+
+
+@api_router.post("/vendor/weddings/{wedding_id}/invoices")
+async def vendor_create_wedding_invoice(
+    wedding_id: str,
+    payload: WeddingInvoiceIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    wedding = await _get_vendor_wedding(wedding_id, vendor["id"])
+    calculated = _calculate_invoice(payload)
+
+    now = datetime.now(timezone.utc).isoformat()
+    invoice_count = await db.vendor_wedding_invoices.count_documents(
+        {"vendor_id": vendor["id"]}
+    )
+    invoice = {
+        "id": str(uuid.uuid4()),
+        "invoice_number": f"WED-{datetime.now(timezone.utc).strftime('%Y%m')}-{invoice_count + 1:04d}",
+        "wedding_id": wedding_id,
+        "vendor_id": vendor["id"],
+        "wedding_name": wedding.get("name") or wedding.get("wedding_name") or "",
+        **calculated,
+        "payments": [],
+        "paid_amount": 0.0,
+        "balance_amount": calculated["total_amount"],
+        "status": _invoice_status(calculated["total_amount"], 0, calculated["due_date"]),
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.vendor_wedding_invoices.insert_one(invoice.copy())
+    return _invoice_response(invoice)
+
+
+@api_router.put("/vendor/weddings/{wedding_id}/invoices/{invoice_id}")
+async def vendor_update_wedding_invoice(
+    wedding_id: str,
+    invoice_id: str,
+    payload: WeddingInvoiceIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+    existing = await db.vendor_wedding_invoices.find_one(
+        {"id": invoice_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"_id": 0},
+    )
+    if not existing:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    calculated = _calculate_invoice(payload)
+    paid_amount = round(float(existing.get("paid_amount") or 0), 2)
+    if calculated["total_amount"] < paid_amount:
+        raise HTTPException(
+            status_code=400,
+            detail="Invoice total cannot be less than payments already recorded.",
+        )
+    updates = {
+        **calculated,
+        "balance_amount": round(calculated["total_amount"] - paid_amount, 2),
+        "status": _invoice_status(calculated["total_amount"], paid_amount, calculated["due_date"]),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.vendor_wedding_invoices.update_one(
+        {"id": invoice_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"$set": updates},
+    )
+    updated = await db.vendor_wedding_invoices.find_one(
+        {"id": invoice_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"_id": 0},
+    )
+    return _invoice_response(updated)
+
+
+@api_router.delete("/vendor/weddings/{wedding_id}/invoices/{invoice_id}")
+async def vendor_delete_wedding_invoice(
+    wedding_id: str,
+    invoice_id: str,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+    result = await db.vendor_wedding_invoices.delete_one(
+        {"id": invoice_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]}
+    )
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    return {"success": True}
+
+
+@api_router.post("/vendor/weddings/{wedding_id}/invoices/{invoice_id}/payments")
+async def vendor_add_invoice_payment(
+    wedding_id: str,
+    invoice_id: str,
+    payload: WeddingInvoicePaymentIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+    invoice = await db.vendor_wedding_invoices.find_one(
+        {"id": invoice_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"_id": 0},
+    )
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    amount = round(float(payload.amount), 2)
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Payment amount must be greater than zero.")
+    balance = round(
+        float(invoice.get("total_amount") or 0) - float(invoice.get("paid_amount") or 0), 2
+    )
+    if amount > balance + 0.01:
+        raise HTTPException(status_code=400, detail="Payment cannot exceed the invoice's outstanding balance.")
+
+    now = datetime.now(timezone.utc).isoformat()
+    payments = invoice.get("payments") or []
+    receipt_number = f"REC-{datetime.now(timezone.utc).strftime('%Y%m')}-{len(payments) + 1:04d}"
+    receipt = {
+        "id": str(uuid.uuid4()),
+        "receipt_number": receipt_number,
+        "amount": amount,
+        "payment_date": (payload.payment_date or "").strip(),
+        "payment_method": (payload.payment_method or "Other").strip()[:60] or "Other",
+        "notes": (payload.notes or "").strip()[:1000],
+        "created_at": now,
+    }
+    payments.append(receipt)
+    paid_amount = round(float(invoice.get("paid_amount") or 0) + amount, 2)
+    updates = {
+        "payments": payments,
+        "paid_amount": paid_amount,
+        "balance_amount": round(max(float(invoice.get("total_amount") or 0) - paid_amount, 0), 2),
+        "status": _invoice_status(float(invoice.get("total_amount") or 0), paid_amount, invoice.get("due_date") or ""),
+        "updated_at": now,
+    }
+    await db.vendor_wedding_invoices.update_one(
+        {"id": invoice_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"$set": updates},
+    )
+    updated = await db.vendor_wedding_invoices.find_one(
+        {"id": invoice_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"_id": 0},
+    )
+    return {"success": True, "receipt": receipt, "invoice": _invoice_response(updated)}
 
 
 
