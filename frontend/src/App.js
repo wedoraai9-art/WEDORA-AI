@@ -5,6 +5,8 @@ import {
   Routes,
   Route,
   useLocation,
+  useNavigate,
+  Navigate,
 } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import {
@@ -19,7 +21,8 @@ import {
   Wallet,
 } from 'lucide-react';
 
-import { AuthProvider } from '@/context/AuthContext';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { apiLogin, authAxios, fmtApiError } from '@/lib/auth';
 import Navigation from '@/components/Navigation';
 import Hero from '@/components/Hero';
 import Capabilities from '@/components/Capabilities';
@@ -34,6 +37,8 @@ import VendorLanding from '@/components/vendor/VendorLanding';
 import VendorAuth from '@/components/vendor/VendorAuth';
 import VendorDashboard from '@/components/vendor/VendorDashboard';
 import AdminDashboard from '@/components/vendor/AdminDashboard';
+import StaffLogin from '@/components/staff/StaffLogin';
+import StaffDashboard from '@/components/staff/StaffDashboard';
 import Marketplace, {
   VendorPublicProfile,
 } from '@/components/marketplace/Marketplace';
@@ -149,6 +154,98 @@ const Home = () => {
       <Footer />
     </div>
   );
+};
+
+// Staff authentication and dashboard adapters. Backend authorization remains
+// authoritative; these route guards provide the matching client-side experience.
+const StaffLoginRoute = () => {
+  const navigate = useNavigate();
+  const { user, loading: authLoading, refresh } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      if (user.role === 'vendor_staff') navigate('/staff/dashboard', { replace: true });
+      else if (user.role === 'vendor') navigate('/vendor/dashboard', { replace: true });
+      else if (user.role === 'admin') navigate('/admin/dashboard', { replace: true });
+    }
+  }, [authLoading, user, navigate]);
+
+  const handleLogin = async ({ email, password }) => {
+    setLoading(true);
+    setError('');
+    try {
+      const result = await apiLogin(email, password);
+      const role = result?.user?.role;
+      await refresh();
+      if (role === 'vendor_staff') navigate('/staff/dashboard', { replace: true });
+      else if (role === 'vendor') navigate('/vendor/dashboard', { replace: true });
+      else if (role === 'admin') navigate('/admin/dashboard', { replace: true });
+      else {
+        setError('This account does not have staff access.');
+      }
+    } catch (e) {
+      setError(fmtApiError(e?.response?.data?.detail, 'Unable to sign in. Check your email and password.'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return <StaffLogin onLogin={handleLogin} onBack={() => navigate('/')} loading={loading} error={error} />;
+};
+
+const StaffDashboardRoute = () => {
+  const navigate = useNavigate();
+  const { user, loading: authLoading, logout } = useAuth();
+  const [staff, setStaff] = useState(null);
+  const [tasks, setTasks] = useState([]);
+  const [busy, setBusy] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) { navigate('/staff/login', { replace: true }); return; }
+    if (user.role !== 'vendor_staff') {
+      navigate(user.role === 'vendor' ? '/vendor/dashboard' : user.role === 'admin' ? '/admin/dashboard' : '/', { replace: true });
+      return;
+    }
+    let active = true;
+    (async () => {
+      setBusy(true); setError('');
+      try {
+        const [meResponse, taskResponse] = await Promise.all([
+          authAxios.get('/staff/me'),
+          authAxios.get('/staff/tasks'),
+        ]);
+        if (!active) return;
+        const nextStaff = meResponse.data?.staff || null;
+        setStaff(nextStaff);
+        setTasks(Array.isArray(taskResponse.data?.tasks) ? taskResponse.data.tasks : []);
+      } catch (e) {
+        if (!active) return;
+        setError(fmtApiError(e?.response?.data?.detail, 'Could not load your staff workspace.'));
+        if (e?.response?.status === 401 || e?.response?.status === 403) {
+          logout(); navigate('/staff/login', { replace: true });
+        }
+      } finally { if (active) setBusy(false); }
+    })();
+    return () => { active = false; };
+  }, [authLoading, user, logout, navigate]);
+
+  const updateTask = async (taskId, status) => {
+    try {
+      await authAxios.patch(`/staff/tasks/${encodeURIComponent(taskId)}`, { status });
+      setTasks(current => current.map(task => task.id === taskId ? { ...task, status } : task));
+    } catch (e) {
+      setError(fmtApiError(e?.response?.data?.detail, 'Could not update this task.'));
+    }
+  };
+
+  if (authLoading || busy) return <div className="min-h-[50vh] grid place-items-center text-[#6B617A]">Loading staff workspace…</div>;
+  if (!user || user.role !== 'vendor_staff') return null;
+  if (error && !staff) return <div className="mx-auto max-w-2xl p-6 text-center text-red-700">{error}<div className="mt-4"><button className="glow-btn" onClick={() => { logout(); navigate('/staff/login', { replace: true }); }}>Back to staff login</button></div></div>;
+  return <div>{error && <p role="alert" className="mx-auto max-w-5xl px-4 pt-4 text-sm text-red-700">{error}</p>}<StaffDashboard staff={staff || user} tasks={tasks} onUpdateTask={updateTask} onLogout={() => { logout(); navigate('/staff/login', { replace: true }); }} canUpdateTasks={Boolean(staff?.permissions?.includes('update_assigned_tasks'))} /></div>;
 };
 
 const AppContent = () => {
@@ -431,6 +528,16 @@ const AppContent = () => {
           <Route
             path="/admin/dashboard"
             element={<AdminDashboard />}
+          />
+
+          <Route
+            path="/staff/login"
+            element={<StaffLoginRoute />}
+          />
+
+          <Route
+            path="/staff/dashboard"
+            element={<StaffDashboardRoute />}
           />
 
           <Route
