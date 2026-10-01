@@ -13,6 +13,7 @@ const links = [
   { id: NAV.venues, label: 'Venues', href: '#venues' },
   { id: NAV.vendors, label: 'Marketplace', href: '/marketplace' },
   { id: NAV.about, label: 'For Vendors', href: '/for-vendors' },
+  { id: 'staffLogin', label: 'Staff Login', href: '/staff/login' },
 ];
 
 export const Navigation = ({ introActive = false }) => {
