@@ -1335,6 +1335,258 @@ async def vendor_get_wedding(
 
 
 
+# ================= WEDDING TASKS =================
+@api_router.get("/vendor/weddings/{wedding_id}/tasks")
+async def vendor_get_wedding_tasks(
+    wedding_id: str,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    tasks = await db.vendor_wedding_tasks.find(
+        {"wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"_id": 0},
+    ).sort([("due_date", 1), ("created_at", -1)]).to_list(500)
+    return {"tasks": tasks}
+
+
+@api_router.post("/vendor/weddings/{wedding_id}/tasks")
+async def vendor_create_wedding_task(
+    wedding_id: str,
+    payload: dict,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    title = str(payload.get("title") or "").strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Task title is required.")
+
+    now = datetime.now(timezone.utc).isoformat()
+    task = {
+        "id": str(uuid.uuid4()),
+        "wedding_id": wedding_id,
+        "vendor_id": vendor["id"],
+        "title": title[:240],
+        "due_date": str(payload.get("due_date") or "").strip()[:10],
+        "completed": bool(payload.get("completed", False)),
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.vendor_wedding_tasks.insert_one(task.copy())
+    return {"task": task}
+
+
+@api_router.patch("/vendor/weddings/{wedding_id}/tasks/{task_id}")
+async def vendor_update_wedding_task(
+    wedding_id: str,
+    task_id: str,
+    payload: dict,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    updates = {}
+    if "title" in payload:
+        title = str(payload.get("title") or "").strip()
+        if not title:
+            raise HTTPException(status_code=400, detail="Task title cannot be empty.")
+        updates["title"] = title[:240]
+    if "due_date" in payload:
+        updates["due_date"] = str(payload.get("due_date") or "").strip()[:10]
+    if "completed" in payload:
+        updates["completed"] = bool(payload.get("completed"))
+
+    if not updates:
+        task = await db.vendor_wedding_tasks.find_one(
+            {"id": task_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
+            {"_id": 0},
+        )
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found.")
+        return {"task": task}
+
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    result = await db.vendor_wedding_tasks.update_one(
+        {"id": task_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"$set": updates},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Task not found.")
+
+    task = await db.vendor_wedding_tasks.find_one(
+        {"id": task_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
+        {"_id": 0},
+    )
+    return {"task": task}
+
+
+@api_router.delete("/vendor/weddings/{wedding_id}/tasks/{task_id}")
+async def vendor_delete_wedding_task(
+    wedding_id: str,
+    task_id: str,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    await _get_vendor_wedding(wedding_id, vendor["id"])
+
+    result = await db.vendor_wedding_tasks.delete_one(
+        {"id": task_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]}
+    )
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Task not found.")
+    return {"success": True}
+
+
+# ================= VENDOR PROFIT & LOSS =================
+def _report_month(value: Optional[str]) -> str:
+    if value:
+        if not re.fullmatch(r"\d{4}-\d{2}", value):
+            raise HTTPException(status_code=400, detail="Month must use YYYY-MM format.")
+        month_number = int(value[5:7])
+        if month_number < 1 or month_number > 12:
+            raise HTTPException(status_code=400, detail="Month must be a valid YYYY-MM.")
+        return value
+    return datetime.now(timezone.utc).strftime("%Y-%m")
+
+
+def _record_month(value) -> str:
+    raw = str(value or "").strip()
+    if len(raw) >= 7 and re.fullmatch(r"\d{4}-\d{2}.*", raw):
+        return raw[:7]
+    return "Undated"
+
+
+def _report_amount(value) -> float:
+    try:
+        amount = float(value or 0)
+        return round(amount, 2) if amount == amount else 0.0
+    except (TypeError, ValueError):
+        return 0.0
+
+
+async def _vendor_profit_loss_payload(vendor_id: str, month: str, wedding_id: Optional[str] = None):
+    wedding_query = {"vendor_id": vendor_id}
+    if wedding_id:
+        wedding_query["id"] = wedding_id
+
+    weddings = await db.vendor_weddings.find(
+        wedding_query, {"_id": 0, "id": 1, "name": 1, "wedding_name": 1}
+    ).to_list(500)
+    wedding_map = {
+        item["id"]: item.get("wedding_name") or item.get("name") or "Wedding"
+        for item in weddings if item.get("id")
+    }
+    wedding_ids = list(wedding_map.keys())
+
+    if not wedding_ids:
+        return {
+            "month": month, "income": 0, "expenses": 0, "net_profit": 0,
+            "invoice_balance_due": 0, "by_wedding": [], "by_month": [],
+            "expenses_by_category": [],
+        }
+
+    payments = await db.vendor_wedding_payments.find(
+        {"vendor_id": vendor_id, "wedding_id": {"$in": wedding_ids}},
+        {"_id": 0},
+    ).to_list(5000)
+    expenses = await db.vendor_wedding_expenses.find(
+        {"vendor_id": vendor_id, "wedding_id": {"$in": wedding_ids}},
+        {"_id": 0},
+    ).to_list(5000)
+    invoices = await db.vendor_wedding_invoices.find(
+        {"vendor_id": vendor_id, "wedding_id": {"$in": wedding_ids}},
+        {"_id": 0},
+    ).to_list(5000)
+
+    monthly_payments = [p for p in payments if _record_month(p.get("payment_date")) == month]
+    monthly_expenses = [e for e in expenses if _record_month(e.get("expense_date")) == month]
+
+    def payment_value(payment):
+        amount = _report_amount(payment.get("amount"))
+        return -amount if str(payment.get("payment_type") or "").lower() == "refund" else amount
+
+    income = round(sum(payment_value(p) for p in monthly_payments), 2)
+    expense_total = round(sum(_report_amount(e.get("amount")) for e in monthly_expenses), 2)
+    invoice_balance_due = round(sum(
+        max(_report_amount(i.get("total_amount")) - _report_amount(i.get("paid_amount")), 0)
+        for i in invoices
+    ), 2)
+
+    by_wedding = []
+    for current_id, wedding_name in wedding_map.items():
+        wedding_income = round(sum(payment_value(p) for p in monthly_payments if p.get("wedding_id") == current_id), 2)
+        wedding_expenses = round(sum(_report_amount(e.get("amount")) for e in monthly_expenses if e.get("wedding_id") == current_id), 2)
+        if wedding_income or wedding_expenses:
+            by_wedding.append({
+                "wedding_id": current_id,
+                "wedding_name": wedding_name,
+                "income": wedding_income,
+                "expenses": wedding_expenses,
+                "net_profit": round(wedding_income - wedding_expenses, 2),
+            })
+
+    monthly_totals = {}
+    for payment in payments:
+        key = _record_month(payment.get("payment_date"))
+        monthly_totals.setdefault(key, {"income": 0.0, "expenses": 0.0})
+        monthly_totals[key]["income"] += payment_value(payment)
+    for expense in expenses:
+        key = _record_month(expense.get("expense_date"))
+        monthly_totals.setdefault(key, {"income": 0.0, "expenses": 0.0})
+        monthly_totals[key]["expenses"] += _report_amount(expense.get("amount"))
+    by_month = [
+        {
+            "month": key,
+            "income": round(value["income"], 2),
+            "expenses": round(value["expenses"], 2),
+            "net_profit": round(value["income"] - value["expenses"], 2),
+        }
+        for key, value in sorted(monthly_totals.items(), key=lambda item: item[0])
+    ]
+
+    categories = {}
+    for expense in monthly_expenses:
+        category = str(expense.get("category") or "General").strip() or "General"
+        categories[category] = categories.get(category, 0.0) + _report_amount(expense.get("amount"))
+    expenses_by_category = [
+        {"category": key, "amount": round(value, 2)}
+        for key, value in sorted(categories.items(), key=lambda item: item[0].lower())
+    ]
+
+    return {
+        "month": month,
+        "income": income,
+        "expenses": expense_total,
+        "net_profit": round(income - expense_total, 2),
+        "invoice_balance_due": invoice_balance_due,
+        "by_wedding": by_wedding,
+        "by_month": by_month,
+        "expenses_by_category": expenses_by_category,
+    }
+
+
+@api_router.get("/vendor/profit-loss")
+async def vendor_profit_loss(
+    month: Optional[str] = Query(None),
+    wedding_id: Optional[str] = Query(None),
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    report_month = _report_month(month)
+    if wedding_id:
+        await _get_vendor_wedding(wedding_id, vendor["id"])
+    return await _vendor_profit_loss_payload(vendor["id"], report_month, wedding_id)
+
+
 # ================= WEDDING BUDGET & PAYMENTS =================
 async def _get_vendor_wedding(wedding_id: str, vendor_id: str):
     wedding = await db.vendor_weddings.find_one(
