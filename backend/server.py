@@ -2918,7 +2918,7 @@ async def vendor_team_create(payload: VendorStaffCreateIn, authorization: str = 
     email = payload.email.strip().lower()
     if len(name) < 2 or len(name) > 100:
         raise HTTPException(status_code=422, detail="Enter a staff name between 2 and 100 characters")
-    if not re.fullmatch(r"[^@\\s]+@[^@\\s]+\\.[^@\\s]+", email):
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
         raise HTTPException(status_code=422, detail="Enter a valid staff email address")
     if len(payload.password) < 12:
         raise HTTPException(status_code=422, detail="Temporary password must be at least 12 characters")
