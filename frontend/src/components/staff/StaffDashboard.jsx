@@ -300,6 +300,9 @@ export default function StaffDashboard({
   onUpdateTask,
   onLogout,
   canUpdateTasks = false,
+  permissions = [],
+  weddings = [],
+  clients = [],
 }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
@@ -564,6 +567,55 @@ export default function StaffDashboard({
               );
             })}
           </section>
+        )}
+
+        {permissions.includes("view_weddings") && (
+          <>
+            <h2 style={styles.sectionTitle}>My weddings</h2>
+            {(Array.isArray(weddings) ? weddings : []).length === 0 ? (
+              <div style={styles.empty}>No wedding details are available.</div>
+            ) : (
+              <section style={styles.taskList}>
+                {weddings.map((wedding, index) => (
+                  <article key={wedding.id || index} style={styles.task}>
+                    <div>
+                      <h3 style={styles.taskTitle}>{wedding.name || wedding.wedding_name || "Wedding"}</h3>
+                      <div style={styles.taskMeta}>
+                        {(wedding.event_date || wedding.wedding_date) && <span>📅 {String(wedding.event_date || wedding.wedding_date).slice(0, 10)}</span>}
+                        {wedding.venue && <span>📍 {wedding.venue}</span>}
+                        {wedding.city && <span>{wedding.city}</span>}
+                        {wedding.status && <span>Status: {wedding.status}</span>}
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </section>
+            )}
+          </>
+        )}
+
+        {permissions.includes("view_clients") && (
+          <>
+            <h2 style={styles.sectionTitle}>Client information</h2>
+            {(Array.isArray(clients) ? clients : []).length === 0 ? (
+              <div style={styles.empty}>No client details are available.</div>
+            ) : (
+              <section style={styles.taskList}>
+                {clients.map((client, index) => (
+                  <article key={client.id || index} style={styles.task}>
+                    <div>
+                      <h3 style={styles.taskTitle}>{client.name || client.client_name || client.full_name || "Client"}</h3>
+                      <div style={styles.taskMeta}>
+                        {client.email && <span>✉ {client.email}</span>}
+                        {client.phone && <span>☎ {client.phone}</span>}
+                        {client.wedding_name && <span>💍 {client.wedding_name}</span>}
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </section>
+            )}
+          </>
         )}
 
         <div style={styles.notice}>
