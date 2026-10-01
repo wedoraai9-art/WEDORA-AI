@@ -126,6 +126,29 @@ const styles = {
     fontSize: 16,
     fontWeight: 750,
   },
+  quickAccess: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: 14,
+    marginTop: 20,
+  },
+  quickCard: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    width: "100%",
+    padding: "18px 20px",
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 17,
+    color: COLORS.text,
+    textAlign: "left",
+    cursor: "pointer",
+    boxShadow: "0 7px 24px rgba(92,70,120,0.045)",
+  },
+  quickCardLabel: { fontSize: 13, fontWeight: 750 },
+  quickCardHint: { marginTop: 5, color: COLORS.muted, fontSize: 11 },
+  quickCardCount: { fontSize: 26, fontWeight: 800, letterSpacing: "-0.04em" },
   stats: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
@@ -353,6 +376,15 @@ export default function StaffDashboard({
   const role = staff?.job_title ?? staff?.jobTitle ?? staff?.role ?? "Staff";
   const initial = String(name).trim().charAt(0).toUpperCase() || "W";
 
+  const scrollToSection = (sectionId) => {
+    if (typeof document !== "undefined") {
+      document.getElementById(sectionId)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  };
+
   const handleStatusChange = async (task, nextStatus) => {
     const id = getTaskId(task);
     if (!id || typeof onUpdateTask !== "function") {
@@ -425,6 +457,86 @@ export default function StaffDashboard({
             {initial}
           </div>
         </section>
+
+        {(permissions.includes("view_weddings") || permissions.includes("view_clients")) && (
+          <section style={styles.quickAccess} aria-label="Quick access">
+            {permissions.includes("view_weddings") && (
+              <button
+                type="button"
+                onClick={() => scrollToSection("staff-my-weddings")}
+                style={{ ...styles.quickCard, background: "linear-gradient(120deg, #f1e6fc, #fff 88%)" }}
+              >
+                <span>
+                  <span style={styles.quickCardLabel}>My Weddings</span>
+                  <span style={{ ...styles.quickCardHint, display: "block" }}>Open wedding details ↓</span>
+                </span>
+                <span style={styles.quickCardCount}>{Array.isArray(weddings) ? weddings.length : 0}</span>
+              </button>
+            )}
+            {permissions.includes("view_clients") && (
+              <button
+                type="button"
+                onClick={() => scrollToSection("staff-client-information")}
+                style={{ ...styles.quickCard, background: "linear-gradient(120deg, #eaf4ff, #fff 88%)" }}
+              >
+                <span>
+                  <span style={styles.quickCardLabel}>Client Information</span>
+                  <span style={{ ...styles.quickCardHint, display: "block" }}>Open client details ↓</span>
+                </span>
+                <span style={styles.quickCardCount}>{Array.isArray(clients) ? clients.length : 0}</span>
+              </button>
+            )}
+          </section>
+        )}
+
+        {permissions.includes("view_weddings") && (
+          <>
+            <h2 id="staff-my-weddings" style={styles.sectionTitle}>My weddings</h2>
+            {(Array.isArray(weddings) ? weddings : []).length === 0 ? (
+              <div style={styles.empty}>No wedding details are available.</div>
+            ) : (
+              <section style={styles.taskList}>
+                {weddings.map((wedding, index) => (
+                  <article key={wedding.id || index} style={styles.task}>
+                    <div>
+                      <h3 style={styles.taskTitle}>{wedding.name || wedding.wedding_name || "Wedding"}</h3>
+                      <div style={styles.taskMeta}>
+                        {(wedding.event_date || wedding.wedding_date) && <span>📅 {String(wedding.event_date || wedding.wedding_date).slice(0, 10)}</span>}
+                        {wedding.venue && <span>📍 {wedding.venue}</span>}
+                        {wedding.city && <span>{wedding.city}</span>}
+                        {wedding.status && <span>Status: {wedding.status}</span>}
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </section>
+            )}
+          </>
+        )}
+
+        {permissions.includes("view_clients") && (
+          <>
+            <h2 id="staff-client-information" style={styles.sectionTitle}>Client information</h2>
+            {(Array.isArray(clients) ? clients : []).length === 0 ? (
+              <div style={styles.empty}>No client details are available.</div>
+            ) : (
+              <section style={styles.taskList}>
+                {clients.map((client, index) => (
+                  <article key={client.id || index} style={styles.task}>
+                    <div>
+                      <h3 style={styles.taskTitle}>{client.name || client.client_name || client.full_name || "Client"}</h3>
+                      <div style={styles.taskMeta}>
+                        {client.email && <span>✉ {client.email}</span>}
+                        {client.phone && <span>☎ {client.phone}</span>}
+                        {client.wedding_name && <span>💍 {client.wedding_name}</span>}
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </section>
+            )}
+          </>
+        )}
 
         <h2 style={styles.sectionTitle}>Task overview</h2>
 
@@ -567,55 +679,6 @@ export default function StaffDashboard({
               );
             })}
           </section>
-        )}
-
-        {permissions.includes("view_weddings") && (
-          <>
-            <h2 style={styles.sectionTitle}>My weddings</h2>
-            {(Array.isArray(weddings) ? weddings : []).length === 0 ? (
-              <div style={styles.empty}>No wedding details are available.</div>
-            ) : (
-              <section style={styles.taskList}>
-                {weddings.map((wedding, index) => (
-                  <article key={wedding.id || index} style={styles.task}>
-                    <div>
-                      <h3 style={styles.taskTitle}>{wedding.name || wedding.wedding_name || "Wedding"}</h3>
-                      <div style={styles.taskMeta}>
-                        {(wedding.event_date || wedding.wedding_date) && <span>📅 {String(wedding.event_date || wedding.wedding_date).slice(0, 10)}</span>}
-                        {wedding.venue && <span>📍 {wedding.venue}</span>}
-                        {wedding.city && <span>{wedding.city}</span>}
-                        {wedding.status && <span>Status: {wedding.status}</span>}
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </section>
-            )}
-          </>
-        )}
-
-        {permissions.includes("view_clients") && (
-          <>
-            <h2 style={styles.sectionTitle}>Client information</h2>
-            {(Array.isArray(clients) ? clients : []).length === 0 ? (
-              <div style={styles.empty}>No client details are available.</div>
-            ) : (
-              <section style={styles.taskList}>
-                {clients.map((client, index) => (
-                  <article key={client.id || index} style={styles.task}>
-                    <div>
-                      <h3 style={styles.taskTitle}>{client.name || client.client_name || client.full_name || "Client"}</h3>
-                      <div style={styles.taskMeta}>
-                        {client.email && <span>✉ {client.email}</span>}
-                        {client.phone && <span>☎ {client.phone}</span>}
-                        {client.wedding_name && <span>💍 {client.wedding_name}</span>}
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </section>
-            )}
-          </>
         )}
 
         <div style={styles.notice}>
