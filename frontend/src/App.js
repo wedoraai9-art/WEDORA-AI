@@ -219,6 +219,8 @@ const StaffDashboardRoute = () => {
   const { user, loading: authLoading, logout } = useAuth();
   const [staff, setStaff] = useState(null);
   const [tasks, setTasks] = useState([]);
+  const [weddings, setWeddings] = useState([]);
+  const [clients, setClients] = useState([]);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState('');
 
@@ -231,23 +233,53 @@ const StaffDashboardRoute = () => {
     }
     let active = true;
     (async () => {
-      setBusy(true); setError('');
+      setBusy(true);
+      setError('');
       try {
         const [meResponse, taskResponse] = await Promise.all([
           authAxios.get('/staff/me'),
           authAxios.get('/staff/tasks'),
         ]);
         if (!active) return;
+
         const nextStaff = meResponse.data?.staff || null;
+        const permissions = Array.isArray(nextStaff?.permissions) ? nextStaff.permissions : [];
         setStaff(nextStaff);
         setTasks(Array.isArray(taskResponse.data?.tasks) ? taskResponse.data.tasks : []);
+
+        // Load only the data this staff account is explicitly allowed to view.
+        const [weddingResponse, clientResponse] = await Promise.all([
+          permissions.includes('view_weddings')
+            ? authAxios.get('/staff/weddings').catch((e) => ({ error: e }))
+            : Promise.resolve(null),
+          permissions.includes('view_clients')
+            ? authAxios.get('/staff/clients').catch((e) => ({ error: e }))
+            : Promise.resolve(null),
+        ]);
+        if (!active) return;
+
+        if (weddingResponse?.error) {
+          setError(fmtApiError(weddingResponse.error?.response?.data?.detail, 'Could not load wedding information.'));
+        } else {
+          setWeddings(Array.isArray(weddingResponse?.data?.weddings) ? weddingResponse.data.weddings : []);
+        }
+
+        if (clientResponse?.error) {
+          setError((current) => current || fmtApiError(clientResponse.error?.response?.data?.detail, 'Could not load client information.'));
+        } else {
+          const vendorClients = Array.isArray(clientResponse?.data?.clients) ? clientResponse.data.clients : [];
+          const weddingClients = Array.isArray(clientResponse?.data?.wedding_clients) ? clientResponse.data.wedding_clients : [];
+          setClients([...vendorClients, ...weddingClients]);
+        }
       } catch (e) {
         if (!active) return;
         setError(fmtApiError(e?.response?.data?.detail, 'Could not load your staff workspace.'));
         if (e?.response?.status === 401 || e?.response?.status === 403) {
           logout(); navigate('/staff/login', { replace: true });
         }
-      } finally { if (active) setBusy(false); }
+      } finally {
+        if (active) setBusy(false);
+      }
     })();
     return () => { active = false; };
   }, [authLoading, user, logout, navigate]);
@@ -264,7 +296,7 @@ const StaffDashboardRoute = () => {
   if (authLoading || busy) return <div className="min-h-[50vh] grid place-items-center text-[#6B617A]">Loading staff workspace…</div>;
   if (!user || user.role !== 'vendor_staff') return null;
   if (error && !staff) return <div className="mx-auto max-w-2xl p-6 text-center text-red-700">{error}<div className="mt-4"><button className="glow-btn" onClick={() => { logout(); navigate('/staff/login', { replace: true }); }}>Back to staff login</button></div></div>;
-  return <div>{error && <p role="alert" className="mx-auto max-w-5xl px-4 pt-4 text-sm text-red-700">{error}</p>}<StaffDashboard staff={staff || user} tasks={tasks} onUpdateTask={updateTask} onLogout={() => { logout(); navigate('/staff/login', { replace: true }); }} canUpdateTasks={Boolean(staff?.permissions?.includes('update_assigned_tasks'))} /></div>;
+  return <div>{error && <p role="alert" className="mx-auto max-w-5xl px-4 pt-4 text-sm text-red-700">{error}</p>}<StaffDashboard staff={staff || user} tasks={tasks} weddings={weddings} clients={clients} permissions={Array.isArray(staff?.permissions) ? staff.permissions : []} onUpdateTask={updateTask} onLogout={() => { logout(); navigate('/staff/login', { replace: true }); }} canUpdateTasks={Boolean(staff?.permissions?.includes('update_assigned_tasks'))} /></div>;
 };
 
 const AppContent = () => {
