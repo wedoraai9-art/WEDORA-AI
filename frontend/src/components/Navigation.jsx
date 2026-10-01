@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NAV } from '@/constants/testIds';
@@ -47,6 +48,7 @@ export const Navigation = ({ introActive = false }) => {
         behavior: 'smooth',
         block: 'start',
       });
+      setOpen(false);
       return;
     }
 
@@ -124,6 +126,10 @@ export const Navigation = ({ introActive = false }) => {
           animation-delay: .38s;
         }
 
+        .wedora-nav-arriving .wedora-nav-links > :nth-child(8) {
+          animation-delay: .42s;
+        }
+
         .wedora-nav-arriving .wedora-nav-actions {
           opacity: 0;
           animation: wedora-nav-item-fade .42s ease-out .3s forwards;
@@ -198,6 +204,7 @@ export const Navigation = ({ introActive = false }) => {
               className="lg:hidden p-2 rounded-full hover:bg-white/60"
               onClick={() => setOpen(!open)}
               aria-label="Menu"
+              aria-expanded={open}
             >
               {open ? (
                 <X className="w-5 h-5" />
