@@ -2824,6 +2824,7 @@ async def get_vendors():
 class VendorBusinessAIIn(BaseModel):
     session_id: Optional[str] = None
     message: str
+    business_context: Optional[str] = None
 
 
 def _require_business_ai_plan(vendor: dict):
@@ -2874,17 +2875,21 @@ async def vendor_business_ai(
     business_name = str(vendor.get("business_name") or vendor.get("name") or "Wedding Vendor")
     category = str(vendor.get("category") or "Wedding Vendor")
     city = str(vendor.get("city") or "Not specified")
+    business_context = str(payload.business_context or "").strip()[:4000]
     system_prompt = f"""You are WEDORA Business Assistant, an operational and creative business aide for a subscribed wedding vendor.
 
 Vendor business: {business_name}
 Vendor category: {category}
 Business city: {city}
 
+Additional dashboard context (private context, not a user chat message):
+{business_context or "No additional dashboard context supplied."}
+
 Help the vendor with business operations, client communication, quotation wording, service packaging,
 pricing frameworks, marketing copy, social media planning, lead follow-up, workflow design,
 wedding coordination, and category-specific professional tasks. Adapt advice to the vendor's actual
-category; do not assume they are a decorator. Use any dashboard context provided in the user's
-message, but do not claim to have accessed live records beyond that context. Never invent business
+category; do not assume they are a decorator. Use only the dashboard context provided above,
+and do not claim to have accessed live records beyond that context. Never invent business
 facts, client details, prices, or legal/tax requirements. State assumptions clearly and ask for missing
 information when necessary. Keep answers practical, clear, and suitable for a small business.
 """
