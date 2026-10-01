@@ -22,6 +22,9 @@ from html.parser import HTMLParser
 from urllib.parse import urlparse
 import ipaddress
 import asyncio
+import hashlib
+import smtplib
+from email.message import EmailMessage
 
 from google import genai
 
@@ -497,6 +500,206 @@ async def auth_me(authorization: str = Header(None)):
     }
 
 
+# ================= PASSWORD RESET =================
+PASSWORD_RESET_TTL_MINUTES = int(os.environ.get("PASSWORD_RESET_TTL_MINUTES", "30"))
+FRONTEND_URL = (
+    os.environ.get("FRONTEND_URL", "https://wedora-ai.wedoraai9.workers.dev")
+    .strip()
+    .rstrip("/")
+)
+BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "").strip()
+EMAIL_FROM = (os.environ.get("EMAIL_FROM") or "").strip()
+
+
+class ForgotPasswordIn(BaseModel):
+    email: str
+
+
+class ResetPasswordIn(BaseModel):
+    token: str
+    new_password: str
+
+
+def _hash_reset_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _brevo_configured() -> bool:
+    return bool(BREVO_API_KEY and EMAIL_FROM)
+
+
+def _send_password_reset_email_sync(to_email: str, reset_url: str) -> None:
+    payload = {
+        "sender": {
+            "email": EMAIL_FROM,
+            "name": "WEDORA AI",
+        },
+        "to": [{"email": to_email}],
+        "subject": "Reset your WEDORA AI password",
+        "textContent": (
+            "WEDORA AI password reset\n\n"
+            "We received a request to reset your WEDORA AI password.\n\n"
+            f"Use this link within {PASSWORD_RESET_TTL_MINUTES} minutes:\n{reset_url}\n\n"
+            "If you did not request this, you can safely ignore this email.\n"
+            "This link can only be used once."
+        ),
+        "htmlContent": f"""
+        <html>
+          <body style=\"font-family:Arial,sans-serif;color:#2D2638;line-height:1.6;\">
+            <h2 style=\"margin-bottom:8px;\">Reset your WEDORA AI password</h2>
+            <p>We received a request to reset your WEDORA AI password.</p>
+            <p>This link expires in <strong>{PASSWORD_RESET_TTL_MINUTES} minutes</strong> and can only be used once.</p>
+            <p>
+              <a href=\"{html_escape(reset_url)}\" style=\"display:inline-block;padding:12px 20px;border-radius:10px;background:#2D2638;color:#ffffff;text-decoration:none;\">
+                Reset Password
+              </a>
+            </p>
+            <p>If the button does not work, copy and open this link:</p>
+            <p>{html_escape(reset_url)}</p>
+            <p>If you did not request this, you can safely ignore this email.</p>
+          </body>
+        </html>
+        """,
+    }
+
+    response = http_requests.post(
+        "https://api.brevo.com/v3/smtp/email",
+        headers={
+            "accept": "application/json",
+            "api-key": BREVO_API_KEY,
+            "content-type": "application/json",
+        },
+        json=payload,
+        timeout=20,
+    )
+
+    if response.status_code >= 400:
+        raise RuntimeError(
+            f"Brevo email API returned HTTP {response.status_code}: {response.text[:500]}"
+        )
+
+
+
+@api_router.post("/auth/forgot-password")
+async def auth_forgot_password(payload: ForgotPasswordIn):
+    email = payload.email.strip().lower()
+
+    # Always return the same response so the endpoint does not reveal whether
+    # an account exists for a given email address.
+    generic_response = {
+        "message": "If an account exists for this email, a password reset link has been sent."
+    }
+
+    if not email:
+        return generic_response
+
+    user = await db.users.find_one({"email": email}, {"_id": 0, "id": 1, "email": 1, "name": 1})
+    if not user:
+        return generic_response
+
+    raw_token = secrets.token_urlsafe(32)
+    token_hash = _hash_reset_token(raw_token)
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(minutes=PASSWORD_RESET_TTL_MINUTES)
+
+    # Invalidate any previous unused reset links for this account.
+    await db.password_reset_tokens.update_many(
+        {"user_id": user["id"], "used_at": None},
+        {"$set": {"used_at": now.isoformat(), "invalidated_at": now.isoformat()}},
+    )
+
+    reset_doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "email": email,
+        "token_hash": token_hash,
+        "created_at": now.isoformat(),
+        "expires_at": expires_at.isoformat(),
+        "used_at": None,
+    }
+    await db.password_reset_tokens.insert_one(reset_doc)
+
+    reset_url = f"{FRONTEND_URL}/vendor/auth?mode=reset&token={raw_token}"
+
+    if not _brevo_configured():
+        logging.warning(
+            "Password reset token created for %s, but Brevo email delivery is not configured. "
+            "Set BREVO_API_KEY and EMAIL_FROM.",
+            email,
+        )
+        return generic_response
+
+    try:
+        await asyncio.to_thread(_send_password_reset_email_sync, email, reset_url)
+    except Exception:
+        # Do not expose SMTP/account details to the requester. The token remains
+        # valid until expiry, so a transient mail failure can be retried.
+        logging.exception("Password reset email delivery failed")
+
+    return generic_response
+
+
+@api_router.post("/auth/reset-password")
+async def auth_reset_password(payload: ResetPasswordIn):
+    token = payload.token.strip()
+    new_password = payload.new_password
+
+    if not token:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    if len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
+
+    token_hash = _hash_reset_token(token)
+    now = datetime.now(timezone.utc)
+
+    reset_doc = await db.password_reset_tokens.find_one(
+        {
+            "token_hash": token_hash,
+            "used_at": None,
+        },
+        {"_id": 0},
+    )
+
+    if not reset_doc:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    try:
+        expires_at = datetime.fromisoformat(str(reset_doc.get("expires_at", "")).replace("Z", "+00:00"))
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    if expires_at <= now:
+        await db.password_reset_tokens.update_one(
+            {"id": reset_doc["id"]},
+            {"$set": {"used_at": now.isoformat(), "expired_at": now.isoformat()}},
+        )
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    user_id = reset_doc.get("user_id")
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "id": 1})
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    password_hash = hash_password(new_password)
+
+    result = await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"password_hash": password_hash, "updated_at": now.isoformat()}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    # Mark this token used and invalidate every other outstanding reset link.
+    await db.password_reset_tokens.update_many(
+        {"user_id": user_id, "used_at": None},
+        {"$set": {"used_at": now.isoformat(), "invalidated_at": now.isoformat()}},
+    )
+
+    return {"message": "Password reset successful. You can now sign in with your new password."}
+
 
 # ================= VENDOR SYSTEM =================
 
@@ -516,8 +719,8 @@ VENDOR_PLANS = {
     },
     "pro": {
         "label": "WEDORA PRO",
-        "price_monthly": 399,
-        "price_yearly": 4599,
+        "price_monthly": 599,
+        "price_yearly": 5999,
         "wedding_limit": None,
         "export_enabled": True,
         "lead_access": True,
@@ -555,17 +758,6 @@ class VendorUpdateIn(BaseModel):
     address: Optional[str] = None
     logo: Optional[str] = None
     slug: Optional[str] = None
-
-
-class VendorPortfolioCaseStudyIn(BaseModel):
-    title: str = Field(..., min_length=2, max_length=120)
-    event_type: str = Field(default="Wedding", max_length=60)
-    location: str = Field(default="", max_length=120)
-    event_date: str = Field(default="", max_length=40)
-    description: str = Field(default="", max_length=2000)
-    services: List[str] = Field(default_factory=list)
-    budget_range: str = Field(default="", max_length=80)
-    photos: List[str] = Field(default_factory=list)
 
 
 class VendorLeadUpdateIn(BaseModel):
@@ -631,33 +823,6 @@ class WeddingPaymentIn(BaseModel):
 class WeddingDocumentUpdateIn(BaseModel):
     title: Optional[str] = None
     category: Optional[str] = None
-
-
-class WeddingInvoiceLineItemIn(BaseModel):
-    description: str = ""
-    quantity: float = 1
-    unit: Optional[str] = "service"
-    unit_price: float = 0
-
-
-class WeddingInvoiceIn(BaseModel):
-    title: str = "Wedding invoice"
-    client_name: Optional[str] = ""
-    issue_date: Optional[str] = ""
-    due_date: Optional[str] = ""
-    line_items: List[WeddingInvoiceLineItemIn] = Field(default_factory=list)
-    discount_type: Optional[str] = "amount"
-    discount_value: float = 0
-    tax_percent: float = 0
-    terms: Optional[str] = ""
-    notes: Optional[str] = ""
-
-
-class WeddingInvoicePaymentIn(BaseModel):
-    amount: float
-    payment_date: Optional[str] = ""
-    payment_method: Optional[str] = "Other"
-    notes: Optional[str] = ""
 
 class WeddingDesignIn(BaseModel):
     theme: Optional[str] = ""
@@ -756,7 +921,6 @@ async def _ensure_vendor_profile(user: dict):
         "address": "",
         "logo": None,
         "portfolio": [],
-        "portfolio_case_studies": [],
         "slug": _vendor_slug(business_name),
         "plan": plan,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -828,7 +992,6 @@ async def vendor_register(payload: VendorRegisterIn):
         "address": "",
         "logo": None,
         "portfolio": [],
-        "portfolio_case_studies": [],
         "slug": _vendor_slug(business_name),
         "plan": "free",
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -914,10 +1077,19 @@ async def vendor_stats(authorization: str = Header(None)):
     slug = vendor.get("slug")
 
     weddings = await db.vendor_weddings.count_documents({"vendor_id": vendor_id})
-    leads = await db.vendor_leads.count_documents({"vendor_id": vendor_id})
-    new_leads = await db.vendor_leads.count_documents(
-        {"vendor_id": vendor_id, "status": {"$in": ["new", "pending"]}}
-    )
+    plan = vendor.get("plan", "free")
+    lead_access = _vendor_plan_details(plan).get("lead_access", False)
+
+    # Lead data is a PRO-only feature. Keep FREE vendors from seeing existing
+    # lead counts even if older lead records exist in the database.
+    if lead_access:
+        leads = await db.vendor_leads.count_documents({"vendor_id": vendor_id})
+        new_leads = await db.vendor_leads.count_documents(
+            {"vendor_id": vendor_id, "status": {"$in": ["new", "pending"]}}
+        )
+    else:
+        leads = 0
+        new_leads = 0
     portfolio_views = await db.vendor_events.count_documents(
         {"vendor_id": vendor_id, "event": "portfolio_view"}
     )
@@ -995,6 +1167,12 @@ async def vendor_leads(authorization: str = Header(None)):
     user = await get_vendor_user(authorization)
     vendor = await _ensure_vendor_profile(user)
 
+    if not _vendor_plan_details(vendor.get("plan", "free")).get("lead_access", False):
+        raise HTTPException(
+            status_code=403,
+            detail="Client enquiries and lead management are available on WEDORA PRO.",
+        )
+
     docs = await db.vendor_leads.find(
         {"vendor_id": vendor["id"]},
         {"_id": 0},
@@ -1012,11 +1190,21 @@ async def vendor_update_lead(
     user = await get_vendor_user(authorization)
     vendor = await _ensure_vendor_profile(user)
 
+    if not _vendor_plan_details(vendor.get("plan", "free")).get("lead_access", False):
+        raise HTTPException(
+            status_code=403,
+            detail="Client enquiries and lead management are available on WEDORA PRO.",
+        )
+
+    status = (payload.status or "").strip().lower()
+    if status not in {"new", "contacted", "closed", "pending"}:
+        raise HTTPException(status_code=400, detail="Invalid lead status")
+
     result = await db.vendor_leads.update_one(
         {"id": lead_id, "vendor_id": vendor["id"]},
         {
             "$set": {
-                "status": payload.status,
+                "status": status,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
         },
@@ -1101,8 +1289,7 @@ async def vendor_upload_portfolio(
         {"$set": {"portfolio": portfolio, "updated_at": datetime.now(timezone.utc).isoformat()}},
     )
 
-    updated_vendor = await db.vendors.find_one({"id": vendor["id"]}, {"_id": 0})
-    return {"portfolio": portfolio, "url": image_url, "vendor": updated_vendor}
+    return {"portfolio": portfolio, "url": image_url}
 
 
 @api_router.delete("/vendor/portfolio")
@@ -1120,93 +1307,7 @@ async def vendor_delete_portfolio(
         {"$set": {"portfolio": portfolio, "updated_at": datetime.now(timezone.utc).isoformat()}},
     )
 
-    updated_vendor = await db.vendors.find_one({"id": vendor["id"]}, {"_id": 0})
-    return {"portfolio": portfolio, "vendor": updated_vendor}
-
-
-@api_router.get("/vendor/portfolio/case-studies")
-async def vendor_get_portfolio_case_studies(authorization: str = Header(None)):
-    user = await get_vendor_user(authorization)
-    vendor = await _ensure_vendor_profile(user)
-    return {"case_studies": vendor.get("portfolio_case_studies") or []}
-
-
-@api_router.post("/vendor/portfolio/case-studies")
-async def vendor_create_portfolio_case_study(
-    payload: VendorPortfolioCaseStudyIn,
-    authorization: str = Header(None),
-):
-    user = await get_vendor_user(authorization)
-    vendor = await _ensure_vendor_profile(user)
-    case_studies = vendor.get("portfolio_case_studies") or []
-    if len(case_studies) >= 50:
-        raise HTTPException(status_code=403, detail="You can save up to 50 portfolio case studies.")
-
-    available_photos = set(vendor.get("portfolio") or [])
-    invalid_photos = [photo for photo in payload.photos if photo not in available_photos]
-    if invalid_photos:
-        raise HTTPException(status_code=400, detail="Case-study photos must be selected from your uploaded portfolio.")
-
-    case_study = payload.model_dump()
-    case_study["id"] = str(uuid.uuid4())
-    case_study["services"] = [str(item).strip()[:80] for item in case_study.get("services", []) if str(item).strip()][:20]
-    case_study["created_at"] = datetime.now(timezone.utc).isoformat()
-    case_study["updated_at"] = case_study["created_at"]
-    case_studies.append(case_study)
-    await db.vendors.update_one(
-        {"id": vendor["id"]},
-        {"$set": {"portfolio_case_studies": case_studies, "updated_at": datetime.now(timezone.utc).isoformat()}},
-    )
-    updated_vendor = await db.vendors.find_one({"id": vendor["id"]}, {"_id": 0})
-    return {"case_study": case_study, "case_studies": case_studies, "vendor": updated_vendor}
-
-
-@api_router.put("/vendor/portfolio/case-studies/{case_study_id}")
-async def vendor_update_portfolio_case_study(
-    case_study_id: str,
-    payload: VendorPortfolioCaseStudyIn,
-    authorization: str = Header(None),
-):
-    user = await get_vendor_user(authorization)
-    vendor = await _ensure_vendor_profile(user)
-    case_studies = vendor.get("portfolio_case_studies") or []
-    existing = next((item for item in case_studies if item.get("id") == case_study_id), None)
-    if not existing:
-        raise HTTPException(status_code=404, detail="Portfolio case study not found")
-    available_photos = set(vendor.get("portfolio") or [])
-    if any(photo not in available_photos for photo in payload.photos):
-        raise HTTPException(status_code=400, detail="Case-study photos must be selected from your uploaded portfolio.")
-    updated = payload.model_dump()
-    updated["id"] = case_study_id
-    updated["services"] = [str(item).strip()[:80] for item in updated.get("services", []) if str(item).strip()][:20]
-    updated["created_at"] = existing.get("created_at", datetime.now(timezone.utc).isoformat())
-    updated["updated_at"] = datetime.now(timezone.utc).isoformat()
-    case_studies = [updated if item.get("id") == case_study_id else item for item in case_studies]
-    await db.vendors.update_one(
-        {"id": vendor["id"]},
-        {"$set": {"portfolio_case_studies": case_studies, "updated_at": datetime.now(timezone.utc).isoformat()}},
-    )
-    updated_vendor = await db.vendors.find_one({"id": vendor["id"]}, {"_id": 0})
-    return {"case_study": updated, "case_studies": case_studies, "vendor": updated_vendor}
-
-
-@api_router.delete("/vendor/portfolio/case-studies/{case_study_id}")
-async def vendor_delete_portfolio_case_study(
-    case_study_id: str,
-    authorization: str = Header(None),
-):
-    user = await get_vendor_user(authorization)
-    vendor = await _ensure_vendor_profile(user)
-    case_studies = vendor.get("portfolio_case_studies") or []
-    filtered = [item for item in case_studies if item.get("id") != case_study_id]
-    if len(filtered) == len(case_studies):
-        raise HTTPException(status_code=404, detail="Portfolio case study not found")
-    await db.vendors.update_one(
-        {"id": vendor["id"]},
-        {"$set": {"portfolio_case_studies": filtered, "updated_at": datetime.now(timezone.utc).isoformat()}},
-    )
-    updated_vendor = await db.vendors.find_one({"id": vendor["id"]}, {"_id": 0})
-    return {"case_studies": filtered, "vendor": updated_vendor}
+    return {"portfolio": portfolio}
 
 
 @api_router.get("/vendor/weddings")
@@ -1333,276 +1434,6 @@ async def vendor_get_wedding(
     return wedding
 
 
-
-
-# ================= WEDDING TASKS =================
-@api_router.get("/vendor/weddings/{wedding_id}/tasks")
-async def vendor_get_wedding_tasks(
-    wedding_id: str,
-    authorization: str = Header(None),
-):
-    user = await get_vendor_user(authorization)
-    vendor = await _ensure_vendor_profile(user)
-    await _get_vendor_wedding(wedding_id, vendor["id"])
-
-    tasks = await db.vendor_wedding_tasks.find(
-        {"wedding_id": wedding_id, "vendor_id": vendor["id"]},
-        {"_id": 0},
-    ).sort([("due_date", 1), ("created_at", -1)]).to_list(500)
-    return {"tasks": tasks}
-
-
-@api_router.post("/vendor/weddings/{wedding_id}/tasks")
-async def vendor_create_wedding_task(
-    wedding_id: str,
-    payload: dict,
-    authorization: str = Header(None),
-):
-    user = await get_vendor_user(authorization)
-    vendor = await _ensure_vendor_profile(user)
-    await _get_vendor_wedding(wedding_id, vendor["id"])
-
-    title = str(payload.get("title") or "").strip()
-    if not title:
-        raise HTTPException(status_code=400, detail="Task title is required.")
-
-    now = datetime.now(timezone.utc).isoformat()
-    task = {
-        "id": str(uuid.uuid4()),
-        "wedding_id": wedding_id,
-        "vendor_id": vendor["id"],
-        "title": title[:240],
-        "due_date": str(payload.get("due_date") or "").strip()[:10],
-        "completed": bool(payload.get("completed", False)),
-        "created_at": now,
-        "updated_at": now,
-    }
-    await db.vendor_wedding_tasks.insert_one(task.copy())
-    return {"task": task}
-
-
-@api_router.patch("/vendor/weddings/{wedding_id}/tasks/{task_id}")
-async def vendor_update_wedding_task(
-    wedding_id: str,
-    task_id: str,
-    payload: dict,
-    authorization: str = Header(None),
-):
-    user = await get_vendor_user(authorization)
-    vendor = await _ensure_vendor_profile(user)
-    await _get_vendor_wedding(wedding_id, vendor["id"])
-
-    updates = {}
-    if "title" in payload:
-        title = str(payload.get("title") or "").strip()
-        if not title:
-            raise HTTPException(status_code=400, detail="Task title cannot be empty.")
-        updates["title"] = title[:240]
-    if "due_date" in payload:
-        updates["due_date"] = str(payload.get("due_date") or "").strip()[:10]
-    if "completed" in payload:
-        updates["completed"] = bool(payload.get("completed"))
-
-    if not updates:
-        task = await db.vendor_wedding_tasks.find_one(
-            {"id": task_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
-            {"_id": 0},
-        )
-        if not task:
-            raise HTTPException(status_code=404, detail="Task not found.")
-        return {"task": task}
-
-    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
-    result = await db.vendor_wedding_tasks.update_one(
-        {"id": task_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
-        {"$set": updates},
-    )
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Task not found.")
-
-    task = await db.vendor_wedding_tasks.find_one(
-        {"id": task_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
-        {"_id": 0},
-    )
-    return {"task": task}
-
-
-@api_router.delete("/vendor/weddings/{wedding_id}/tasks/{task_id}")
-async def vendor_delete_wedding_task(
-    wedding_id: str,
-    task_id: str,
-    authorization: str = Header(None),
-):
-    user = await get_vendor_user(authorization)
-    vendor = await _ensure_vendor_profile(user)
-    await _get_vendor_wedding(wedding_id, vendor["id"])
-
-    result = await db.vendor_wedding_tasks.delete_one(
-        {"id": task_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]}
-    )
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Task not found.")
-    return {"success": True}
-
-
-# ================= VENDOR PROFIT & LOSS =================
-def _report_month(value: Optional[str]) -> str:
-    if value:
-        if not re.fullmatch(r"\d{4}-\d{2}", value):
-            raise HTTPException(status_code=400, detail="Month must use YYYY-MM format.")
-        month_number = int(value[5:7])
-        if month_number < 1 or month_number > 12:
-            raise HTTPException(status_code=400, detail="Month must be a valid YYYY-MM.")
-        return value
-    return datetime.now(timezone.utc).strftime("%Y-%m")
-
-
-def _record_month(value) -> str:
-    raw = str(value or "").strip()
-    if len(raw) >= 7 and re.fullmatch(r"\d{4}-\d{2}.*", raw):
-        return raw[:7]
-    return "Undated"
-
-
-def _report_amount(value) -> float:
-    try:
-        amount = float(value or 0)
-        return round(amount, 2) if amount == amount else 0.0
-    except (TypeError, ValueError):
-        return 0.0
-
-
-async def _vendor_profit_loss_payload(vendor_id: str, month: str, wedding_id: Optional[str] = None):
-    wedding_query = {"vendor_id": vendor_id}
-    if wedding_id:
-        wedding_query["id"] = wedding_id
-
-    weddings = await db.vendor_weddings.find(
-        wedding_query, {"_id": 0, "id": 1, "name": 1, "wedding_name": 1}
-    ).to_list(500)
-    wedding_map = {
-        item["id"]: item.get("wedding_name") or item.get("name") or "Wedding"
-        for item in weddings if item.get("id")
-    }
-    wedding_ids = list(wedding_map.keys())
-
-    if not wedding_ids:
-        return {
-            "month": month, "income": 0, "expenses": 0, "net_profit": 0,
-            "invoice_balance_due": 0, "by_wedding": [], "by_month": [],
-            "expenses_by_category": [],
-        }
-
-    payments = await db.vendor_wedding_payments.find(
-        {"vendor_id": vendor_id, "wedding_id": {"$in": wedding_ids}},
-        {"_id": 0},
-    ).to_list(5000)
-    expenses = await db.vendor_wedding_expenses.find(
-        {"vendor_id": vendor_id, "wedding_id": {"$in": wedding_ids}},
-        {"_id": 0},
-    ).to_list(5000)
-    invoices = await db.vendor_wedding_invoices.find(
-        {"vendor_id": vendor_id, "wedding_id": {"$in": wedding_ids}},
-        {"_id": 0},
-    ).to_list(5000)
-
-    # Budget payments are stored in vendor_wedding_payments. Invoice receipts are
-    # stored inside each invoice's `payments` array, so include both sources in
-    # the report. This keeps receipts recorded from Invoices & Receipts visible
-    # in monthly income and the wedding breakdown.
-    invoice_receipts = []
-    for invoice in invoices:
-        for receipt in (invoice.get("payments") or []):
-            if not isinstance(receipt, dict):
-                continue
-            invoice_receipts.append({
-                **receipt,
-                "vendor_id": vendor_id,
-                "wedding_id": invoice.get("wedding_id"),
-                "payment_type": receipt.get("payment_type") or "payment",
-                "payment_date": receipt.get("payment_date") or receipt.get("date") or "",
-            })
-
-    all_payments = payments + invoice_receipts
-    monthly_payments = [p for p in all_payments if _record_month(p.get("payment_date")) == month]
-    monthly_expenses = [e for e in expenses if _record_month(e.get("expense_date")) == month]
-
-    def payment_value(payment):
-        amount = _report_amount(payment.get("amount"))
-        return -amount if str(payment.get("payment_type") or "").lower() == "refund" else amount
-
-    income = round(sum(payment_value(p) for p in monthly_payments), 2)
-    expense_total = round(sum(_report_amount(e.get("amount")) for e in monthly_expenses), 2)
-    invoice_balance_due = round(sum(
-        max(_report_amount(i.get("total_amount")) - _report_amount(i.get("paid_amount")), 0)
-        for i in invoices
-    ), 2)
-
-    by_wedding = []
-    for current_id, wedding_name in wedding_map.items():
-        wedding_income = round(sum(payment_value(p) for p in monthly_payments if p.get("wedding_id") == current_id), 2)
-        wedding_expenses = round(sum(_report_amount(e.get("amount")) for e in monthly_expenses if e.get("wedding_id") == current_id), 2)
-        if wedding_income or wedding_expenses:
-            by_wedding.append({
-                "wedding_id": current_id,
-                "wedding_name": wedding_name,
-                "income": wedding_income,
-                "expenses": wedding_expenses,
-                "net_profit": round(wedding_income - wedding_expenses, 2),
-            })
-
-    monthly_totals = {}
-    for payment in all_payments:
-        key = _record_month(payment.get("payment_date"))
-        monthly_totals.setdefault(key, {"income": 0.0, "expenses": 0.0})
-        monthly_totals[key]["income"] += payment_value(payment)
-    for expense in expenses:
-        key = _record_month(expense.get("expense_date"))
-        monthly_totals.setdefault(key, {"income": 0.0, "expenses": 0.0})
-        monthly_totals[key]["expenses"] += _report_amount(expense.get("amount"))
-    by_month = [
-        {
-            "month": key,
-            "income": round(value["income"], 2),
-            "expenses": round(value["expenses"], 2),
-            "net_profit": round(value["income"] - value["expenses"], 2),
-        }
-        for key, value in sorted(monthly_totals.items(), key=lambda item: item[0])
-    ]
-
-    categories = {}
-    for expense in monthly_expenses:
-        category = str(expense.get("category") or "General").strip() or "General"
-        categories[category] = categories.get(category, 0.0) + _report_amount(expense.get("amount"))
-    expenses_by_category = [
-        {"category": key, "amount": round(value, 2)}
-        for key, value in sorted(categories.items(), key=lambda item: item[0].lower())
-    ]
-
-    return {
-        "month": month,
-        "income": income,
-        "expenses": expense_total,
-        "net_profit": round(income - expense_total, 2),
-        "invoice_balance_due": invoice_balance_due,
-        "by_wedding": by_wedding,
-        "by_month": by_month,
-        "expenses_by_category": expenses_by_category,
-    }
-
-
-@api_router.get("/vendor/profit-loss")
-async def vendor_profit_loss(
-    month: Optional[str] = Query(None),
-    wedding_id: Optional[str] = Query(None),
-    authorization: str = Header(None),
-):
-    user = await get_vendor_user(authorization)
-    vendor = await _ensure_vendor_profile(user)
-    report_month = _report_month(month)
-    if wedding_id:
-        await _get_vendor_wedding(wedding_id, vendor["id"])
-    return await _vendor_profit_loss_payload(vendor["id"], report_month, wedding_id)
 
 
 # ================= WEDDING BUDGET & PAYMENTS =================
@@ -1873,263 +1704,6 @@ async def vendor_delete_wedding_payment(
         raise HTTPException(status_code=404, detail="Payment not found")
 
     return {"success": True}
-
-
-# ================= WEDDING INVOICES & RECEIPTS =================
-
-def _invoice_status(total_amount: float, paid_amount: float, due_date: str) -> str:
-    balance = max(round(total_amount - paid_amount, 2), 0)
-    if balance <= 0:
-        return "paid"
-    if due_date:
-        try:
-            due = datetime.fromisoformat(str(due_date).replace("Z", "+00:00")).date()
-            if due < datetime.now(timezone.utc).date():
-                return "overdue"
-        except (TypeError, ValueError):
-            pass
-    return "partial" if paid_amount > 0 else "unpaid"
-
-
-def _invoice_response(invoice: dict) -> dict:
-    if not invoice:
-        return {}
-    result = {key: value for key, value in invoice.items() if key != "_id"}
-    result.setdefault("payments", [])
-    result["line_items"] = result.get("line_items") or []
-    result["total_amount"] = round(float(result.get("total_amount") or 0), 2)
-    result["paid_amount"] = round(float(result.get("paid_amount") or 0), 2)
-    result["balance_amount"] = round(
-        max(result["total_amount"] - result["paid_amount"], 0), 2
-    )
-    result["status"] = _invoice_status(
-        result["total_amount"], result["paid_amount"], result.get("due_date") or ""
-    )
-    return result
-
-
-def _calculate_invoice(payload: WeddingInvoiceIn) -> dict:
-    line_items = []
-    subtotal = 0.0
-    for item in payload.line_items or []:
-        description = (item.description or "").strip()
-        quantity = float(item.quantity)
-        unit_price = float(item.unit_price)
-        if not description:
-            continue
-        if quantity <= 0 or unit_price < 0:
-            raise HTTPException(
-                status_code=400,
-                detail="Each invoice line needs a description, positive quantity, and non-negative price.",
-            )
-        amount = round(quantity * unit_price, 2)
-        subtotal += amount
-        line_items.append({
-            "description": description[:300],
-            "quantity": quantity,
-            "unit": (item.unit or "service").strip()[:40] or "service",
-            "unit_price": round(unit_price, 2),
-            "amount": amount,
-        })
-
-    if not line_items:
-        raise HTTPException(status_code=400, detail="Add at least one valid invoice line item.")
-
-    discount_type = (payload.discount_type or "amount").strip().lower()
-    if discount_type not in {"amount", "percent"}:
-        discount_type = "amount"
-    discount_value = max(float(payload.discount_value or 0), 0)
-    discount_amount = (
-        subtotal * min(discount_value, 100) / 100
-        if discount_type == "percent"
-        else min(discount_value, subtotal)
-    )
-    taxable_amount = max(subtotal - discount_amount, 0)
-    tax_percent = min(max(float(payload.tax_percent or 0), 0), 100)
-    tax_amount = taxable_amount * tax_percent / 100
-    total_amount = round(taxable_amount + tax_amount, 2)
-
-    return {
-        "title": (payload.title or "Invoice").strip()[:160] or "Invoice",
-        "client_name": (payload.client_name or "").strip()[:160],
-        "issue_date": (payload.issue_date or "").strip(),
-        "due_date": (payload.due_date or "").strip(),
-        "line_items": line_items,
-        "discount_type": discount_type,
-        "discount_value": round(discount_value, 2),
-        "discount_amount": round(discount_amount, 2),
-        "tax_percent": round(tax_percent, 2),
-        "tax_amount": round(tax_amount, 2),
-        "subtotal": round(subtotal, 2),
-        "total_amount": total_amount,
-        "terms": (payload.terms or "").strip()[:4000],
-        "notes": (payload.notes or "").strip()[:4000],
-    }
-
-
-@api_router.get("/vendor/weddings/{wedding_id}/invoices")
-async def vendor_get_wedding_invoices(
-    wedding_id: str,
-    authorization: str = Header(None),
-):
-    user = await get_vendor_user(authorization)
-    vendor = await _ensure_vendor_profile(user)
-    await _get_vendor_wedding(wedding_id, vendor["id"])
-
-    invoices = await db.vendor_wedding_invoices.find(
-        {"wedding_id": wedding_id, "vendor_id": vendor["id"]},
-        {"_id": 0},
-    ).sort("created_at", -1).to_list(500)
-    return {"invoices": [_invoice_response(item) for item in invoices]}
-
-
-@api_router.post("/vendor/weddings/{wedding_id}/invoices")
-async def vendor_create_wedding_invoice(
-    wedding_id: str,
-    payload: WeddingInvoiceIn,
-    authorization: str = Header(None),
-):
-    user = await get_vendor_user(authorization)
-    vendor = await _ensure_vendor_profile(user)
-    wedding = await _get_vendor_wedding(wedding_id, vendor["id"])
-    calculated = _calculate_invoice(payload)
-
-    now = datetime.now(timezone.utc).isoformat()
-    invoice_count = await db.vendor_wedding_invoices.count_documents(
-        {"vendor_id": vendor["id"]}
-    )
-    invoice = {
-        "id": str(uuid.uuid4()),
-        "invoice_number": f"WED-{datetime.now(timezone.utc).strftime('%Y%m')}-{invoice_count + 1:04d}",
-        "wedding_id": wedding_id,
-        "vendor_id": vendor["id"],
-        "wedding_name": wedding.get("name") or wedding.get("wedding_name") or "",
-        **calculated,
-        "payments": [],
-        "paid_amount": 0.0,
-        "balance_amount": calculated["total_amount"],
-        "status": _invoice_status(calculated["total_amount"], 0, calculated["due_date"]),
-        "created_at": now,
-        "updated_at": now,
-    }
-    await db.vendor_wedding_invoices.insert_one(invoice.copy())
-    return _invoice_response(invoice)
-
-
-@api_router.put("/vendor/weddings/{wedding_id}/invoices/{invoice_id}")
-async def vendor_update_wedding_invoice(
-    wedding_id: str,
-    invoice_id: str,
-    payload: WeddingInvoiceIn,
-    authorization: str = Header(None),
-):
-    user = await get_vendor_user(authorization)
-    vendor = await _ensure_vendor_profile(user)
-    await _get_vendor_wedding(wedding_id, vendor["id"])
-    existing = await db.vendor_wedding_invoices.find_one(
-        {"id": invoice_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
-        {"_id": 0},
-    )
-    if not existing:
-        raise HTTPException(status_code=404, detail="Invoice not found")
-
-    calculated = _calculate_invoice(payload)
-    paid_amount = round(float(existing.get("paid_amount") or 0), 2)
-    if calculated["total_amount"] < paid_amount:
-        raise HTTPException(
-            status_code=400,
-            detail="Invoice total cannot be less than payments already recorded.",
-        )
-    updates = {
-        **calculated,
-        "balance_amount": round(calculated["total_amount"] - paid_amount, 2),
-        "status": _invoice_status(calculated["total_amount"], paid_amount, calculated["due_date"]),
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    }
-    await db.vendor_wedding_invoices.update_one(
-        {"id": invoice_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
-        {"$set": updates},
-    )
-    updated = await db.vendor_wedding_invoices.find_one(
-        {"id": invoice_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
-        {"_id": 0},
-    )
-    return _invoice_response(updated)
-
-
-@api_router.delete("/vendor/weddings/{wedding_id}/invoices/{invoice_id}")
-async def vendor_delete_wedding_invoice(
-    wedding_id: str,
-    invoice_id: str,
-    authorization: str = Header(None),
-):
-    user = await get_vendor_user(authorization)
-    vendor = await _ensure_vendor_profile(user)
-    await _get_vendor_wedding(wedding_id, vendor["id"])
-    result = await db.vendor_wedding_invoices.delete_one(
-        {"id": invoice_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]}
-    )
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Invoice not found")
-    return {"success": True}
-
-
-@api_router.post("/vendor/weddings/{wedding_id}/invoices/{invoice_id}/payments")
-async def vendor_add_invoice_payment(
-    wedding_id: str,
-    invoice_id: str,
-    payload: WeddingInvoicePaymentIn,
-    authorization: str = Header(None),
-):
-    user = await get_vendor_user(authorization)
-    vendor = await _ensure_vendor_profile(user)
-    await _get_vendor_wedding(wedding_id, vendor["id"])
-    invoice = await db.vendor_wedding_invoices.find_one(
-        {"id": invoice_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
-        {"_id": 0},
-    )
-    if not invoice:
-        raise HTTPException(status_code=404, detail="Invoice not found")
-
-    amount = round(float(payload.amount), 2)
-    if amount <= 0:
-        raise HTTPException(status_code=400, detail="Payment amount must be greater than zero.")
-    balance = round(
-        float(invoice.get("total_amount") or 0) - float(invoice.get("paid_amount") or 0), 2
-    )
-    if amount > balance + 0.01:
-        raise HTTPException(status_code=400, detail="Payment cannot exceed the invoice's outstanding balance.")
-
-    now = datetime.now(timezone.utc).isoformat()
-    payments = invoice.get("payments") or []
-    receipt_number = f"REC-{datetime.now(timezone.utc).strftime('%Y%m')}-{len(payments) + 1:04d}"
-    receipt = {
-        "id": str(uuid.uuid4()),
-        "receipt_number": receipt_number,
-        "amount": amount,
-        "payment_date": (payload.payment_date or "").strip(),
-        "payment_method": (payload.payment_method or "Other").strip()[:60] or "Other",
-        "notes": (payload.notes or "").strip()[:1000],
-        "created_at": now,
-    }
-    payments.append(receipt)
-    paid_amount = round(float(invoice.get("paid_amount") or 0) + amount, 2)
-    updates = {
-        "payments": payments,
-        "paid_amount": paid_amount,
-        "balance_amount": round(max(float(invoice.get("total_amount") or 0) - paid_amount, 0), 2),
-        "status": _invoice_status(float(invoice.get("total_amount") or 0), paid_amount, invoice.get("due_date") or ""),
-        "updated_at": now,
-    }
-    await db.vendor_wedding_invoices.update_one(
-        {"id": invoice_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
-        {"$set": updates},
-    )
-    updated = await db.vendor_wedding_invoices.find_one(
-        {"id": invoice_id, "wedding_id": wedding_id, "vendor_id": vendor["id"]},
-        {"_id": 0},
-    )
-    return {"success": True, "receipt": receipt, "invoice": _invoice_response(updated)}
 
 
 
@@ -3108,127 +2682,23 @@ async def marketplace_vendors(
     category: Optional[str] = None,
     search: Optional[str] = None,
 ):
-    """Search WEDORA vendor profiles and public web listings.
-
-    Public search uses Tavily's web search endpoint. TAVILY_API_KEY is optional
-    for keyless trials, but configuring a key is recommended for reliable use.
-    """
     query = {}
-    if category:
-        query["category"] = {"$regex": re.escape(category), "$options": "i"}
     if city:
         query["city"] = {"$regex": re.escape(city), "$options": "i"}
+    if category:
+        query["category"] = {"$regex": re.escape(category), "$options": "i"}
     if search:
         query["$or"] = [
             {"business_name": {"$regex": re.escape(search), "$options": "i"}},
             {"category": {"$regex": re.escape(search), "$options": "i"}},
             {"city": {"$regex": re.escape(search), "$options": "i"}},
-            {"description": {"$regex": re.escape(search), "$options": "i"}},
         ]
 
-    registered = await db.vendors.find(
-        query, {"_id": 0, "password_hash": 0}
+    vendors = await db.vendors.find(query, {"_id": 0, "password_hash": 0}).sort(
+        "created_at", -1
     ).to_list(200)
-    registered.sort(
-        key=lambda vendor: (
-            str(vendor.get("plan", vendor.get("subscription_plan", ""))).lower()
-            not in {"pro", "premium", "platinum"},
-            str(vendor.get("created_at", "")),
-        )
-    )
 
-    # Convert the selected filters into a focused public-web query. Explicit
-    # city/category filters are included so Jaipur searches do not return India-wide results.
-    terms = [str(search or "").strip(), str(category or "").strip()]
-    terms = [term for term in terms if term]
-    if not terms:
-        terms = ["wedding vendors"]
-    web_query = " ".join(dict.fromkeys(terms))
-    if city:
-        web_query += f" in {city}, India"
-    else:
-        web_query += " in India"
-    web_query += " wedding business contact website"
-
-    public_vendors = []
-    sources = []
-    web_error = None
-    try:
-        tavily_key = (os.environ.get("TAVILY_API_KEY") or "").strip()
-        headers = {"Content-Type": "application/json"}
-        if tavily_key:
-            headers["Authorization"] = f"Bearer {tavily_key}"
-        async with httpx.AsyncClient(timeout=20.0) as http:
-            response = await http.post(
-                "https://api.tavily.com/search",
-                headers=headers,
-                json={
-                    "query": web_query,
-                    "search_depth": "basic",
-                    "topic": "general",
-                    "max_results": 10,
-                    "include_answer": False,
-                    "include_raw_content": False,
-                    "country": "india",
-                },
-            )
-            response.raise_for_status()
-            web_data = response.json()
-
-        for index, item in enumerate(web_data.get("results") or []):
-            title = str(item.get("title") or "Wedding Vendor Listing").strip()
-            url = str(item.get("url") or "").strip()
-            content = str(item.get("content") or "").strip()
-            if not url:
-                continue
-            # Search snippets are not verified business records; label them as
-            # public web listings and avoid fabricating phone numbers or ratings.
-            public_vendors.append({
-                "id": f"web-{index}-{uuid.uuid5(uuid.NAMESPACE_URL, url).hex[:12]}",
-                "name": title,
-                "business_name": title,
-                "category": category or "Wedding Vendor",
-                "city": city or "India",
-                "description": content[:700] or "Public web result. Open the source to view business details.",
-                "website": url,
-                "website_url": url,
-                "source_url": url,
-                "source_name": "Public web search",
-                "verified": False,
-                "wedora_verified": False,
-                "public_listing": True,
-                "listing_type": "web",
-                "plan": "",
-            })
-            sources.append({"title": title, "url": url})
-    except Exception as exc:
-        logging.warning("Public vendor web search unavailable: %s", exc)
-        web_error = "Public web search is temporarily unavailable. Showing registered WEDORA vendors where available."
-
-    # Keep WEDORA profiles first; append deduplicated public listings.
-    known_urls = {
-        str(v.get("website") or v.get("website_url") or v.get("source_url") or "").lower().rstrip("/")
-        for v in registered
-    }
-    known_names = {str(v.get("business_name") or v.get("name") or "").lower().strip() for v in registered}
-    merged = list(registered)
-    for vendor in public_vendors:
-        url_key = str(vendor.get("website") or "").lower().rstrip("/")
-        name_key = str(vendor.get("name") or "").lower().strip()
-        if url_key in known_urls or name_key in known_names:
-            continue
-        merged.append(vendor)
-        known_urls.add(url_key)
-        known_names.add(name_key)
-
-    return {
-        "vendors": merged,
-        "sources": sources,
-        "total": len(merged),
-        "registered_count": len(registered),
-        "web_count": len(merged) - len(registered),
-        "web_search_error": web_error,
-    }
+    return {"vendors": vendors}
 
 
 @api_router.get("/marketplace/vendors/{slug}")
@@ -3269,27 +2739,68 @@ async def marketplace_create_lead(payload: dict):
     vendor_id = payload.get("vendor_id")
     slug = payload.get("vendor_slug") or payload.get("slug")
 
-    if not vendor_id and slug:
-        vendor = await db.vendors.find_one({"slug": slug}, {"_id": 0, "id": 1})
-        vendor_id = vendor.get("id") if vendor else None
+    vendor = None
+    if vendor_id:
+        vendor = await db.vendors.find_one({"id": vendor_id}, {"_id": 0})
+    elif slug:
+        vendor = await db.vendors.find_one({"slug": slug}, {"_id": 0})
 
-    if not vendor_id:
-        raise HTTPException(status_code=400, detail="Vendor is required")
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
 
+    # The public enquiry endpoint is PRO-only. This check is deliberately
+    # enforced on the backend so the restriction cannot be bypassed by
+    # calling the API directly.
+    if not _vendor_plan_details(vendor.get("plan", "free")).get("lead_access", False):
+        raise HTTPException(
+            status_code=403,
+            detail="This vendor is not accepting client enquiries on WEDORA FREE. Client enquiries are available on WEDORA PRO.",
+        )
+
+    name = str(payload.get("name") or "").strip()
+    email = str(payload.get("email") or "").strip()
+    phone = str(payload.get("phone") or "").strip()
+
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required")
+    if not phone:
+        raise HTTPException(status_code=400, detail="Phone is required")
+
+    now = datetime.now(timezone.utc).isoformat()
     lead = {
         "id": str(uuid.uuid4()),
-        "vendor_id": vendor_id,
-        "name": payload.get("name", ""),
-        "email": payload.get("email", ""),
-        "phone": payload.get("phone", ""),
-        "message": payload.get("message", ""),
-        "event_date": payload.get("event_date", ""),
-        "city": payload.get("city", ""),
+        "vendor_id": vendor["id"],
+        "vendor_slug": vendor.get("slug"),
+        "name": name,
+        "email": email,
+        "phone": phone,
+        "message": str(payload.get("message") or "").strip(),
+        "event_date": str(payload.get("event_date") or payload.get("wedding_date") or "").strip(),
+        "wedding_date": str(payload.get("wedding_date") or payload.get("event_date") or "").strip(),
+        "city": str(payload.get("city") or "").strip(),
+        "guest_count": payload.get("guest_count"),
+        "budget": str(payload.get("budget") or "").strip(),
+        "functions": str(payload.get("functions") or "").strip(),
+        "required_service": str(payload.get("required_service") or vendor.get("category") or "").strip(),
+        "theme": str(payload.get("theme") or "").strip(),
         "status": "new",
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": now,
+        "updated_at": now,
     }
 
     await db.vendor_leads.insert_one(lead.copy())
+
+    # Keep the existing analytics event in sync with successful enquiries.
+    await db.vendor_events.insert_one({
+        "id": str(uuid.uuid4()),
+        "vendor_id": vendor["id"],
+        "slug": vendor.get("slug"),
+        "event": "contact_request",
+        "created_at": now,
+    })
+
     return lead
 
 
@@ -3301,146 +2812,118 @@ async def get_venues():
         {"id": "2", "name": "Rambagh Palace", "city": "Jaipur", "capacity": "800"}
     ]
 
-
-@api_router.post("/venues/search")
-async def search_venues(payload: dict):
-    """Search WEDORA venue records and public web listings.
-
-    Natural-language requirements are converted into a focused web query.
-    Public results are clearly marked as unverified; budget, capacity and room
-    details are only shown when present in the source snippet.
-    """
-    raw_query = str(
-        payload.get("query") or payload.get("search") or payload.get("search_query")
-        or payload.get("keyword") or payload.get("q") or ""
-    ).strip()
-    city = str(payload.get("city") or payload.get("location") or "").strip()
-    category = str(payload.get("category") or payload.get("venue_type") or payload.get("type") or "").strip()
-    guests = payload.get("guests") or payload.get("capacity")
-    rooms = payload.get("rooms") or payload.get("room_count")
-    budget = payload.get("budget") or payload.get("max_budget")
-
-    # Use the natural-language query when no structured fields were extracted.
-    constraints = []
-    if category:
-        constraints.append(f"{category} wedding venue")
-    else:
-        constraints.append("wedding venue")
-    if city:
-        constraints.append(f"in {city}, India")
-    else:
-        constraints.append("in India")
-    if guests:
-        constraints.append(f"for {guests} guests")
-    if rooms:
-        constraints.append(f"hotel resort with {rooms} rooms")
-    if budget:
-        amount = int(float(budget)) if str(budget).replace('.', '', 1).isdigit() else budget
-        constraints.append(f"under budget ₹{amount}")
-    if raw_query:
-        constraints.append(raw_query)
-    web_query = " ".join(dict.fromkeys(constraints)) + " venue address website wedding"
-
-    registered = []
-    try:
-        registered = await db.venues.find({}, {"_id": 0}).limit(500).to_list(length=500)
-    except Exception as exc:
-        logging.warning("Venue collection lookup failed: %s", exc)
-
-    public_venues = []
-    sources = []
-    web_error = None
-    try:
-        tavily_key = (os.environ.get("TAVILY_API_KEY") or "").strip()
-        headers = {"Content-Type": "application/json"}
-        if tavily_key:
-            headers["Authorization"] = f"Bearer {tavily_key}"
-        async with httpx.AsyncClient(timeout=20.0) as http:
-            response = await http.post(
-                "https://api.tavily.com/search",
-                headers=headers,
-                json={
-                    "query": web_query,
-                    "search_depth": "basic",
-                    "topic": "general",
-                    "max_results": 20,
-                    "include_answer": False,
-                    "include_raw_content": False,
-                    "country": "india",
-                },
-            )
-            response.raise_for_status()
-            web_data = response.json()
-        for index, item in enumerate(web_data.get("results") or []):
-            title = str(item.get("title") or "Wedding Venue Listing").strip()
-            url = str(item.get("url") or "").strip()
-            content = str(item.get("content") or "").strip()
-            if not url:
-                continue
-            public_venues.append({
-                "id": f"web-venue-{index}-{uuid.uuid5(uuid.NAMESPACE_URL, url).hex[:12]}",
-                "name": title,
-                "city": city or "India",
-                "location": city or "India",
-                "category": category or "Venue",
-                "type": category or "Venue",
-                "description": content[:900] or "Public web result. Open the source to confirm venue details.",
-                "source_url": url,
-                "website": url,
-                "source_name": "Public web search",
-                "status": "Public listing — unverified",
-                "verified": False,
-                "public_listing": True,
-                "listing_type": "web",
-                "capacity": "Not listed",
-                "rooms": "Not listed",
-                "starting_price": 0,
-                "price_label": "Check source",
-            })
-            sources.append({"title": title, "url": url})
-    except Exception as exc:
-        logging.warning("Public venue web search unavailable: %s", exc)
-        web_error = "Public web search is temporarily unavailable. Showing registered WEDORA venues where available."
-
-    def matches_city(venue):
-        if not city:
-            return True
-        venue_city = str(venue.get("city") or venue.get("location") or venue.get("address") or "").lower()
-        return city.lower() in venue_city
-
-    # City-filter registered records; public web search is already city-scoped.
-    registered = [v for v in registered if matches_city(v)]
-    seen = {str(v.get("source_url") or v.get("website") or "").lower().rstrip("/") for v in registered}
-    seen_names = {str(v.get("name") or v.get("business_name") or "").lower().strip() for v in registered}
-    merged = list(registered)
-    for venue in public_venues:
-        url_key = str(venue.get("source_url") or "").lower().rstrip("/")
-        name_key = str(venue.get("name") or "").lower().strip()
-        if url_key in seen or name_key in seen_names:
-            continue
-        merged.append(venue)
-        seen.add(url_key)
-        seen_names.add(name_key)
-
-    return {
-        "success": True,
-        "venues": merged,
-        "results": merged,
-        "sources": sources,
-        "total": len(merged),
-        "registered_count": len(registered),
-        "web_count": len(merged) - len(registered),
-        "web_search_error": web_error,
-        "search_query": web_query,
-        "filters": {"city": city or None, "venue_type": category or None, "guests": guests, "rooms": rooms, "budget": budget},
-    }
-
 @api_router.get("/vendors")
 async def get_vendors():
     return [
         {"id": "1", "name": "Royal Photography", "category": "Photography"},
         {"id": "2", "name": "Shaadi Caterers", "category": "Catering"}
     ]
+
+# ================= PRO VENDOR BUSINESS ASSISTANT =================
+
+class VendorBusinessAIIn(BaseModel):
+    session_id: Optional[str] = None
+    message: str
+
+
+def _require_business_ai_plan(vendor: dict):
+    plan = str(vendor.get("plan") or "free").strip().lower()
+    if not _vendor_plan_details(plan).get("ai_profile", False):
+        raise HTTPException(
+            status_code=403,
+            detail="Business Assistant is available on WEDORA PRO.",
+        )
+    return plan
+
+
+@api_router.post("/vendor/business-ai")
+async def vendor_business_ai(
+    payload: VendorBusinessAIIn,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    plan = _require_business_ai_plan(vendor)
+
+    expected_prefix = f"vendor-business-ai-{vendor['id']}"
+    session_id = payload.session_id or expected_prefix
+    if not session_id.startswith(expected_prefix):
+        raise HTTPException(status_code=403, detail="Invalid Business Assistant session.")
+
+    message = str(payload.message or "").strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Please enter a question.")
+    if len(message) > 6000:
+        raise HTTPException(status_code=413, detail="Message is too long. Please keep it under 6,000 characters.")
+
+    await db.chat_messages.insert_one(
+        ChatMessage(session_id=session_id, role="user", content=message).model_dump()
+    )
+    history = await db.chat_messages.find(
+        {"session_id": session_id}, {"_id": 0}
+    ).sort("timestamp", 1).to_list(200)
+    prior = history[:-1] if history and history[-1].get("role") == "user" else history
+    context_prefix = ""
+    if prior:
+        recent = prior[-8:]
+        context_prefix = "Recent conversation:\\n" + "\\n".join(
+            f"{'Vendor' if item.get('role') == 'user' else 'WEDORA'}: {item.get('content', '')}"
+            for item in recent
+        ) + "\\n\\nCurrent request:\\n"
+
+    business_name = str(vendor.get("business_name") or vendor.get("name") or "Wedding Vendor")
+    category = str(vendor.get("category") or "Wedding Vendor")
+    city = str(vendor.get("city") or "Not specified")
+    system_prompt = f"""You are WEDORA Business Assistant, an operational and creative business aide for a subscribed wedding vendor.
+
+Vendor business: {business_name}
+Vendor category: {category}
+Business city: {city}
+
+Help the vendor with business operations, client communication, quotation wording, service packaging,
+pricing frameworks, marketing copy, social media planning, lead follow-up, workflow design,
+wedding coordination, and category-specific professional tasks. Adapt advice to the vendor's actual
+category; do not assume they are a decorator. Use any dashboard context provided in the user's
+message, but do not claim to have accessed live records beyond that context. Never invent business
+facts, client details, prices, or legal/tax requirements. State assumptions clearly and ask for missing
+information when necessary. Keep answers practical, clear, and suitable for a small business.
+"""
+
+    try:
+        chat = LlmChat(
+            api_key=GEMINI_API_KEY,
+            session_id=session_id,
+            system_message=system_prompt,
+        )
+        reply = await chat.send_message(UserMessage(text=context_prefix + message))
+        reply_text = reply if isinstance(reply, str) else str(reply)
+    except Exception as error:
+        logging.exception("Vendor Business Assistant failed")
+        raise HTTPException(status_code=502, detail="Business Assistant is temporarily unavailable. Please try again.")
+
+    await db.chat_messages.insert_one(
+        ChatMessage(session_id=session_id, role="assistant", content=reply_text).model_dump()
+    )
+    return {"session_id": session_id, "reply": reply_text, "plan": plan}
+
+
+@api_router.get("/vendor/business-ai/history/{session_id}")
+async def vendor_business_ai_history(
+    session_id: str,
+    authorization: str = Header(None),
+):
+    user = await get_vendor_user(authorization)
+    vendor = await _ensure_vendor_profile(user)
+    plan = _require_business_ai_plan(vendor)
+    expected_prefix = f"vendor-business-ai-{vendor['id']}"
+    if not session_id.startswith(expected_prefix):
+        raise HTTPException(status_code=403, detail="Invalid Business Assistant session.")
+
+    messages = await db.chat_messages.find(
+        {"session_id": session_id}, {"_id": 0}
+    ).sort("timestamp", 1).to_list(500)
+    return {"session_id": session_id, "messages": messages, "plan": plan}
+
 
 # ================= HEALTH =================
 @api_router.get("/")
