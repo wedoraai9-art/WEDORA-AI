@@ -56,6 +56,29 @@ const TABS = [
   { id: 'settings', label: 'Settings', icon: SettingsIcon },
 ];
 
+const renderBusinessAiMarkdown = (content) => {
+  const inline = (text, keyPrefix) => {
+    const parts = String(text || '').split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, index) =>
+      part.startsWith('**') && part.endsWith('**')
+        ? <strong key={`${keyPrefix}-b-${index}`}>{part.slice(2, -2)}</strong>
+        : part
+    );
+  };
+
+  return String(content || '').split(/\r?\n/).map((line, index) => {
+    const trimmed = line.trim();
+    if (!trimmed || /^---+$/.test(trimmed)) return <div key={`line-${index}`} className="h-2" />;
+    if (/^#{1,3}\s+/.test(trimmed)) {
+      return <p key={`line-${index}`} className="font-semibold text-[#332B3E] mt-3">{inline(trimmed.replace(/^#{1,3}\s+/, ''), `h-${index}`)}</p>;
+    }
+    if (/^[-*]\s+/.test(trimmed)) {
+      return <p key={`line-${index}`} className="pl-3 before:content-['•'] before:-ml-3 before:mr-2">{inline(trimmed.replace(/^[-*]\s+/, ''), `li-${index}`)}</p>;
+    }
+    return <p key={`line-${index}`}>{inline(line, `p-${index}`)}</p>;
+  });
+};
+
 const StatCard = ({ icon: Icon, label, value, testid }) => (
   <div className="pearl-card p-5" data-testid={testid}>
     <div className="flex items-center gap-2 text-[#988FA6] text-xs uppercase tracking-widest mb-2">
@@ -490,7 +513,17 @@ const VendorDashboard = () => {
         const messages = Array.isArray(response.data?.messages)
           ? response.data.messages
           : [];
-        setBusinessAiMessages(messages.map(({ role, content }) => ({ role, content })));
+        setBusinessAiMessages(messages.map(({ role, content }) => {
+          const savedContent = String(content || '');
+          const requestMarker = '\n\nUSER REQUEST:\n';
+          const requestIndex = savedContent.lastIndexOf(requestMarker);
+          return {
+            role,
+            content: role === 'user' && requestIndex >= 0
+              ? savedContent.slice(requestIndex + requestMarker.length).trim()
+              : savedContent,
+          };
+        }));
       } catch (error) {
         if (!cancelled) {
           setBusinessAiMessages([]);
@@ -534,7 +567,8 @@ const VendorDashboard = () => {
     try {
       const response = await authAxios.post('/vendor/business-ai', {
         session_id: getBusinessAiSessionId(),
-        message: `BUSINESS CONTEXT:\n${context}\n\nUSER REQUEST:\n${message}`,
+        message,
+        business_context: context,
       });
       const reply = response.data?.reply || 'I could not generate a response right now.';
       setBusinessAiMessages((current) => [...current, { role: 'assistant', content: reply }]);
@@ -786,7 +820,7 @@ const VendorDashboard = () => {
 
   return (
     <div
-      className="min-h-screen silky-bg pt-28 pb-16 px-4"
+      className="min-h-screen silky-bg pt-36 pb-16 px-4"
       data-testid="vendor-dashboard"
     >
       <div className="max-w-6xl mx-auto">
@@ -1303,7 +1337,7 @@ const VendorDashboard = () => {
 
         {/* PRO Business Assistant */}
         {tab === 'business-ai' && vendor && (
-          <section className="pearl-card p-5 md:p-8" data-testid="business-ai-tab">
+          <section className="pearl-card p-5 md:p-8 scroll-mt-32" data-testid="business-ai-tab">
             <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
               <div>
                 <p className="text-xs uppercase tracking-widest text-[#988FA6]">WEDORA PRO · AI WORKSPACE</p>
@@ -1347,7 +1381,7 @@ const VendorDashboard = () => {
                       <p className="text-[10px] uppercase tracking-wider opacity-60 mb-1">
                         {message.role === 'user' ? 'You' : 'WEDORA AI'}
                       </p>
-                      {message.content}
+                      {message.role === 'assistant' ? renderBusinessAiMarkdown(message.content) : message.content}
                     </div>
                   ))}
                   {businessAiLoading && (
