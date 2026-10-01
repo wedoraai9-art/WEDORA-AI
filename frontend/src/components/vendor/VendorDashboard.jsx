@@ -47,6 +47,7 @@ const TABS = [
   { id: 'weddings', label: 'Weddings', icon: CalendarDays },
   { id: 'calendar', label: 'Calendar', icon: CalendarDays },
   { id: 'profit-loss', label: 'Profit & Loss', icon: Wallet },
+  { id: 'business-ai', label: 'Business Assistant', icon: Sparkles },
   { id: 'profile', label: 'My Profile', icon: User },
   { id: 'portfolio', label: 'Portfolio', icon: Images },
   { id: 'leads', label: 'Leads', icon: Inbox },
@@ -440,6 +441,10 @@ const VendorDashboard = () => {
   const [dashboardNotifications, setDashboardNotifications] = useState([]);
   const [dashboardInvoices, setDashboardInvoices] = useState([]);
   const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [businessAiMessages, setBusinessAiMessages] = useState([]);
+  const [businessAiInput, setBusinessAiInput] = useState('');
+  const [businessAiLoading, setBusinessAiLoading] = useState(false);
+  const [businessAiError, setBusinessAiError] = useState('');
   const [busy, setBusy] = useState(true);
   const previousNewLeads = useRef(null);
   const hasProAccess =
@@ -468,6 +473,81 @@ const VendorDashboard = () => {
       navigate('/vendor/auth');
     }
   }, [user, loading, navigate]);
+
+  const getBusinessAiSessionId = () =>
+    `vendor-business-ai-${vendor?.id || user?.id || 'vendor'}`;
+
+  useEffect(() => {
+    if (tab !== 'business-ai' || !vendor?.id || !hasProAccess) return undefined;
+    let cancelled = false;
+    const loadBusinessAiHistory = async () => {
+      setBusinessAiError('');
+      try {
+        const response = await authAxios.get(
+          `/vendor/business-ai/history/${getBusinessAiSessionId()}`
+        );
+        if (cancelled) return;
+        const messages = Array.isArray(response.data?.messages)
+          ? response.data.messages
+          : [];
+        setBusinessAiMessages(messages.map(({ role, content }) => ({ role, content })));
+      } catch (error) {
+        if (!cancelled) {
+          setBusinessAiMessages([]);
+          setBusinessAiError(
+            error?.response?.data?.detail || 'Could not load your Business Assistant conversation.'
+          );
+        }
+      }
+    };
+    loadBusinessAiHistory();
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, vendor?.id, hasProAccess]);
+
+  const sendBusinessAiMessage = async () => {
+    const message = businessAiInput.trim();
+    if (!message || businessAiLoading) return;
+    if (!hasProAccess) {
+      setBusinessAiError('Business Assistant is available on WEDORA PRO.');
+      return;
+    }
+
+    const userMessage = { role: 'user', content: message };
+    const context = [
+      `Business name: ${vendor?.business_name || 'Not set'}`,
+      `Vendor category: ${vendor?.category || 'Wedding Vendor'}`,
+      `City: ${vendor?.city || 'Not set'}`,
+      `Active weddings: ${activeWeddings.length}`,
+      `Upcoming weddings: ${upcomingWeddings.length}`,
+      `Open leads: ${Number(stats?.new_leads || 0)}`,
+      `Outstanding invoice balance: ₹${Number(dashboardInvoiceDueSummary.outstanding || 0).toLocaleString('en-IN')}`,
+      `Overdue invoices: ${dashboardInvoiceDueSummary.overdue}`,
+      `Invoices due within 7 days: ${dashboardInvoiceDueSummary.dueSoon}`,
+    ].join('\n');
+
+    setBusinessAiMessages((current) => [...current, userMessage]);
+    setBusinessAiInput('');
+    setBusinessAiLoading(true);
+    setBusinessAiError('');
+    try {
+      const response = await authAxios.post('/vendor/business-ai', {
+        session_id: getBusinessAiSessionId(),
+        message: `BUSINESS CONTEXT:\n${context}\n\nUSER REQUEST:\n${message}`,
+      });
+      const reply = response.data?.reply || 'I could not generate a response right now.';
+      setBusinessAiMessages((current) => [...current, { role: 'assistant', content: reply }]);
+    } catch (error) {
+      setBusinessAiMessages((current) => current.filter((item) => item !== userMessage));
+      setBusinessAiInput(message);
+      setBusinessAiError(
+        error?.response?.data?.detail || 'WEDORA Business Assistant could not respond. Please try again.'
+      );
+    } finally {
+      setBusinessAiLoading(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -1219,6 +1299,111 @@ const VendorDashboard = () => {
               </div>
             )}
           </div>
+        )}
+
+        {/* PRO Business Assistant */}
+        {tab === 'business-ai' && vendor && (
+          <section className="pearl-card p-5 md:p-8" data-testid="business-ai-tab">
+            <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
+              <div>
+                <p className="text-xs uppercase tracking-widest text-[#988FA6]">WEDORA PRO · AI WORKSPACE</p>
+                <h2 className="font-display text-2xl md:text-3xl text-[#2D2638] mt-1">Business Assistant</h2>
+                <p className="text-sm text-[#6B617A] mt-2 max-w-2xl">
+                  Get practical help with client replies, quotations, marketing, business operations,
+                  wedding follow-ups and planning your next steps.
+                </p>
+              </div>
+              <span className="rounded-full px-3 py-1.5 text-xs bg-gradient-to-r from-[#C9B8FF]/50 to-[#F7B7D8]/50 text-[#4A4257]">
+                {vendor?.category || 'Wedding Vendor'}
+              </span>
+            </div>
+
+            {hasProAccess ? (
+              <>
+                <div className="rounded-2xl border border-[#E8DDF3] bg-white/65 p-4 mb-4">
+                  <p className="text-xs text-[#8B8194] mb-2">Business context used for this chat</p>
+                  <p className="text-sm text-[#4A4257]">
+                    {vendor?.business_name || 'Your business'} · {vendor?.city || 'City not set'} ·
+                    {' '}{activeWeddings.length} active weddings · {Number(stats?.new_leads || 0)} new leads
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-[#E8DDF3] bg-white/70 p-4 min-h-64 max-h-[480px] overflow-y-auto space-y-3" data-testid="business-ai-messages">
+                  {businessAiMessages.length === 0 && !businessAiLoading ? (
+                    <div className="py-10 text-center">
+                      <Sparkles className="w-8 h-8 mx-auto text-[#A78BCE] mb-3" />
+                      <p className="text-sm font-medium text-[#4A4257]">What would you like help with today?</p>
+                      <p className="text-xs text-[#8B8194] mt-2">Try: “Draft a polite follow-up for a client who has not confirmed the quotation.”</p>
+                    </div>
+                  ) : businessAiMessages.map((message, index) => (
+                    <div
+                      key={`${message.role}-${index}`}
+                      className={`max-w-[92%] rounded-2xl px-4 py-3 text-sm whitespace-pre-wrap ${
+                        message.role === 'user'
+                          ? 'ml-auto bg-gradient-to-r from-[#E9D9FF] to-[#F9D9E8] text-[#332B3E]'
+                          : 'mr-auto bg-white border border-[#E8DDF3] text-[#4A4257]'
+                      }`}
+                    >
+                      <p className="text-[10px] uppercase tracking-wider opacity-60 mb-1">
+                        {message.role === 'user' ? 'You' : 'WEDORA AI'}
+                      </p>
+                      {message.content}
+                    </div>
+                  ))}
+                  {businessAiLoading && (
+                    <p className="text-xs text-[#8B8194]" aria-live="polite">WEDORA is preparing a response…</p>
+                  )}
+                </div>
+
+                {businessAiError && (
+                  <p className="text-sm text-red-600 mt-3" role="alert">{businessAiError}</p>
+                )}
+
+                <form
+                  className="mt-4 flex flex-col sm:flex-row gap-3"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    sendBusinessAiMessage();
+                  }}
+                >
+                  <textarea
+                    value={businessAiInput}
+                    onChange={(event) => setBusinessAiInput(event.target.value)}
+                    placeholder="Ask about your business, clients, weddings, pricing or marketing…"
+                    rows={3}
+                    maxLength={4000}
+                    disabled={businessAiLoading}
+                    className="flex-1 rounded-2xl border border-[#DED0EE] bg-white/80 px-4 py-3 text-sm text-[#2D2638] outline-none focus:border-[#B99BE8] resize-y"
+                    data-testid="business-ai-input"
+                  />
+                  <button
+                    type="submit"
+                    disabled={businessAiLoading || !businessAiInput.trim()}
+                    className="glow-btn self-end sm:self-stretch !px-6 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                    data-testid="business-ai-send"
+                  >
+                    <Sparkles className="w-4 h-4" /> Send
+                  </button>
+                </form>
+                <p className="text-[11px] text-[#8B8194] mt-2">
+                  AI suggestions may need review before you send them to clients or use them for business decisions.
+                </p>
+              </>
+            ) : (
+              <div className="rounded-3xl border border-dashed border-[#C9B8FF]/60 bg-white/50 p-10 text-center">
+                <Sparkles className="w-8 h-8 mx-auto text-[#A78BCE] mb-3" />
+                <p className="text-sm text-[#6B617A] mb-4">Business Assistant is available to WEDORA PRO vendors.</p>
+                <button
+                  type="button"
+                  onClick={() => setTab('subscription')}
+                  className="glow-btn !py-2.5 !px-6 !text-sm"
+                  data-testid="business-ai-upgrade"
+                >
+                  View PRO Plan
+                </button>
+              </div>
+            )}
+          </section>
         )}
 
         {/* Subscription */}
