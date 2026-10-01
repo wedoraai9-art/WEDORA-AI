@@ -3086,7 +3086,7 @@ async def staff_task_update(task_id: str, payload: VendorStaffTaskUpdateIn, auth
     if not task:
         raise HTTPException(status_code=404, detail="Assigned task not found")
     updates = payload.model_dump(exclude_none=True)
-    if "status" in updates and updates["status"] not in {"todo", "in_progress", "done", "blocked"}:
+    if "status" in updates and updates["status"] not in {"todo", "in_progress", "done", "blocked", "completed", "cancelled", "canceled"}:
         raise HTTPException(status_code=422, detail="Invalid task status")
     if "description" in updates:
         updates["description"] = updates["description"][:2000]
