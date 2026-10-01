@@ -21,18 +21,19 @@ const styles = {
     color: COLORS.text,
   },
   header: {
-    position: "sticky",
-    top: 0,
-    zIndex: 5,
+    // Keep the staff controls below the global fixed navigation.
+    position: "relative",
+    top: "auto",
+    zIndex: 1,
     display: "flex",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     gap: 16,
     flexWrap: "wrap",
-    padding: "15px 5%",
-    background: "rgba(255,255,255,0.88)",
-    borderBottom: "1px solid rgba(230,220,240,0.8)",
-    backdropFilter: "blur(16px)",
+    padding: "120px 5% 0",
+    background: "transparent",
+    borderBottom: "none",
+    backdropFilter: "none",
   },
   brand: {
     fontSize: 17,
@@ -386,10 +387,6 @@ export default function StaffDashboard({
   return (
     <main style={styles.page}>
       <header style={styles.header}>
-        <div style={styles.brand}>
-          WEDORA <span style={styles.brandAI}>AI</span>
-        </div>
-
         <div style={styles.headerRight}>
           <span style={styles.user}>
             {name} · {role}
@@ -578,4 +575,3 @@ export default function StaffDashboard({
     </main>
   );
 }
-
