@@ -1458,9 +1458,31 @@ def _report_month(value: Optional[str]) -> str:
 
 
 def _record_month(value) -> str:
+    """Return YYYY-MM for ISO or day-first dates; preserve undated records."""
+    if isinstance(value, datetime):
+        return value.strftime("%Y-%m")
     raw = str(value or "").strip()
-    if len(raw) >= 7 and re.fullmatch(r"\d{4}-\d{2}.*", raw):
+    if not raw:
+        return "Undated"
+
+    # ISO date/time, including YYYY-MM-DD and YYYY-MM.
+    if re.match(r"^\d{4}-\d{2}", raw):
         return raw[:7]
+
+    # UI date format: DD-MM-YYYY.
+    match = re.match(r"^(\d{2})-(\d{2})-(\d{4})$", raw)
+    if match:
+        day, month_number, year = map(int, match.groups())
+        if 1 <= month_number <= 12 and 1 <= day <= 31:
+            return f"{year:04d}-{month_number:02d}"
+
+    # Common slash-separated day-first date.
+    match = re.match(r"^(\d{2})/(\d{2})/(\d{4})$", raw)
+    if match:
+        day, month_number, year = map(int, match.groups())
+        if 1 <= month_number <= 12 and 1 <= day <= 31:
+            return f"{year:04d}-{month_number:02d}"
+
     return "Undated"
 
 
@@ -1493,7 +1515,7 @@ async def _vendor_profit_loss_payload(vendor_id: str, month: str, wedding_id: Op
             "expenses_by_category": [],
         }
 
-    payments = await db.vendor_wedding_payments.find(
+    standalone_payments = await db.vendor_wedding_payments.find(
         {"vendor_id": vendor_id, "wedding_id": {"$in": wedding_ids}},
         {"_id": 0},
     ).to_list(5000)
@@ -1506,24 +1528,64 @@ async def _vendor_profit_loss_payload(vendor_id: str, month: str, wedding_id: Op
         {"_id": 0},
     ).to_list(5000)
 
-    monthly_payments = [p for p in payments if _record_month(p.get("payment_date")) == month]
-    monthly_expenses = [e for e in expenses if _record_month(e.get("expense_date")) == month]
+    # Invoice receipts are stored inside each invoice's `payments` array,
+    # not in vendor_wedding_payments. Include both sources in the report.
+    # Invoice receipts are not mirrored into the standalone payments
+    # collection by the current receipt endpoint, so this does not double-count
+    # payments created through the invoice receipt workflow.
+    income_records = []
+    for payment in standalone_payments:
+        income_records.append({
+            "wedding_id": payment.get("wedding_id"),
+            "amount": _report_amount(payment.get("amount")),
+            "payment_date": payment.get("payment_date"),
+            "payment_type": str(payment.get("payment_type") or "payment").lower(),
+        })
+
+    for invoice in invoices:
+        for receipt in invoice.get("payments") or []:
+            income_records.append({
+                "wedding_id": invoice.get("wedding_id"),
+                "amount": _report_amount(receipt.get("amount")),
+                "payment_date": receipt.get("payment_date"),
+                "payment_type": "payment",
+            })
+
+    monthly_payments = [
+        p for p in income_records
+        if _record_month(p.get("payment_date")) == month
+    ]
+    monthly_expenses = [
+        e for e in expenses
+        if _record_month(e.get("expense_date")) == month
+    ]
 
     def payment_value(payment):
         amount = _report_amount(payment.get("amount"))
-        return -amount if str(payment.get("payment_type") or "").lower() == "refund" else amount
+        return -amount if payment.get("payment_type") == "refund" else amount
 
     income = round(sum(payment_value(p) for p in monthly_payments), 2)
     expense_total = round(sum(_report_amount(e.get("amount")) for e in monthly_expenses), 2)
     invoice_balance_due = round(sum(
-        max(_report_amount(i.get("total_amount")) - _report_amount(i.get("paid_amount")), 0)
+        max(
+            _report_amount(i.get("balance_amount"))
+            if i.get("balance_amount") is not None
+            else _report_amount(i.get("total_amount")) - _report_amount(i.get("paid_amount")),
+            0,
+        )
         for i in invoices
     ), 2)
 
     by_wedding = []
     for current_id, wedding_name in wedding_map.items():
-        wedding_income = round(sum(payment_value(p) for p in monthly_payments if p.get("wedding_id") == current_id), 2)
-        wedding_expenses = round(sum(_report_amount(e.get("amount")) for e in monthly_expenses if e.get("wedding_id") == current_id), 2)
+        wedding_income = round(sum(
+            payment_value(p) for p in monthly_payments
+            if p.get("wedding_id") == current_id
+        ), 2)
+        wedding_expenses = round(sum(
+            _report_amount(e.get("amount")) for e in monthly_expenses
+            if e.get("wedding_id") == current_id
+        ), 2)
         if wedding_income or wedding_expenses:
             by_wedding.append({
                 "wedding_id": current_id,
@@ -1534,7 +1596,7 @@ async def _vendor_profit_loss_payload(vendor_id: str, month: str, wedding_id: Op
             })
 
     monthly_totals = {}
-    for payment in payments:
+    for payment in income_records:
         key = _record_month(payment.get("payment_date"))
         monthly_totals.setdefault(key, {"income": 0.0, "expenses": 0.0})
         monthly_totals[key]["income"] += payment_value(payment)
@@ -1571,7 +1633,6 @@ async def _vendor_profit_loss_payload(vendor_id: str, month: str, wedding_id: Op
         "by_month": by_month,
         "expenses_by_category": expenses_by_category,
     }
-
 
 @api_router.get("/vendor/profit-loss")
 async def vendor_profit_loss(
