@@ -173,20 +173,38 @@ const StaffLoginRoute = () => {
   }, [authLoading, user, navigate]);
 
   const handleLogin = async ({ email, password }) => {
+    if (loading) return;
+
     setLoading(true);
     setError('');
+
     try {
-      const result = await apiLogin(email, password);
-      const role = result?.user?.role;
+      // Authenticate, then refresh the shared auth context. Some login
+      // response shapes may omit the role; the route effect handles redirect
+      // once AuthContext has refreshed the signed-in user.
+      const result = await apiLogin(email.trim(), password);
+      const responseRole =
+        result?.user?.role ||
+        result?.role ||
+        result?.data?.user?.role ||
+        result?.data?.role;
+
       await refresh();
-      if (role === 'vendor_staff') navigate('/staff/dashboard', { replace: true });
-      else if (role === 'vendor') navigate('/vendor/dashboard', { replace: true });
-      else if (role === 'admin') navigate('/admin/dashboard', { replace: true });
-      else {
-        setError('This account does not have staff access.');
+
+      if (responseRole === 'vendor_staff') {
+        navigate('/staff/dashboard', { replace: true });
+      } else if (responseRole === 'vendor') {
+        navigate('/vendor/dashboard', { replace: true });
+      } else if (responseRole === 'admin') {
+        navigate('/admin/dashboard', { replace: true });
       }
     } catch (e) {
-      setError(fmtApiError(e?.response?.data?.detail, 'Unable to sign in. Check your email and password.'));
+      setError(
+        fmtApiError(
+          e?.response?.data?.detail,
+          'Unable to sign in. Check your email and password, then try again.'
+        )
+      );
     } finally {
       setLoading(false);
     }
