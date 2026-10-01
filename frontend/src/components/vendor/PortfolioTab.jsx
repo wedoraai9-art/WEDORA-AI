@@ -150,17 +150,32 @@ export const PortfolioTab = ({ vendor, planDetails, onSaved }) => {
 
   const openNewStudy = () => {
     setEditingId(null);
-    setForm({ ...emptyCaseStudy });
+    // Attach the first uploaded portfolio image by default so a new case
+    // study does not save with an empty image area unless the user removes it.
+    setForm({
+      ...emptyCaseStudy,
+      photos: portfolio.length > 0 ? [portfolio[0]] : [],
+    });
     setEditorOpen(true);
   };
 
   const openEditStudy = (study) => {
     setEditingId(study.id);
+    const savedPhotos = Array.isArray(study.photos)
+      ? study.photos.filter((photo) => typeof photo === 'string' && photo.trim())
+      : [];
     setForm({
       ...emptyCaseStudy,
       ...study,
       services: Array.isArray(study.services) ? study.services : [],
-      photos: Array.isArray(study.photos) ? study.photos : [],
+      // Preserve saved selections; for older photo-less studies, preselect
+      // the first uploaded image so the editor can immediately show a preview.
+      photos:
+        savedPhotos.length > 0
+          ? savedPhotos
+          : portfolio.length > 0
+            ? [portfolio[0]]
+            : [],
     });
     setEditorOpen(true);
   };
@@ -584,23 +599,41 @@ export const PortfolioTab = ({ vendor, planDetails, onSaved }) => {
                 className="overflow-hidden rounded-2xl border border-white/80 bg-white/65 shadow-sm"
                 data-testid={`case-study-${study.id}`}
               >
-                {Array.isArray(study.photos) && study.photos.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-1 bg-[#F4ECFC]">
-                    {study.photos.slice(0, 2).map((url, index) => (
-                      <img
-                        key={`${url}-${index}`}
-                        src={url}
-                        alt={`${study.title} ${index + 1}`}
-                        className="h-40 w-full object-cover"
-                        loading="lazy"
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex h-28 items-center justify-center bg-gradient-to-r from-[#F1E7FC] via-[#FCEAF2] to-[#E5F4FC]">
-                    <ImageIcon className="h-8 w-8 text-[#A88BD8]" />
-                  </div>
-                )}
+                {(() => {
+                  const studyPhotos = Array.isArray(study.photos)
+                    ? study.photos.filter(
+                        (photo) => typeof photo === 'string' && photo.trim()
+                      )
+                    : [];
+                  const displayPhotos =
+                    studyPhotos.length > 0
+                      ? studyPhotos
+                      : portfolio.length > 0
+                        ? [portfolio[0]]
+                        : [];
+
+                  return displayPhotos.length > 0 ? (
+                    <div
+                      className={`grid ${
+                        displayPhotos.length > 1 ? 'grid-cols-2' : 'grid-cols-1'
+                      } gap-1 bg-[#F4ECFC]`}
+                    >
+                      {displayPhotos.slice(0, 2).map((url, index) => (
+                        <img
+                          key={`${url}-${index}`}
+                          src={url}
+                          alt={`${study.title} ${index + 1}`}
+                          className="h-40 w-full object-cover"
+                          loading="lazy"
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex h-28 items-center justify-center bg-gradient-to-r from-[#F1E7FC] via-[#FCEAF2] to-[#E5F4FC]">
+                      <ImageIcon className="h-8 w-8 text-[#A88BD8]" />
+                    </div>
+                  );
+                })()}
 
                 <div className="p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
