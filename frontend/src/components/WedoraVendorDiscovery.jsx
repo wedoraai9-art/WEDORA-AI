@@ -451,12 +451,50 @@ const WedoraVendorDiscovery = () => {
         id: vendor.id || vendor._id || `live-vendor-${index}-${vendor.name || vendor.business_name || 'vendor'}`,
         name: vendor.name || vendor.business_name || 'Unnamed Vendor',
         plan: String(vendor.plan || vendor.subscription_plan || vendor.subscription || '').toLowerCase(),
+        isPro: Boolean(
+          (vendor.verified || vendor.wedora_verified) &&
+          /(^|[^a-z])(pro|premium|platinum)([^a-z]|$)/i.test(
+            String(vendor.plan || vendor.subscription_plan || vendor.subscription || '')
+          )
+        ),
+        // PRO accounts use their WEDORA-uploaded profile/logo image.
+        // Public listings use a Google-sourced photo/logo when the backend supplies one.
+        profileImage: (vendor.verified || vendor.wedora_verified) &&
+          /(^|[^a-z])(pro|premium|platinum)([^a-z]|$)/i.test(
+            String(vendor.plan || vendor.subscription_plan || vendor.subscription || '')
+          )
+            ? (
+                vendor.wedora_profile_image_url ||
+                vendor.profile_image_url ||
+                vendor.profileImage ||
+                vendor.avatar_url ||
+                vendor.business_logo_url ||
+                vendor.logo_url ||
+                ''
+              )
+            : (
+                vendor.google_photo_url ||
+                vendor.google_image_url ||
+                vendor.google_logo_url ||
+                vendor.google_business_photo ||
+                vendor.photo_url ||
+                vendor.image_url ||
+                vendor.logo_url ||
+                ''
+              ),
         category: vendor.category || vendor.role || parsedSearch.category || 'Wedding Vendor',
         city: vendor.city || '',
         state: vendor.state || '',
         experience: vendor.experience || vendor.years_experience || 'Not listed',
         rating: Number(vendor.rating) || 0,
         reviews: Number(vendor.reviews) || 0,
+        // Only display Google ratings when the backend explicitly provides Google-specific fields.
+        googleRating: Number(
+          vendor.google_rating ?? vendor.googleRating ?? vendor.google_review_rating
+        ) || 0,
+        googleReviews: Number(
+          vendor.google_reviews ?? vendor.googleReviews ?? vendor.google_review_count
+        ) || 0,
         phone: vendor.phone || vendor.contact_phone || '',
         instagram,
         website,
@@ -970,20 +1008,33 @@ const WedoraVendorDiscovery = () => {
                   className="overflow-hidden rounded-[26px] border border-[#e4ddd5] bg-white shadow-[0_15px_45px_rgba(70,55,40,0.05)] transition hover:-translate-y-1"
                 >
 
-                  {/* PROFILE COVER */}
-                  <div className="relative flex h-44 items-center justify-center bg-gradient-to-br from-[#F7EAF3] via-[#F6F0FF] to-[#EAF1FA]">
+                  {/* PROFILE COVER: WEDORA image for PRO accounts; Google-sourced image for public listings */}
+                  <div className="relative flex h-44 items-center justify-center overflow-hidden bg-gradient-to-br from-[#F7EAF3] via-[#F6F0FF] to-[#EAF1FA]">
 
-                    <div className="text-center">
+                    {vendor.profileImage ? (
+                      <img
+                        src={vendor.profileImage}
+                        alt={`${vendor.name} business profile`}
+                        className="absolute inset-0 h-full w-full object-cover"
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                        onError={(event) => {
+                          event.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div className="text-center">
 
-                      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/80 text-[#9B7CF6]">
-                        <Briefcase size={26} />
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/80 text-[#9B7CF6]">
+                          <Briefcase size={26} />
+                        </div>
+
+                        <p className="mt-3 text-xs text-[#958AA2]">
+                          Vendor Portfolio
+                        </p>
+
                       </div>
-
-                      <p className="mt-3 text-xs text-[#958AA2]">
-                        Vendor Portfolio
-                      </p>
-
-                    </div>
+                    )}
 
                     <button
                       onClick={() =>
@@ -1001,16 +1052,25 @@ const WedoraVendorDiscovery = () => {
                       />
                     </button>
 
-                    {vendor.verified ? (
-                      <div className="absolute bottom-4 left-4 flex items-center gap-1 rounded-full bg-white/90 px-3 py-1.5 text-[10px] text-[#718C82]">
-                        <CheckCircle2 size={12} />
-                        WEDORA Verified
-                      </div>
-                    ) : vendor.sourceName ? (
-                      <div className="absolute bottom-4 left-4 rounded-full bg-white/90 px-3 py-1.5 text-[10px] text-[#81758F]">
-                        Found via {vendor.sourceName}
-                      </div>
-                    ) : null}
+                    <div className="absolute bottom-4 left-4 flex flex-wrap items-center gap-1.5">
+                      {vendor.verified && (
+                        <div className="flex items-center gap-1 rounded-full bg-white/95 px-3 py-1.5 text-[10px] text-[#718C82] shadow-sm">
+                          <CheckCircle2 size={12} />
+                          WEDORA Verified
+                        </div>
+                      )}
+                      {vendor.isPro && (
+                        <div className="flex items-center gap-1 rounded-full bg-gradient-to-r from-[#DCC8FF] to-[#F5C7E2] px-3 py-1.5 text-[10px] font-semibold text-[#5B3C88] shadow-sm">
+                          <Star size={11} className="fill-current" />
+                          WEDORA PRO
+                        </div>
+                      )}
+                      {!vendor.verified && vendor.sourceName && (
+                        <div className="rounded-full bg-white/90 px-3 py-1.5 text-[10px] text-[#81758F]">
+                          Found via {vendor.sourceName}
+                        </div>
+                      )}
+                    </div>
 
                   </div>
 
@@ -1021,9 +1081,16 @@ const WedoraVendorDiscovery = () => {
 
                       <div>
 
-                        <h3 className="text-lg font-medium">
-                          {vendor.name}
-                        </h3>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-lg font-medium">
+                            {vendor.name}
+                          </h3>
+                          {vendor.isPro && (
+                            <span className="rounded-full bg-[#F4E8FF] px-2 py-0.5 text-[9px] font-semibold tracking-wide text-[#7045A0]">
+                              PRO
+                            </span>
+                          )}
+                        </div>
 
                         <p className="mt-1 text-xs text-[#91869D]">
                           {vendor.category}
@@ -1031,12 +1098,23 @@ const WedoraVendorDiscovery = () => {
 
                       </div>
 
-                      <div className="flex items-center gap-1 rounded-full bg-[#F7F1FF] px-2.5 py-1 text-xs text-[#806b52]">
-                        <Star
-                          size={12}
-                          className="fill-[#9B7CF6]"
-                        />
-                        {vendor.rating}
+                      <div className="flex flex-col items-end gap-1">
+                        {vendor.googleRating > 0 ? (
+                          <div className="flex items-center gap-1 rounded-full bg-[#F7F1FF] px-2.5 py-1 text-xs text-[#806b52]">
+                            <Star size={12} className="fill-[#9B7CF6]" />
+                            <span>{vendor.googleRating.toFixed(1)}</span>
+                            <span className="text-[10px] text-[#91869D]">Google</span>
+                          </div>
+                        ) : (
+                          <div className="rounded-full bg-[#F7F1FF] px-2.5 py-1 text-[10px] text-[#91869D]">
+                            Google rating not listed
+                          </div>
+                        )}
+                        {vendor.googleRating > 0 && vendor.googleReviews > 0 && (
+                          <span className="text-[10px] text-[#91869D]">
+                            {vendor.googleReviews.toLocaleString()} Google reviews
+                          </span>
+                        )}
                       </div>
 
                     </div>
@@ -1206,16 +1284,27 @@ const WedoraVendorDiscovery = () => {
                 <X size={18} />
               </button>
 
-              <div className="text-center">
-
-                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-white text-[#9B7CF6]">
-                  <Briefcase size={32} />
-                </div>
+              <div className="relative z-10 text-center">
+                {selectedVendor.profileImage ? (
+                  <img
+                    src={selectedVendor.profileImage}
+                    alt={`${selectedVendor.name} business profile`}
+                    className="mx-auto h-20 w-20 rounded-full border-4 border-white/90 object-cover shadow-md"
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    onError={(event) => {
+                      event.currentTarget.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-white text-[#9B7CF6]">
+                    <Briefcase size={32} />
+                  </div>
+                )}
 
                 <p className="mt-3 text-xs text-[#8E829F]">
                   {selectedVendor.category}
                 </p>
-
               </div>
 
             </div>
@@ -1248,13 +1337,22 @@ const WedoraVendorDiscovery = () => {
 
                 </div>
 
-                <div className="flex items-center gap-1 self-start rounded-full bg-[#F7F1FF] px-4 py-2 text-sm text-[#806b52]">
-                  <Star
-                    size={14}
-                    className="fill-[#9B7CF6]"
-                  />
-                  {selectedVendor.rating} ·{' '}
-                  {selectedVendor.reviews} reviews
+                <div className="flex flex-col items-end gap-1 self-start">
+                  {selectedVendor.googleRating > 0 ? (
+                    <div className="flex items-center gap-1 rounded-full bg-[#F7F1FF] px-4 py-2 text-sm text-[#806b52]">
+                      <Star size={14} className="fill-[#9B7CF6]" />
+                      {selectedVendor.googleRating.toFixed(1)} Google
+                    </div>
+                  ) : (
+                    <div className="rounded-full bg-[#F7F1FF] px-4 py-2 text-xs text-[#91869D]">
+                      Google rating not listed
+                    </div>
+                  )}
+                  {selectedVendor.googleRating > 0 && selectedVendor.googleReviews > 0 && (
+                    <span className="text-xs text-[#91869D]">
+                      {selectedVendor.googleReviews.toLocaleString()} Google reviews
+                    </span>
+                  )}
                 </div>
 
               </div>
