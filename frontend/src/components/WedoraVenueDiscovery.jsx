@@ -93,20 +93,30 @@ const emptyUpdate = {
 const WedoraVenueDiscovery = () => {
   const navigate = useNavigate();
 
-  // Open the public source or official website associated with a venue.
-  // Keep this separate from nested controls such as shortlist and report.
+  // Venue cards should lead to the venue itself, never to a competing
+  // wedding-directory listing. Prefer a verified official website; otherwise
+  // open a Google search for the exact venue and location.
   const openVenue = (venue) => {
-    const url = venue.sourceUrl || venue.website;
-    if (!url) return;
+    const officialUrl = venue.website;
+    let destination = '';
 
-    try {
-      const parsedUrl = new URL(url);
-      if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') {
-        window.open(parsedUrl.href, '_blank', 'noopener,noreferrer');
+    if (officialUrl) {
+      try {
+        const parsedUrl = new URL(officialUrl);
+        if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') {
+          destination = parsedUrl.href;
+        }
+      } catch (error) {
+        console.warn('Invalid official venue URL:', error);
       }
-    } catch (error) {
-      console.warn('Invalid venue destination URL:', error);
     }
+
+    if (!destination) {
+      const searchText = [venue.name, venue.location || venue.city].filter(Boolean).join(' ');
+      destination = `https://www.google.com/search?q=${encodeURIComponent(searchText)}`;
+    }
+
+    window.open(destination, '_blank', 'noopener,noreferrer');
   };
 
   const [query, setQuery] = useState('');
@@ -855,9 +865,9 @@ const WedoraVenueDiscovery = () => {
 
                     <article
                       key={venue.id}
-                      role={venue.sourceUrl || venue.website ? 'link' : undefined}
-                      tabIndex={venue.sourceUrl || venue.website ? 0 : undefined}
-                      aria-label={venue.sourceUrl || venue.website ? `Open ${venue.name} source in a new tab` : undefined}
+                      role="link"
+                      tabIndex={0}
+                      aria-label={`Open ${venue.name} official website or Google search in a new tab`}
                       onClick={(event) => {
                         if (event.target.closest('button, a')) return;
                         openVenue(venue);
@@ -870,9 +880,7 @@ const WedoraVenueDiscovery = () => {
                         }
                       }}
                       className={`overflow-hidden rounded-[26px] border border-[#e4ddd5] bg-white shadow-[0_15px_45px_rgba(70,55,40,0.05)] ${
-                        venue.sourceUrl || venue.website
-                          ? 'cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#9B7CF6]'
-                          : ''
+                        'cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#9B7CF6]'
                       }`}
                     >
 
@@ -1006,15 +1014,10 @@ const WedoraVenueDiscovery = () => {
                           </p>
                         )}
 
-                        {venue.sourceUrl && (
-                          <a
-                            href={venue.sourceUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mt-4 inline-flex text-[11px] text-[#8D73C8] hover:underline"
-                          >
-                            View source: {venue.source || 'Web source'} ↗
-                          </a>
+                        {venue.source && (
+                          <p className="mt-4 text-[11px] text-[#A095AE]">
+                            Listing reference: {venue.source}
+                          </p>
                         )}
 
                         {/* UPDATE BUTTON */}
