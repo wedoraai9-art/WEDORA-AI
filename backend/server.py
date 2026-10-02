@@ -4553,7 +4553,9 @@ Return ONLY valid JSON in exactly this shape:
 
 Rules:
 - Return only real businesses clearly supported by the supplied search results.
-- Return up to 15 strong matches; never add filler.
+- Return up to 15 distinct, strong matches; never add filler.
+- Extract each independently named vendor when a result page lists multiple vendors.
+- Do not return generic directory/article titles as vendor names; use the actual business names stated in the source.
 - A single business may appear only once.
 - source_url MUST exactly match one of the supplied result URLs.
 - Do not label any public-web business as WEDORA Verified.
@@ -4624,22 +4626,28 @@ Rules:
 
     # Load WEDORA's own registered vendors for the same search and mark only these
     # records as WEDORA Verified.
+    # Match registered WEDORA vendors against location, category AND free-text
+    # query. The previous implementation ignored free text here, which could
+    # surface unrelated test profiles. Use case-insensitive partial matches so
+    # city variants such as "Jaipur, Rajasthan" still match.
     vendor_filter = {}
     if location and location.lower() != "all india":
-        vendor_filter["city"] = {
-            "$regex": f"^{re.escape(location)}$",
-            "$options": "i",
-        }
+        vendor_filter["city"] = {"$regex": re.escape(location), "$options": "i"}
     if category and category.lower() != "all categories":
-        vendor_filter["category"] = {
-            "$regex": re.escape(category),
-            "$options": "i",
-        }
+        vendor_filter["category"] = {"$regex": re.escape(category), "$options": "i"}
+    if query:
+        query_terms = [term for term in re.split(r"\s+", query.strip()) if len(term) > 2]
+        if query_terms:
+            vendor_filter["$or"] = [
+                {field: {"$regex": re.escape(term), "$options": "i"}}
+                for term in query_terms[:6]
+                for field in ("business_name", "category", "services", "description")
+            ]
 
     registered = await db.vendors.find(
         vendor_filter,
-        {"_id": 0},
-    ).limit(50).to_list(50)
+        {"_id": 0, "password_hash": 0, "password": 0, "reset_token": 0},
+    ).sort("created_at", -1).limit(100).to_list(100)
 
     results = []
     seen = set()
@@ -4716,6 +4724,9 @@ Rules:
             else [],
             "verified": bool(verified),
             "wedora_verified": bool(verified),
+            # Preserve the actual subscription tier only for registered accounts.
+            # Public-web results are not WEDORA subscribers and must not be badged PRO.
+            "plan": str(item.get("plan") or item.get("subscription") or item.get("subscription_plan") or "free").lower() if verified else "public",
             "publicListing": not verified,
             "sourceName": source_title or (
                 "WEDORA" if verified else "Public web source"
@@ -4747,7 +4758,16 @@ Rules:
             source_url=source_url,
         )
 
-    results = results[:15]
+    # Explicit subscription ordering: only registered WEDORA vendors can have
+    # a paid-plan badge. Public listings remain unverified and never receive PRO.
+    def _vendor_plan_rank(item):
+        if not item.get("verified"):
+            return 2
+        plan = str(item.get("plan") or item.get("subscription") or item.get("subscription_plan") or "").lower()
+        return 0 if any(token in plan for token in ("pro", "premium", "platinum")) else 1
+
+    results.sort(key=_vendor_plan_rank)
+    results = results[:30]
 
     try:
         await db.vendor_discovery_cache.insert_one({
