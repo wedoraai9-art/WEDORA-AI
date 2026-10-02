@@ -4797,6 +4797,37 @@ def _normalise_venue_key(name: str, city: str = "") -> str:
     return re.sub(r"[^a-z0-9]+", "", raw)
 
 
+def _is_marriage_garden_intent(query: str, venue_type: str = "") -> bool:
+    """Identify requests for dedicated marriage gardens, not hotel gardens."""
+    text = f"{query or ''} {venue_type or ''}".lower()
+    text = re.sub(r"[^a-z0-9]+", " ", text)
+    return any(term in text for term in (
+        "marriage garden", "marriage gardens", "wedding garden",
+        "wedding gardens", "garden wedding venue", "garden venues",
+    )) or (venue_type or "").strip().lower() == "garden"
+
+
+def _is_dedicated_garden_venue(venue: dict) -> bool:
+    """Exclude hotels/resorts that merely advertise a garden or lawn."""
+    name = str(venue.get("name") or "").lower()
+    kind = str(venue.get("type") or "").strip().lower()
+    description = str(venue.get("description") or "").lower()
+    dedicated_name_terms = (
+        "marriage garden", "wedding garden", "garden", "gardens",
+        "marriage lawn", "wedding lawn", "lawns", "vatika", "bagh",
+    )
+    hotel_terms = ("hotel", "resort", "inn", "suites", "palace hotel")
+    if kind in {"hotel", "resort"} or any(term in name for term in hotel_terms):
+        return False
+    if kind == "garden":
+        return True
+    # Accept an explicitly named dedicated garden/lawn even if the model
+    # classified it as Other; do not infer a dedicated venue from description alone.
+    return any(term in name for term in dedicated_name_terms) and not any(
+        term in name for term in hotel_terms
+    )
+
+
 def _is_likely_article_title(name: str) -> bool:
     """Reject listicles and editorial headlines masquerading as venue names."""
     value = re.sub(r"\s+", " ", str(name or "")).strip().lower()
@@ -4851,8 +4882,15 @@ async def search_venues(payload: VenueSearchIn):
     search_scope = location if location and location.lower() != "all india" else "India"
     query_text = query or "wedding venues"
     type_text = venue_type or "all wedding venue types"
+    dedicated_garden_intent = _is_marriage_garden_intent(query_text, venue_type)
 
     search_query_parts = [query_text, search_scope]
+    if dedicated_garden_intent:
+        search_query_parts.extend([
+            "dedicated marriage garden wedding lawn standalone venue",
+            "not hotels not resorts",
+            "guest rooms accommodation rooms available if listed",
+        ])
     if venue_type:
         search_query_parts.append(venue_type)
     else:
@@ -4947,6 +4985,7 @@ If a field is not clearly supported by the supplied result, return an empty valu
 User search: {query_text}
 Location scope: {search_scope}
 Requested venue type: {type_text}
+Dedicated marriage garden intent: {dedicated_garden_intent}
 Guest requirement: {payload.guests or 'not specified'}
 Room requirement: {payload.rooms or 'not specified'}
 Budget requirement: {('₹' + format(payload.budget, ',.0f')) if payload.budget else 'not specified'}
@@ -4994,6 +5033,10 @@ Rules:
 - For India-wide searches, include venues from different Indian cities when the supplied results support them.
 - For a specified city, prioritize venues in that city.
 - For a specified venue type, prioritize that type.
+- If Dedicated marriage garden intent is true, ONLY return dedicated marriage gardens, standalone wedding lawns, marriage lawns, or explicitly named garden/wedding venues.
+- For dedicated marriage garden intent, EXCLUDE hotels and resorts, including hotel gardens, hotel lawns, hotel banquet properties, and resort gardens, even if their pages mention gardens or weddings.
+- Do not treat a hotel's garden, lawn, poolside, or banquet as a dedicated marriage garden.
+- When accommodation is requested, report rooms only if the supplied source explicitly states the room count; otherwise use 0. Do not invent room availability.
 - Prefer official venue websites and reputable venue directories among the supplied results.
 """
 
@@ -5066,6 +5109,13 @@ Rules:
         if venue_type_value.lower() not in allowed_types:
             venue_type_value = "Other"
 
+        # Enforce dedicated-garden intent server-side; do not rely on the LLM
+        # prompt alone, because it may otherwise return hotels with garden spaces.
+        if dedicated_garden_intent and not _is_dedicated_garden_venue({
+            **venue, "name": name, "type": venue_type_value,
+        }):
+            continue
+
         key = _normalise_venue_key(name, city)
         if key in seen:
             continue
@@ -5125,6 +5175,7 @@ Rules:
             "query": query,
             "location": location,
             "venue_type": venue_type,
+            "dedicated_garden_intent": dedicated_garden_intent,
             "guests": payload.guests,
             "budget": payload.budget,
             "rooms": payload.rooms,
@@ -5141,6 +5192,7 @@ Rules:
         "query": query,
         "location": location,
         "venue_type": venue_type,
+        "dedicated_garden_intent": dedicated_garden_intent,
         "count": len(results),
         "lastChecked": datetime.now(timezone.utc).isoformat(),
     }
