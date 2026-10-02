@@ -470,6 +470,9 @@ const VendorDashboard = () => {
   const [teamBusy, setTeamBusy] = useState(false);
   const [teamError, setTeamError] = useState('');
   const [staffForm, setStaffForm] = useState({ name: '', email: '', password: '', role_title: 'Coordinator', permissions: ['view_assigned_tasks', 'update_assigned_tasks', 'view_weddings', 'view_clients'] });
+  const [editingStaffId, setEditingStaffId] = useState(null);
+  const [editStaffForm, setEditStaffForm] = useState({ name: '', role_title: 'Coordinator', permissions: [] });
+  const [staffSaveBusy, setStaffSaveBusy] = useState(false);
   const [taskForm, setTaskForm] = useState({ title: '', assigned_to: '', wedding_id: '', due_date: '', priority: 'normal', description: '' });
   const [businessAiMessages, setBusinessAiMessages] = useState([]);
   const [businessAiInput, setBusinessAiInput] = useState('');
@@ -627,49 +630,49 @@ const VendorDashboard = () => {
   const createTeamTask = async (event) => {
     event.preventDefault();
     setTeamError('');
-
-    // Prevent accidental duplicate assignments only within the same wedding
-    // and for the same staff member. The same task remains assignable to
-    // another wedding or another staff member.
-    const normalizedTitle = String(taskForm.title || '').trim().toLowerCase();
-    const selectedStaffId = String(taskForm.assigned_to || '');
-    const selectedWeddingId = String(taskForm.wedding_id || '');
-
-    const duplicateExists = teamTasks.some((task) => {
-      const existingTitle = String(task.title || '').trim().toLowerCase();
-      const existingStaffId = String(
-        task.assigned_to || task.staff_id || task.assignee_id || ''
-      );
-      const existingWeddingId = String(task.wedding_id || '');
-
-      return (
-        existingTitle === normalizedTitle &&
-        existingStaffId === selectedStaffId &&
-        existingWeddingId === selectedWeddingId
-      );
-    });
-
-    if (duplicateExists) {
-      const message =
-        'This task is already assigned to this team member for this wedding. You can assign it to a different wedding or team member.';
-      setTeamError(message);
-      toast.error(message);
-      return;
-    }
-
     try {
-      await authAxios.post('/vendor/team/tasks', {
-        ...taskForm,
-        title: String(taskForm.title || '').trim(),
-        assigned_to: selectedStaffId,
-        wedding_id: selectedWeddingId,
-      });
+      await authAxios.post('/vendor/team/tasks', taskForm);
       setTaskForm({ title: '', assigned_to: '', wedding_id: '', due_date: '', priority: 'normal', description: '' });
       toast.success('Task assigned to team member.');
       await loadTeamWorkspace();
     } catch (error) {
       setTeamError(error?.response?.data?.detail || 'Could not assign task.');
     }
+  };
+
+  const startEditingStaff = (member) => {
+    setTeamError('');
+    setEditingStaffId(member.id);
+    setEditStaffForm({
+      name: member.name || '',
+      role_title: member.role_title || 'Custom',
+      permissions: Array.isArray(member.permissions) ? [...member.permissions] : [],
+    });
+  };
+
+  const saveStaffEdits = async (event, member) => {
+    event.preventDefault();
+    setTeamError('');
+    setStaffSaveBusy(true);
+    try {
+      await authAxios.put(`/vendor/team/${member.id}`, {
+        name: editStaffForm.name.trim(),
+        role_title: editStaffForm.role_title,
+        permissions: [...new Set(editStaffForm.permissions)],
+      });
+      toast.success('Staff details and permissions updated.');
+      setEditingStaffId(null);
+      await loadTeamWorkspace();
+    } catch (error) {
+      setTeamError(error?.response?.data?.detail || 'Could not update staff details.');
+    } finally {
+      setStaffSaveBusy(false);
+    }
+  };
+
+  const cancelStaffEdits = () => {
+    setEditingStaffId(null);
+    setTeamError('');
   };
 
   const toggleStaffStatus = async (member) => {
@@ -1486,9 +1489,24 @@ const VendorDashboard = () => {
             </div>
             <div className="rounded-2xl border border-[#E8DDF3] bg-white/70 p-4">
               <h3 className="font-semibold text-[#332B3E] mb-3">Team members ({teamMembers.length})</h3>
-              {teamMembers.length ? <div className="space-y-2">{teamMembers.map(member=><div key={member.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#F0E8F5] p-3">
-                <div><p className="text-sm font-medium text-[#332B3E]">{member.name} <span className="text-xs text-[#8B8194]">· {member.role_title}</span></p><p className="text-xs text-[#6B617A]">{member.email}</p><p className="text-[11px] text-[#8B8194] mt-1">{member.permissions.join(' · ')}</p></div>
-                <div className="flex items-center gap-2"><span className={`text-xs ${member.is_active?'text-emerald-700':'text-red-600'}`}>{member.is_active?'Active':'Inactive'}</span><button type="button" onClick={()=>toggleStaffStatus(member)} className="rounded-full border border-[#DED0EE] px-3 py-1.5 text-xs">{member.is_active?'Deactivate':'Reactivate'}</button></div>
+              {teamMembers.length ? <div className="space-y-2">{teamMembers.map(member=><div key={member.id} className="rounded-xl border border-[#F0E8F5] p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0"><p className="text-sm font-medium text-[#332B3E]">{member.name} <span className="text-xs text-[#8B8194]">· {member.role_title}</span></p><p className="text-xs text-[#6B617A]">{member.email}</p><p className="text-[11px] text-[#8B8194] mt-1">{(member.permissions || []).join(' · ')}</p></div>
+                  <div className="flex flex-wrap items-center gap-2"><span className={`text-xs ${member.is_active?'text-emerald-700':'text-red-600'}`}>{member.is_active?'Active':'Inactive'}</span><button type="button" onClick={()=>editingStaffId===member.id?cancelStaffEdits():startEditingStaff(member)} className="rounded-full border border-[#DED0EE] px-3 py-1.5 text-xs inline-flex items-center gap-1"><Pencil className="w-3 h-3" />{editingStaffId===member.id?'Close edit':'Edit'}</button><button type="button" onClick={()=>toggleStaffStatus(member)} className="rounded-full border border-[#DED0EE] px-3 py-1.5 text-xs">{member.is_active?'Deactivate':'Reactivate'}</button></div>
+                </div>
+                {editingStaffId===member.id && <form onSubmit={(event)=>saveStaffEdits(event,member)} className="mt-4 border-t border-[#F0E8F5] pt-4 space-y-3" data-testid={`edit-staff-${member.id}`}>
+                  <h4 className="text-sm font-semibold text-[#332B3E]">Edit staff details</h4>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <label className="block text-xs text-[#6B617A]">Full name<input required minLength={2} maxLength={100} value={editStaffForm.name} onChange={e=>setEditStaffForm(old=>({...old,name:e.target.value}))} className="mt-1 w-full rounded-xl border border-[#DED0EE] bg-white px-3 py-2 text-sm text-[#332B3E]" /></label>
+                    <label className="block text-xs text-[#6B617A]">Role<select value={editStaffForm.role_title} onChange={e=>setEditStaffForm(old=>({...old,role_title:e.target.value}))} className="mt-1 w-full rounded-xl border border-[#DED0EE] bg-white px-3 py-2 text-sm text-[#332B3E]">{['Designer','Coordinator','Decorator','Photographer','Custom'].map(role=><option key={role} value={role}>{role}</option>)}</select></label>
+                  </div>
+                  <div className="text-xs text-[#6B617A]">Permissions</div>
+                  <div className="grid sm:grid-cols-2 gap-2 text-xs text-[#4A4257]">{[
+                    ['view_assigned_tasks','View assigned tasks'],['update_assigned_tasks','Update assigned tasks'],['view_weddings','View weddings'],['view_clients','View clients'],['manage_team','Manage team'],['manage_tasks','Manage tasks'],
+                  ].map(([key,label])=><label key={key} className="flex items-center gap-2"><input type="checkbox" checked={editStaffForm.permissions.includes(key)} onChange={e=>setEditStaffForm(old=>({...old,permissions:e.target.checked?[...new Set([...old.permissions,key])]:old.permissions.filter(x=>x!==key)}))} />{label}</label>)}</div>
+                  <p className="text-[11px] text-[#8B8194]">Email and password are not editable here. To change login credentials, use a separate secure account-recovery flow.</p>
+                  <div className="flex flex-wrap justify-end gap-2"><button type="button" onClick={cancelStaffEdits} className="rounded-full border border-[#DED0EE] px-4 py-2 text-xs">Cancel</button><button type="submit" disabled={staffSaveBusy || editStaffForm.name.trim().length<2} className="glow-btn !py-2 !px-4 !text-xs disabled:opacity-50">{staffSaveBusy?'Saving…':'Save changes'}</button></div>
+                </form>}
               </div>)}</div> : <p className="text-sm text-[#8B8194]">No staff accounts yet. Create the first login above.</p>}
             </div>
             <div className="rounded-2xl border border-[#E8DDF3] bg-white/70 p-4">
