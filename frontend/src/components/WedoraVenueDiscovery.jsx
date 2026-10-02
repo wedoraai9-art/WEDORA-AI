@@ -292,7 +292,7 @@ const WedoraVenueDiscovery = () => {
         : selectedType;
 
     const payload = {
-      query: (parsedSearch.location || parsedSearch.type || parsedSearch.guests || parsedSearch.budget || parsedSearch.rooms) ? '' : searchQuery,
+      query: searchQuery, // Preserve the full natural-language request for backend search.
       location:
         typeof overrides.location === 'string'
           ? overrides.location
@@ -354,6 +354,9 @@ const WedoraVenueDiscovery = () => {
         lastUpdated: venue.lastUpdated || venue.last_updated || 'Not listed',
         sourceUrl: venue.sourceUrl || venue.source_url || '',
         source: venue.source || venue.source_name || '',
+        description: venue.description || venue.snippet || '',
+        facilities: Array.isArray(venue.facilities) ? venue.facilities : [],
+        eventSpaces: Array.isArray(venue.event_spaces) ? venue.event_spaces : Array.isArray(venue.eventSpaces) ? venue.eventSpaces : [],
       })));
       setSearchSources(Array.isArray(data.sources) ? data.sources : []);
     } catch (error) {
@@ -754,6 +757,12 @@ const WedoraVenueDiscovery = () => {
 
               </div>
 
+              {!searchLoading && !searchError && searchSources.length > 0 && (
+                <p className="mb-5 rounded-xl border border-[#E9E2F1] bg-white/80 px-4 py-3 text-xs leading-5 text-[#756A82]">
+                  Public-web matches are not guaranteed to include every Google listing. Prices, room counts, capacities and facilities are shown only when a source provides them; confirm important details with the venue.
+                </p>
+              )}
+
               {searchLoading ? (
                 <div className="rounded-[28px] border border-[#E9E2F1] bg-white px-6 py-16 text-center">
                   <RefreshCw size={34} className="mx-auto animate-spin text-[#9B7CF6]" />
@@ -804,17 +813,11 @@ const WedoraVenueDiscovery = () => {
                       className="overflow-hidden rounded-[26px] border border-[#e4ddd5] bg-white shadow-[0_15px_45px_rgba(70,55,40,0.05)]"
                     >
 
-                      {/* IMAGE PLACEHOLDER */}
-                      <div className="relative flex h-48 items-center justify-center bg-[#EEEAF5]">
-
-                        <div className="text-center text-[#9C91AD]">
-                          <Building2
-                            size={38}
-                            className="mx-auto"
-                          />
-                          <p className="mt-2 text-xs">
-                            Venue image
-                          </p>
+                      {/* Search results do not fabricate venue photography. */}
+                      <div className="relative flex h-40 items-center justify-center bg-gradient-to-br from-[#F2ECFA] via-[#FFF8FC] to-[#EAF5FB]">
+                        <div className="text-center text-[#8E829F]">
+                          <Building2 size={38} className="mx-auto" />
+                          <p className="mt-2 text-xs">Public venue listing</p>
                         </div>
 
                         <button
@@ -892,6 +895,20 @@ const WedoraVenueDiscovery = () => {
                           </p>
 
                         </div>
+
+                        {venue.eventSpaces?.length > 0 && (
+                          <div className="mt-3 rounded-xl bg-[#FBF9FD] p-3">
+                            <p className="text-[10px] tracking-wide text-[#978d84]">EVENT SPACES</p>
+                            <p className="mt-1 text-xs">{venue.eventSpaces.join(', ')}</p>
+                          </div>
+                        )}
+
+                        {venue.facilities?.length > 0 && (
+                          <div className="mt-3 rounded-xl bg-[#FBF9FD] p-3">
+                            <p className="text-[10px] tracking-wide text-[#978d84]">FACILITIES</p>
+                            <p className="mt-1 text-xs">{venue.facilities.join(', ')}</p>
+                          </div>
+                        )}
 
                         {/* DATA STATUS */}
                         <div className="mt-4 flex items-center justify-between">
