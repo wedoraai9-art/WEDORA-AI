@@ -552,11 +552,25 @@ const WedoraVenueDiscovery = () => {
                 </div>
 
                 <button
+                  type="button"
                   onClick={handleSearch}
-                  className="glow-btn flex min-h-[64px] items-center justify-center gap-2 text-sm tracking-wide"
+                  disabled={searchLoading}
+                  aria-busy={searchLoading}
+                  className={`glow-btn flex min-h-[64px] items-center justify-center gap-2 text-sm tracking-wide transition-opacity ${
+                    searchLoading ? 'cursor-wait opacity-80' : ''
+                  }`}
                 >
-                  <Search size={18} />
-                  Discover Venues
+                  {searchLoading ? (
+                    <>
+                      <RefreshCw size={18} className="animate-spin" />
+                      Searching…
+                    </>
+                  ) : (
+                    <>
+                      <Search size={18} />
+                      Discover Venues
+                    </>
+                  )}
                 </button>
 
               </div>
@@ -660,6 +674,20 @@ const WedoraVenueDiscovery = () => {
               )}
 
             </div>
+
+            {searchLoading && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="mx-auto mt-4 flex max-w-4xl items-center justify-center gap-3 rounded-2xl border border-[#E8DFF5] bg-white/95 px-5 py-4 text-sm text-[#756A82] shadow-[0_10px_30px_rgba(70,55,40,0.06)]"
+              >
+                <RefreshCw size={19} className="shrink-0 animate-spin text-[#9B7CF6]" />
+                <span>
+                  <strong className="font-medium text-[#30283A]">Searching venues…</strong>
+                  <span className="ml-1">WEDORA is checking public web sources. Please keep this page open.</span>
+                </span>
+              </div>
+            )}
 
             {/* SUGGESTIONS */}
             <div className="mt-8">
