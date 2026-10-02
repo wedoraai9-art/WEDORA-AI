@@ -200,52 +200,53 @@ class DesignerIn(BaseModel):
 
 @api_router.post("/designer/generate")
 async def designer_generate(payload: DesignerIn):
-    """
-    Generate a custom wedding design from the user's description.
-    Uses the same Gemini setup as the working WEDORA chat.
-    """
-    if not payload.dream_description.strip():
-        raise HTTPException(status_code=400, detail="Please describe the wedding design.")
+    """Generate a function-aware event design and fetch matching Pexels references."""
+    description = (payload.dream_description or "").strip()
+    if not description:
+        raise HTTPException(status_code=400, detail="Please describe the event design.")
 
     session_id = f"designer-{uuid.uuid4()}"
-
-    designer_system = """
-You are WEDORA Designs It — a premium Indian wedding design intelligence.
-
-Your job is to turn the client's exact design request into a CUSTOM wedding design.
-Never return a generic default design. Every request must produce a fresh design based
-on the client's colors, mood, style, culture, venue, season, or other details.
+    designer_system = r"""
+You are WEDORA Designs It, an expert Indian wedding and event decor designer.
+Interpret the user's exact function and design request. Never assume every event is a
+wedding ceremony. Supported functions include mehndi, haldi, bhaat, engagement, wedding
+ceremony, sangeet, reception, welcome dinner, welcome lunch, and custom events.
 
 Return ONLY valid JSON with exactly these keys:
 {
-  "theme": "unique theme name",
+  "function": "specific function requested",
+  "theme": "short creative theme name",
   "palette": ["#HEX", "#HEX", "#HEX", "#HEX", "#HEX"],
-  "mandap": "specific mandap design",
-  "stage": "specific stage design",
-  "entrance": "specific entrance design",
-  "table_decor": "specific table decor design",
-  "lighting": "specific lighting design",
-  "florals": "specific floral design",
-  "design_summary": "short summary of the complete design",
-  "image_prompt": "detailed photorealistic prompt describing this exact wedding design"
+  "mandap": "relevant mandap design or empty string",
+  "stage": "relevant stage or focal point, or empty string",
+  "entrance": "function-appropriate entrance decor",
+  "table_decor": "relevant table decor or empty string",
+  "lighting": "function-appropriate lighting",
+  "florals": "function-appropriate floral decor",
+  "design_summary": "short summary, maximum 60 words",
+  "image_prompt": "photorealistic visual description of this exact decor",
+  "reference_search_terms": ["short specific decor search phrase", "another phrase", "another phrase"]
 }
 
-IMPORTANT:
-- Follow the client's request exactly.
-- If the client says red and gold, the palette must be red/gold-led.
-- Do not use the same pastel palette for every request.
-- Create a different theme and design details for different requests.
-- Use Indian wedding design knowledge when appropriate.
-- The image_prompt must describe the same design you created.
+Rules:
+- The requested function controls the design and which sections are populated.
+- Do not include a mandap unless the user asks for one or requests a wedding ceremony.
+- Mehndi: colorful seating, swings, floral decor, photo areas, playful details.
+- Haldi: yellow/marigold decor, seating, floral backdrops, daytime styling.
+- Bhaat: family gathering, traditional and culturally appropriate decor.
+- Engagement: ring ceremony focal point, couple seating, entrance, florals.
+- Welcome dinner/lunch: dining, tables, entrance, guest seating, appropriate lighting.
+- Sangeet: performance stage, dance floor, lighting, guest seating.
+- Reception: reception stage, couple seating, dining, guest experience.
+- Leave irrelevant section values as empty strings. Never force all sections into every result.
+- Keep every description about event design/decor. Never mention software, debugging, APIs,
+  diagnostics, code execution, or system status.
+- Follow the user's specified colors, style, culture, venue, location, and budget.
+- Use a varied palette based on the request, not a fixed default.
+- Search terms must be short, image-search-friendly phrases about this function's decor.
+- The image_prompt must match the requested function and generated design.
 """
-
-    prompt = f"""
-Client's wedding design request:
-
-{payload.dream_description}
-
-Create the complete custom design now.
-"""
+    prompt = f"Client's event design request:\n{description}\n\nCreate the function-specific design. Return only valid JSON."
 
     try:
         chat = LlmChat(
@@ -253,72 +254,105 @@ Create the complete custom design now.
             session_id=session_id,
             system_message=designer_system,
         )
-
-        raw = await chat.send_message(UserMessage(text=prompt))
-        text = raw.strip()
-
-        # Safely extract a JSON object even if the model adds code fences.
-        match = re.search(r"\{[\s\S]*\}", text)
-        if not match:
+        raw = (await chat.send_message(UserMessage(text=prompt))).strip()
+        # Accept JSON wrapped in Markdown fences, but decode only the first object.
+        cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.IGNORECASE)
+        object_start = cleaned.find("{")
+        if object_start < 0:
             raise ValueError("Gemini did not return a JSON design.")
-
-        parsed = jsonlib.loads(match.group(0))
+        parsed, _ = jsonlib.JSONDecoder().raw_decode(cleaned[object_start:])
 
         required = [
-            "theme", "palette", "mandap", "stage", "entrance",
-            "table_decor", "lighting", "florals",
-            "design_summary", "image_prompt"
+            "function", "theme", "palette", "mandap", "stage", "entrance",
+            "table_decor", "lighting", "florals", "design_summary", "image_prompt",
         ]
+        missing = [key for key in required if key not in parsed]
+        if missing:
+            raise ValueError(f"Gemini response missing fields: {', '.join(missing)}")
+        if not isinstance(parsed.get("palette"), list):
+            raise ValueError("Gemini returned an invalid palette.")
+        parsed["palette"] = [
+            str(color).strip() for color in parsed["palette"]
+            if re.fullmatch(r"#[0-9A-Fa-f]{6}", str(color).strip())
+        ][:5]
+        if len(parsed["palette"]) < 3:
+            raise ValueError("Gemini returned fewer than three valid palette colors.")
 
-        for key in required:
-            if key not in parsed:
-                raise ValueError(f"Missing design field: {key}")
+        for key, limit in {
+            "function": 100, "theme": 160, "design_summary": 700,
+            "image_prompt": 1000, "mandap": 1200, "stage": 1200,
+            "entrance": 1200, "table_decor": 1200, "lighting": 1200,
+            "florals": 1200,
+        }.items():
+            parsed[key] = str(parsed.get(key) or "").strip()[:limit]
 
-        if not isinstance(parsed["palette"], list) or len(parsed["palette"]) < 3:
-            raise ValueError("Invalid design palette.")
-
+        terms = parsed.get("reference_search_terms", [])
+        if not isinstance(terms, list):
+            terms = []
+        terms = [re.sub(r"\s+", " ", str(term)).strip()[:100]
+                 for term in terms if str(term).strip()]
+        terms = terms[:4]
     except Exception as e:
-        logging.exception("Designer AI failed")
-        raise HTTPException(status_code=500, detail=f"Designer AI failed: {str(e)}")
+        logging.exception("Designer AI generation failed")
+        raise HTTPException(
+            status_code=500,
+            detail="The AI Designer could not create this design. Please try again.",
+        ) from e
 
-    # Optional visual references. This does NOT control the AI design itself.
-    hero_image = None
+    # Search by concise, function-specific phrases. Pexels is a reference-photo source,
+    # not an image-generation service. The design text remains available if images fail.
     reference_images = []
-
+    seen_urls = set()
+    hero_image = None
     if PEXELS_API_KEY:
+        if not terms:
+            function = parsed["function"] or "Indian event"
+            terms = [
+                f"{function} event decor",
+                f"{function} floral decoration",
+                f"Indian {function} stage and seating decor",
+            ]
         try:
-            search_query = f"{parsed['theme']} Indian wedding {payload.dream_description}"
-
             async with httpx.AsyncClient(timeout=20.0) as client:
-                response = await client.get(
-                    "https://api.pexels.com/v1/search",
-                    headers={"Authorization": PEXELS_API_KEY},
-                    params={
-                        "query": search_query[:180],
-                        "per_page": 6,
-                        "orientation": "landscape",
-                    },
-                )
-                response.raise_for_status()
-                data = response.json()
-
-                for photo in data.get("photos", []):
-                    src = photo.get("src", {})
-                    image_url = src.get("large2x") or src.get("large")
-                    if image_url:
-                        reference_images.append(image_url)
-
-                if reference_images:
-                    hero_image = reference_images[0]
-
+                for term in terms:
+                    response = await client.get(
+                        "https://api.pexels.com/v1/search",
+                        headers={"Authorization": PEXELS_API_KEY},
+                        params={"query": term, "per_page": 3, "orientation": "landscape"},
+                    )
+                    response.raise_for_status()
+                    for photo in response.json().get("photos", []):
+                        src = photo.get("src") or {}
+                        image_url = src.get("large") or src.get("large2x") or src.get("medium")
+                        if not image_url or image_url in seen_urls:
+                            continue
+                        seen_urls.add(image_url)
+                        reference_images.append({
+                            "url": image_url,
+                            "alt": f"{parsed['function']} decor reference: {term}",
+                            "photographer": photo.get("photographer") or "",
+                            "source_url": photo.get("url") or "",
+                            "category": term,
+                        })
+                        if len(reference_images) >= 8:
+                            break
+                    if len(reference_images) >= 8:
+                        break
+        except httpx.HTTPStatusError as e:
+            logging.exception("Pexels reference search failed with HTTP %s", e.response.status_code)
         except Exception:
-            logging.exception("Pexels reference search failed")
-            # Design generation still succeeds if Pexels is unavailable.
+            logging.exception("Pexels reference image retrieval failed")
 
+    if reference_images:
+        hero_image = reference_images[0]["url"]
+
+    parsed["applicable_sections"] = [
+        key for key in ("mandap", "stage", "entrance", "table_decor", "lighting", "florals")
+        if parsed.get(key)
+    ]
     parsed["hero_image"] = hero_image
     parsed["reference_images"] = reference_images
     parsed["session_id"] = session_id
-
     return parsed
 
 
@@ -474,9 +508,6 @@ async def auth_login(payload: AuthLoginIn):
             status_code=401,
             detail="Invalid email or password"
         )
-
-    if user.get("role") == "vendor_staff" and not user.get("is_active", False):
-        raise HTTPException(status_code=403, detail="This staff account is inactive. Contact your business owner.")
 
     token = create_token(
         user["id"],
@@ -2821,402 +2852,6 @@ async def get_vendors():
         {"id": "1", "name": "Royal Photography", "category": "Photography"},
         {"id": "2", "name": "Shaadi Caterers", "category": "Catering"}
     ]
-
-# ================= PRO VENDOR BUSINESS ASSISTANT =================
-
-class VendorStaffCreateIn(BaseModel):
-    name: str
-    email: str
-    password: str
-    role_title: str = "Coordinator"
-    permissions: List[str] = Field(default_factory=lambda: ["view_assigned_tasks", "update_assigned_tasks"])
-
-class VendorStaffUpdateIn(BaseModel):
-    name: Optional[str] = None
-    role_title: Optional[str] = None
-    permissions: Optional[List[str]] = None
-    is_active: Optional[bool] = None
-
-class VendorStaffTaskIn(BaseModel):
-    title: str
-    wedding_id: Optional[str] = None
-    description: Optional[str] = ""
-    due_date: Optional[str] = ""
-    assigned_to: str
-    priority: str = "normal"
-
-class VendorStaffTaskUpdateIn(BaseModel):
-    status: Optional[str] = None
-    due_date: Optional[str] = None
-    description: Optional[str] = None
-
-STAFF_PERMISSION_KEYS = {
-    "view_assigned_tasks",
-    "update_assigned_tasks",
-    "view_weddings",
-    "view_clients",
-    "manage_team",
-    "manage_tasks",
-}
-STAFF_ROLE_DEFAULTS = {
-    "Designer": ["view_assigned_tasks", "update_assigned_tasks", "view_weddings"],
-    "Coordinator": ["view_assigned_tasks", "update_assigned_tasks", "view_weddings", "view_clients"],
-    "Decorator": ["view_assigned_tasks", "update_assigned_tasks", "view_weddings"],
-    "Photographer": ["view_assigned_tasks", "update_assigned_tasks", "view_weddings"],
-    "Custom": ["view_assigned_tasks", "update_assigned_tasks"],
-}
-
-class VendorBusinessAIIn(BaseModel):
-    session_id: Optional[str] = None
-    message: str
-    business_context: Optional[str] = None
-
-
-def _require_business_ai_plan(vendor: dict):
-    plan = str(vendor.get("plan") or "free").strip().lower()
-    if not _vendor_plan_details(plan).get("ai_profile", False):
-        raise HTTPException(
-            status_code=403,
-            detail="Business Assistant is available on WEDORA PRO.",
-        )
-    return plan
-
-
-def _staff_public_record(staff: dict):
-    return {
-        "id": staff.get("id"),
-        "name": staff.get("name"),
-        "email": staff.get("email"),
-        "role_title": staff.get("role_title", "Coordinator"),
-        "permissions": staff.get("permissions", []),
-        "is_active": bool(staff.get("is_active", True)),
-        "created_at": staff.get("created_at"),
-    }
-
-
-async def _vendor_owner_context(authorization: str):
-    user = await get_vendor_user(authorization)
-    if user.get("role") != "vendor":
-        raise HTTPException(status_code=403, detail="Only the vendor account owner can manage staff")
-    vendor = await _ensure_vendor_profile(user)
-    return user, vendor
-
-
-@api_router.get("/vendor/team")
-async def vendor_team_list(authorization: str = Header(None)):
-    _, vendor = await _vendor_owner_context(authorization)
-    staff = await db.vendor_staff.find(
-        {"vendor_id": vendor["id"]}, {"_id": 0, "password_hash": 0}
-    ).sort("created_at", -1).to_list(200)
-    return {"staff": [_staff_public_record(item) for item in staff]}
-
-
-@api_router.post("/vendor/team")
-async def vendor_team_create(payload: VendorStaffCreateIn, authorization: str = Header(None)):
-    _, vendor = await _vendor_owner_context(authorization)
-    name = payload.name.strip()
-    email = payload.email.strip().lower()
-    if len(name) < 2 or len(name) > 100:
-        raise HTTPException(status_code=422, detail="Enter a staff name between 2 and 100 characters")
-    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
-        raise HTTPException(status_code=422, detail="Enter a valid staff email address")
-    if len(payload.password) < 12:
-        raise HTTPException(status_code=422, detail="Temporary password must be at least 12 characters")
-    if await db.users.find_one({"email": email}):
-        raise HTTPException(status_code=409, detail="An account already exists with this email")
-    requested = list(dict.fromkeys(payload.permissions or STAFF_ROLE_DEFAULTS.get(payload.role_title, STAFF_ROLE_DEFAULTS["Custom"])))
-    if any(key not in STAFF_PERMISSION_KEYS for key in requested):
-        raise HTTPException(status_code=422, detail="One or more staff permissions are not supported")
-    now = datetime.now(timezone.utc).isoformat()
-    staff_id = str(uuid.uuid4())
-    user_id = str(uuid.uuid4())
-    staff_user = {
-        "id": user_id, "email": email, "name": name, "role": "vendor_staff",
-        "vendor_id": vendor["id"], "staff_id": staff_id, "is_active": True,
-        "password_hash": hash_password(payload.password), "created_at": now,
-    }
-    staff_record = {
-        "id": staff_id, "user_id": user_id, "vendor_id": vendor["id"],
-        "name": name, "email": email, "role_title": payload.role_title.strip()[:60],
-        "permissions": requested, "is_active": True, "created_at": now,
-        "updated_at": now,
-    }
-    try:
-        await db.users.insert_one(staff_user)
-        await db.vendor_staff.insert_one(staff_record)
-    except Exception:
-        await db.users.delete_one({"id": user_id})
-        await db.vendor_staff.delete_one({"id": staff_id})
-        raise
-    return {"staff": _staff_public_record(staff_record), "message": "Staff account created. Share the temporary password securely."}
-
-
-@api_router.put("/vendor/team/{staff_id}")
-async def vendor_team_update(staff_id: str, payload: VendorStaffUpdateIn, authorization: str = Header(None)):
-    _, vendor = await _vendor_owner_context(authorization)
-    staff = await db.vendor_staff.find_one({"id": staff_id, "vendor_id": vendor["id"]})
-    if not staff:
-        raise HTTPException(status_code=404, detail="Staff member not found")
-    updates = payload.model_dump(exclude_none=True)
-    if "name" in updates:
-        updates["name"] = updates["name"].strip()[:100]
-        if len(updates["name"]) < 2:
-            raise HTTPException(status_code=422, detail="Staff name is too short")
-    if "role_title" in updates:
-        updates["role_title"] = updates["role_title"].strip()[:60]
-    if "permissions" in updates:
-        updates["permissions"] = list(dict.fromkeys(updates["permissions"]))
-        if any(key not in STAFF_PERMISSION_KEYS for key in updates["permissions"]):
-            raise HTTPException(status_code=422, detail="One or more staff permissions are not supported")
-    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
-    await db.vendor_staff.update_one({"id": staff_id, "vendor_id": vendor["id"]}, {"$set": updates})
-    user_updates = {key: updates[key] for key in ("name", "is_active") if key in updates}
-    if user_updates:
-        await db.users.update_one({"id": staff["user_id"], "vendor_id": vendor["id"]}, {"$set": user_updates})
-    refreshed = await db.vendor_staff.find_one({"id": staff_id, "vendor_id": vendor["id"]}, {"_id": 0, "password_hash": 0})
-    return {"staff": _staff_public_record(refreshed)}
-
-
-@api_router.post("/vendor/team/tasks")
-async def vendor_team_task_create(payload: VendorStaffTaskIn, authorization: str = Header(None)):
-    _, vendor = await _vendor_owner_context(authorization)
-    staff = await db.vendor_staff.find_one({"id": payload.assigned_to, "vendor_id": vendor["id"], "is_active": True})
-    if not staff:
-        raise HTTPException(status_code=404, detail="Active team member not found")
-    # Vendor-created weddings are stored in vendor_weddings. Validate against
-    # that collection so valid weddings selected in the owner dashboard resolve.
-    if payload.wedding_id and not await db.vendor_weddings.find_one(
-        {"id": payload.wedding_id, "vendor_id": vendor["id"]},
-        {"_id": 0, "id": 1},
-    ):
-        raise HTTPException(status_code=404, detail="Wedding not found for this business")
-
-    if payload.priority not in {"low", "normal", "high", "urgent"}:
-        raise HTTPException(status_code=422, detail="Invalid task priority")
-
-    title = (payload.title or "").strip()[:160]
-    if not title:
-        raise HTTPException(status_code=422, detail="Task title is required")
-
-    # A task title may be reused for another wedding or another staff member.
-    # Block only an exact duplicate for this vendor + wedding + assignee.
-    duplicate_query = {
-        "vendor_id": vendor["id"],
-        "wedding_id": payload.wedding_id or None,
-        "assigned_to": payload.assigned_to,
-        "$or": [
-            {"title": title},
-            {"title_normalized": title.casefold()},
-        ],
-    }
-    duplicate = await db.vendor_staff_tasks.find_one(
-        duplicate_query,
-        {"_id": 0, "id": 1},
-    )
-    if duplicate:
-        raise HTTPException(
-            status_code=409,
-            detail="This task is already assigned to this team member for this wedding.",
-        )
-
-    now = datetime.now(timezone.utc).isoformat()
-    task = {
-        "id": str(uuid.uuid4()), "vendor_id": vendor["id"], "title": title,
-        "title_normalized": title.casefold(),
-        "description": (payload.description or "").strip()[:2000],
-        "wedding_id": payload.wedding_id or None,
-        "due_date": payload.due_date or "", "assigned_to": payload.assigned_to,
-        "assigned_name": staff.get("name"), "priority": payload.priority,
-        "status": "todo", "created_at": now, "updated_at": now,
-    }
-    await db.vendor_staff_tasks.insert_one(task.copy())
-    return {"task": task}
-
-
-@api_router.get("/vendor/team/tasks")
-async def vendor_team_task_list(authorization: str = Header(None)):
-    _, vendor = await _vendor_owner_context(authorization)
-    tasks = await db.vendor_staff_tasks.find({"vendor_id": vendor["id"]}, {"_id": 0}).sort("created_at", -1).to_list(500)
-    return {"tasks": tasks}
-
-
-@api_router.get("/staff/me")
-async def staff_me(authorization: str = Header(None)):
-    user = await get_current_user(authorization)
-    if user.get("role") != "vendor_staff" or not user.get("vendor_id"):
-        raise HTTPException(status_code=403, detail="Staff account required")
-    staff = await db.vendor_staff.find_one(
-        {"id": user.get("staff_id"), "vendor_id": user["vendor_id"], "is_active": True},
-        {"_id": 0, "password_hash": 0},
-    )
-    if not staff:
-        raise HTTPException(status_code=403, detail="Staff account is inactive or unavailable")
-    return {"staff": _staff_public_record(staff), "vendor_id": user["vendor_id"]}
-
-
-@api_router.get("/staff/tasks")
-async def staff_task_list(authorization: str = Header(None)):
-    user = await get_current_user(authorization)
-    if user.get("role") != "vendor_staff" or not user.get("vendor_id"):
-        raise HTTPException(status_code=403, detail="Staff account required")
-    staff = await db.vendor_staff.find_one({"id": user.get("staff_id"), "vendor_id": user["vendor_id"], "is_active": True})
-    if not staff:
-        raise HTTPException(status_code=403, detail="Staff account is inactive or unavailable")
-    if "view_assigned_tasks" not in staff.get("permissions", []):
-        raise HTTPException(status_code=403, detail="You do not have permission to view tasks")
-    tasks = await db.vendor_staff_tasks.find(
-        {"vendor_id": user["vendor_id"], "assigned_to": staff["id"]}, {"_id": 0}
-    ).sort("created_at", -1).to_list(300)
-    return {"tasks": tasks}
-
-
-@api_router.patch("/staff/tasks/{task_id}")
-async def staff_task_update(task_id: str, payload: VendorStaffTaskUpdateIn, authorization: str = Header(None)):
-    user = await get_current_user(authorization)
-    if user.get("role") != "vendor_staff" or not user.get("vendor_id"):
-        raise HTTPException(status_code=403, detail="Staff account required")
-    staff = await db.vendor_staff.find_one({"id": user.get("staff_id"), "vendor_id": user["vendor_id"], "is_active": True})
-    if not staff:
-        raise HTTPException(status_code=403, detail="Staff account is inactive or unavailable")
-    if "update_assigned_tasks" not in staff.get("permissions", []):
-        raise HTTPException(status_code=403, detail="You do not have permission to update tasks")
-    task = await db.vendor_staff_tasks.find_one(
-        {"id": task_id, "vendor_id": user["vendor_id"], "assigned_to": staff["id"]}
-    )
-    if not task:
-        raise HTTPException(status_code=404, detail="Assigned task not found")
-    updates = payload.model_dump(exclude_none=True)
-    if "status" in updates and updates["status"] not in {"todo", "in_progress", "done", "blocked", "completed", "cancelled", "canceled"}:
-        raise HTTPException(status_code=422, detail="Invalid task status")
-    if "description" in updates:
-        updates["description"] = updates["description"][:2000]
-    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
-    await db.vendor_staff_tasks.update_one({"id": task_id, "vendor_id": user["vendor_id"], "assigned_to": staff["id"]}, {"$set": updates})
-    return {"message": "Task updated"}
-
-
-@api_router.get("/staff/weddings")
-async def staff_wedding_list(authorization: str = Header(None)):
-    user = await get_current_user(authorization)
-    if user.get("role") != "vendor_staff" or not user.get("vendor_id"):
-        raise HTTPException(status_code=403, detail="Staff account required")
-    staff = await db.vendor_staff.find_one({"id": user.get("staff_id"), "vendor_id": user["vendor_id"], "is_active": True})
-    if not staff:
-        raise HTTPException(status_code=403, detail="Staff account is inactive or unavailable")
-    if "view_weddings" not in staff.get("permissions", []):
-        raise HTTPException(status_code=403, detail="You do not have permission to view weddings")
-    weddings = await db.vendor_weddings.find({"vendor_id": user["vendor_id"]}, {"_id": 0}).sort("created_at", -1).to_list(200)
-    return {"weddings": weddings}
-
-
-@api_router.get("/staff/clients")
-async def staff_client_list(authorization: str = Header(None)):
-    user = await get_current_user(authorization)
-    if user.get("role") != "vendor_staff" or not user.get("vendor_id"):
-        raise HTTPException(status_code=403, detail="Staff account required")
-    staff = await db.vendor_staff.find_one({"id": user.get("staff_id"), "vendor_id": user["vendor_id"], "is_active": True})
-    if not staff:
-        raise HTTPException(status_code=403, detail="Staff account is inactive or unavailable")
-    if "view_clients" not in staff.get("permissions", []):
-        raise HTTPException(status_code=403, detail="You do not have permission to view clients")
-    clients = await db.vendor_clients.find({"vendor_id": user["vendor_id"]}, {"_id": 0}).sort("created_at", -1).to_list(300)
-    wedding_clients = await db.vendor_wedding_clients.find({"vendor_id": user["vendor_id"]}, {"_id": 0}).sort("created_at", -1).to_list(300)
-    # Return both vendor-level and wedding-linked client records without modifying stored data.
-    return {"clients": clients, "wedding_clients": wedding_clients}
-
-
-@api_router.post("/vendor/business-ai")
-async def vendor_business_ai(
-    payload: VendorBusinessAIIn,
-    authorization: str = Header(None),
-):
-    user = await get_vendor_user(authorization)
-    vendor = await _ensure_vendor_profile(user)
-    plan = _require_business_ai_plan(vendor)
-
-    expected_prefix = f"vendor-business-ai-{vendor['id']}"
-    session_id = payload.session_id or expected_prefix
-    if not session_id.startswith(expected_prefix):
-        raise HTTPException(status_code=403, detail="Invalid Business Assistant session.")
-
-    message = str(payload.message or "").strip()
-    if not message:
-        raise HTTPException(status_code=400, detail="Please enter a question.")
-    if len(message) > 6000:
-        raise HTTPException(status_code=413, detail="Message is too long. Please keep it under 6,000 characters.")
-
-    await db.chat_messages.insert_one(
-        ChatMessage(session_id=session_id, role="user", content=message).model_dump()
-    )
-    history = await db.chat_messages.find(
-        {"session_id": session_id}, {"_id": 0}
-    ).sort("timestamp", 1).to_list(200)
-    prior = history[:-1] if history and history[-1].get("role") == "user" else history
-    context_prefix = ""
-    if prior:
-        recent = prior[-8:]
-        context_prefix = "Recent conversation:\\n" + "\\n".join(
-            f"{'Vendor' if item.get('role') == 'user' else 'WEDORA'}: {item.get('content', '')}"
-            for item in recent
-        ) + "\\n\\nCurrent request:\\n"
-
-    business_name = str(vendor.get("business_name") or vendor.get("name") or "Wedding Vendor")
-    category = str(vendor.get("category") or "Wedding Vendor")
-    city = str(vendor.get("city") or "Not specified")
-    business_context = str(payload.business_context or "").strip()[:4000]
-    system_prompt = f"""You are WEDORA Business Assistant, an operational and creative business aide for a subscribed wedding vendor.
-
-Vendor business: {business_name}
-Vendor category: {category}
-Business city: {city}
-
-Additional dashboard context (private context, not a user chat message):
-{business_context or "No additional dashboard context supplied."}
-
-Help the vendor with business operations, client communication, quotation wording, service packaging,
-pricing frameworks, marketing copy, social media planning, lead follow-up, workflow design,
-wedding coordination, and category-specific professional tasks. Adapt advice to the vendor's actual
-category; do not assume they are a decorator. Use only the dashboard context provided above,
-and do not claim to have accessed live records beyond that context. Never invent business
-facts, client details, prices, or legal/tax requirements. State assumptions clearly and ask for missing
-information when necessary. Keep answers practical, clear, and suitable for a small business.
-"""
-
-    try:
-        chat = LlmChat(
-            api_key=GEMINI_API_KEY,
-            session_id=session_id,
-            system_message=system_prompt,
-        )
-        reply = await chat.send_message(UserMessage(text=context_prefix + message))
-        reply_text = reply if isinstance(reply, str) else str(reply)
-    except Exception as error:
-        logging.exception("Vendor Business Assistant failed")
-        raise HTTPException(status_code=502, detail="Business Assistant is temporarily unavailable. Please try again.")
-
-    await db.chat_messages.insert_one(
-        ChatMessage(session_id=session_id, role="assistant", content=reply_text).model_dump()
-    )
-    return {"session_id": session_id, "reply": reply_text, "plan": plan}
-
-
-@api_router.get("/vendor/business-ai/history/{session_id}")
-async def vendor_business_ai_history(
-    session_id: str,
-    authorization: str = Header(None),
-):
-    user = await get_vendor_user(authorization)
-    vendor = await _ensure_vendor_profile(user)
-    plan = _require_business_ai_plan(vendor)
-    expected_prefix = f"vendor-business-ai-{vendor['id']}"
-    if not session_id.startswith(expected_prefix):
-        raise HTTPException(status_code=403, detail="Invalid Business Assistant session.")
-
-    messages = await db.chat_messages.find(
-        {"session_id": session_id}, {"_id": 0}
-    ).sort("timestamp", 1).to_list(500)
-    return {"session_id": session_id, "messages": messages, "plan": plan}
-
 
 # ================= HEALTH =================
 @api_router.get("/")
