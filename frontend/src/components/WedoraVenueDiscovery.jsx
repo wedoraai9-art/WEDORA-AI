@@ -93,6 +93,22 @@ const emptyUpdate = {
 const WedoraVenueDiscovery = () => {
   const navigate = useNavigate();
 
+  // Open the public source or official website associated with a venue.
+  // Keep this separate from nested controls such as shortlist and report.
+  const openVenue = (venue) => {
+    const url = venue.sourceUrl || venue.website;
+    if (!url) return;
+
+    try {
+      const parsedUrl = new URL(url);
+      if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') {
+        window.open(parsedUrl.href, '_blank', 'noopener,noreferrer');
+      }
+    } catch (error) {
+      console.warn('Invalid venue destination URL:', error);
+    }
+  };
+
   const [query, setQuery] = useState('');
   const [location, setLocation] = useState('');
   const [guests, setGuests] = useState('');
@@ -353,6 +369,7 @@ const WedoraVenueDiscovery = () => {
         status: venue.status || (venue.verified ? 'Verified' : 'Public listing'),
         lastUpdated: venue.lastUpdated || venue.last_updated || 'Not listed',
         sourceUrl: venue.sourceUrl || venue.source_url || '',
+        website: venue.website || '',
         source: venue.source || venue.source_name || '',
         description: venue.description || venue.snippet || '',
         facilities: Array.isArray(venue.facilities) ? venue.facilities : [],
@@ -810,7 +827,25 @@ const WedoraVenueDiscovery = () => {
 
                     <article
                       key={venue.id}
-                      className="overflow-hidden rounded-[26px] border border-[#e4ddd5] bg-white shadow-[0_15px_45px_rgba(70,55,40,0.05)]"
+                      role={venue.sourceUrl || venue.website ? 'link' : undefined}
+                      tabIndex={venue.sourceUrl || venue.website ? 0 : undefined}
+                      aria-label={venue.sourceUrl || venue.website ? `Open ${venue.name} source in a new tab` : undefined}
+                      onClick={(event) => {
+                        if (event.target.closest('button, a')) return;
+                        openVenue(venue);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.target.closest('button, a')) return;
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          openVenue(venue);
+                        }
+                      }}
+                      className={`overflow-hidden rounded-[26px] border border-[#e4ddd5] bg-white shadow-[0_15px_45px_rgba(70,55,40,0.05)] ${
+                        venue.sourceUrl || venue.website
+                          ? 'cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#9B7CF6]'
+                          : ''
+                      }`}
                     >
 
                       {/* Search results do not fabricate venue photography. */}
