@@ -266,7 +266,7 @@ const WedoraVendorDiscovery = () => {
   // Live India-wide vendor discovery. The Gemini API key stays on the
   // FastAPI/Render backend; it is never exposed in this React file.
   const VENDOR_SEARCH_API =
-    'https://wedora-ai.onrender.com/api/marketplace/vendors';
+    'https://wedora-ai.onrender.com/api/vendors/search';
 
   const [searched, setSearched] = useState(false);
   const [liveVendors, setLiveVendors] = useState([]);
@@ -569,13 +569,13 @@ const WedoraVendorDiscovery = () => {
     }
 
     try {
-      const params = new URLSearchParams();
-      if (payload.query) params.set('search', payload.query);
-      if (payload.location) params.set('city', payload.location);
-      if (payload.category) params.set('category', payload.category);
-      const response = await fetch(`${VENDOR_SEARCH_API}?${params.toString()}`, {
-        method: 'GET',
+      const response = await fetch(VENDOR_SEARCH_API, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         credentials: 'omit',
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json().catch(() => ({}));
